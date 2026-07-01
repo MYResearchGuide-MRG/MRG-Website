@@ -1,42 +1,42 @@
 export const timeline = [
   {
-    date: "January 15, 2026",
+    date: "TBD",
     title: "Applications Open",
     description: "Online application portal opens for all eligible students. Submit your project preferences and team information.",
     status: "complete" as const,
   },
   {
-    date: "March 1, 2026",
+    date: "TBD",
     title: "Early Application Deadline",
     description: "Priority review for early applicants. Get feedback on your application before final deadline.",
     status: "complete" as const,
   },
   {
-    date: "April 15, 2026",
+    date: "TBD",
     title: "Final Application Deadline",
     description: "Last day to submit applications. All materials must be received by 11:59 PM MYT.",
     status: "active" as const,
   },
   {
-    date: "May 1-15, 2026",
+    date: "TBD",
     title: "Application Review",
     description: "Expert panel reviews all submissions. Applicants may be contacted for additional information.",
     status: "upcoming" as const,
   },
   {
-    date: "May 20, 2026",
+    date: "TBD",
     title: "Acceptance Notifications",
     description: "Selected participants notified via email. Orientation materials and next steps provided.",
     status: "upcoming" as const,
   },
   {
-    date: "June 1 - August 31, 2026",
+    date: "TBD",
     title: "Research Period",
     description: "12-week intensive research sprint with weekly mentor check-ins and milestone reviews.",
     status: "upcoming" as const,
   },
   {
-    date: "September 15, 2026",
+    date: "TBD",
     title: "Final Presentations",
     description: "Teams present findings to panel of researchers and industry experts. Awards ceremony follows.",
     status: "upcoming" as const,
@@ -99,12 +99,12 @@ export const eligibility = {
   requirements: [
     {
       title: "Age Requirement",
-      description: "13-22 years old as of January 1, 2026",
+      description: "14-22 years old as of January 1, 2026",
       icon: "calendar",
     },
     {
       title: "Education Level",
-      description: "Currently enrolled in secondary school, pre-university, or first year undergraduate",
+      description: "Currently enrolled in secondary school, pre-university, or undergraduate",
       icon: "graduation",
     },
     {
