@@ -1,7 +1,6 @@
 import { useState } from "react"
 import { ArrowRight, GraduationCap, Mail, CheckCircle2, Calendar, Users, Award, MessageCircle, ChevronDown, ChevronUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { ThemeToggle } from "@/components/theme-toggle"
 import { ProjectCard } from "@/components/project-card"
 import { WavePattern } from "@/components/wave-pattern"
 import { ProjectDetailModal, FilterBar } from "@/components/project-detail-modal"
