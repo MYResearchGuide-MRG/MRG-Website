@@ -3,6 +3,9 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
 
+/* Enhanced Animations */
+@import "./animations.css";
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

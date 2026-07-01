@@ -5,6 +5,7 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { ProjectCard } from "@/components/project-card"
 import { WavePattern } from "@/components/wave-pattern"
 import { ProjectDetailModal, FilterBar } from "@/components/project-detail-modal"
+import FlowLinesBackground from "@/components/flow-lines-bg"
 import { timeline, prizes, eligibility, applicationSteps, mentors, faqs, partners } from "@/data/competition-data"
 import { cn } from "@/lib/utils"
 
@@ -151,6 +152,7 @@ function App() {
       <main>
         {/* Hero Section */}
         <section className="hero-section">
+          <FlowLinesBackground />
           <WavePattern />
           <div className="container hero-content">
             <div className="max-w-4xl space-y-6 animate-fade-in-up">
@@ -165,8 +167,10 @@ function App() {
               </h1>
 
               <p className="text-xl text-muted-foreground max-w-2xl leading-relaxed">
-                A 12-week intensive research competition for Malaysian students. Work with expert mentors,
-                compete for RM 5,000+ in prizes, and launch your research career.
+                Join Malaysia's premier student research competition. Collaborate with leading academics,
+                tackle real-world research challenges, compete for over RM 15,000 in prizes, and gain
+                publication opportunities that launch your research career. This isn't just a competition—it's
+                your gateway to becoming part of Malaysia's next generation of researchers.
               </p>
 
               <div className="flex flex-wrap gap-4 pt-4">
@@ -214,7 +218,9 @@ function App() {
                 Competition Timeline
               </h2>
               <p className="text-lg text-muted-foreground">
-                Key dates for the 2026 research competition. Mark your calendar and don't miss any deadlines.
+                From application to final presentation, follow the complete journey of the 2026 research
+                competition. Each milestone is carefully designed to support your growth as a researcher,
+                with clear deadlines and structured support at every stage.
               </p>
             </div>
 
@@ -262,8 +268,10 @@ function App() {
                 Available Research Projects
               </h2>
               <p className="text-lg text-muted-foreground">
-                Browse our curated collection of research projects across five tracks.
-                Each project provides hands-on research experience with structured mentorship.
+                Explore cutting-edge research opportunities across five distinct tracks. Each project is
+                mentored by experienced researchers and designed to provide hands-on experience with real
+                research methodologies. Whether you're interested in AI, biology, engineering, economics,
+                or policy, there's a perfect project waiting for you.
               </p>
             </div>
 
