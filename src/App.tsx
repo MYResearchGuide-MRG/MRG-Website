@@ -466,7 +466,7 @@ function App() {
                 </a>
               </Button>
               <p className="text-sm text-muted-foreground mt-4">
-                Application portal opens January 15, 2026
+                Application portal opens TBD
               </p>
             </div>
           </div>
