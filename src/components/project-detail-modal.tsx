@@ -91,7 +91,7 @@ export function ProjectDetailModal({ project, onClose }: ProjectDetailModalProps
 
           <div className="flex gap-3 pt-4">
             <Button size="lg" className="flex-1" asChild>
-              <a href="#apply">
+              <a href="https://forms.gle/M4dHMyq5dXSGEHXT6">
                 Apply to this project
                 <ArrowRight className="ml-2 h-5 w-5" />
               </a>

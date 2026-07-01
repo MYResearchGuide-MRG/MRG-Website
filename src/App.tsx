@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils"
 const mainSiteUrl = "https://www.myresearchguide.org/"
 const mrgLogoUrl = "https://www.myresearchguide.org/MRG1W.png"
 const mailingListUrl = "https://forms.gle/Sk9JS3kcKe8qw1cU6"
+const applicationFormUrl = "https://forms.gle/M4dHMyq5dXSGEHXT6"
 
 const navItems = [
   { label: "Timeline", href: "#timeline" },
@@ -141,7 +142,7 @@ function App() {
           </div>
           <div className="flex items-center gap-4">
             <Button asChild variant="default" size="sm">
-              <a href="#apply">Apply Now</a>
+              <a href={applicationFormUrl}>Apply Now</a>
             </Button>
           </div>
         </div>
@@ -459,7 +460,7 @@ function App() {
 
             <div className="text-center mt-12">
               <Button size="lg" asChild>
-                <a href={mailingListUrl}>
+                <a href={applicationFormUrl}>
                   Start Your Application
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </a>
@@ -577,7 +578,7 @@ function App() {
               </p>
               <div className="flex flex-wrap justify-center gap-4 pt-4">
                 <Button asChild size="lg">
-                  <a href={mailingListUrl}>
+                  <a href={applicationFormUrl}>
                     Apply Now
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </a>
