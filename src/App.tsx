@@ -168,9 +168,8 @@ function App() {
 
               <p className="text-xl text-muted-foreground max-w-2xl leading-relaxed">
                 Join Malaysia's premier student research competition. Collaborate with leading academics,
-                tackle real-world research challenges, compete for over RM 15,000 in prizes, and gain
-                publication opportunities that launch your research career. This isn't just a competition—it's
-                your gateway to becoming part of Malaysia's next generation of researchers.
+                tackle real-world research challenges, and gain publication opportunities that launch your
+                research career. Prizes and judging panels to be announced.
               </p>
 
               <div className="flex flex-wrap gap-4 pt-4">
@@ -324,10 +323,10 @@ function App() {
                 Prizes & Recognition
               </div>
               <h2 className="text-4xl md:text-5xl font-bold mb-4">
-                What You Can Win
+                Prizes & Recognition
               </h2>
               <p className="text-lg text-muted-foreground">
-                Over RM 15,000 in total prizes, plus publication opportunities and mentorship.
+                Prize amounts and judging panels to be confirmed. All participants receive certificates and recognition.
               </p>
             </div>
 
@@ -335,8 +334,15 @@ function App() {
               {prizes.map((prize, index) => (
                 <div
                   key={index}
-                  className="bg-card border rounded-xl p-6 hover:shadow-lg transition-shadow"
+                  className="bg-card border rounded-xl p-6 hover:shadow-lg transition-shadow relative"
                 >
+                  {prize.placeholder && (
+                    <div className="absolute top-4 right-4">
+                      <span className="text-xs px-2 py-1 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 rounded border border-yellow-500/20">
+                        TBC
+                      </span>
+                    </div>
+                  )}
                   <div className="text-3xl font-bold text-primary mb-2">{prize.amount}</div>
                   <h3 className="text-xl font-semibold mb-2">{prize.title}</h3>
                   <p className="text-sm text-muted-foreground mb-4">{prize.description}</p>
@@ -375,12 +381,13 @@ function App() {
               ))}
             </div>
 
-            <div className="bg-primary/5 border-l-4 border-primary rounded p-6">
-              <h3 className="font-semibold mb-2">Important Notes</h3>
-              <ul className="space-y-2">
+            <div className="bg-primary/5 border-l-4 border-primary rounded p-6 max-w-3xl mx-auto">
+              <h3 className="font-semibold mb-4 text-lg">Important Notes</h3>
+              <ul className="grid gap-3">
                 {eligibility.notes.map((note, index) => (
-                  <li key={index} className="text-sm text-muted-foreground">
-                    • {note}
+                  <li key={index} className="flex items-start gap-3 text-muted-foreground">
+                    <span className="text-primary mt-1">•</span>
+                    <span>{note}</span>
                   </li>
                 ))}
               </ul>
