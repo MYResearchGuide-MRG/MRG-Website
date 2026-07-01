@@ -1,92 +1,25 @@
-import { useEffect, useState, type CSSProperties } from "react"
-
-import {
-  ArrowRight,
-  Building2,
-  CheckCircle2,
-  ExternalLink,
-  Filter,
-  GraduationCap,
-  Landmark,
-  Mail,
-  MapPin,
-  Search,
-  Users,
-  Clock,
-  UsersRound,
-  Award,
-  BookOpen,
-  Bell,
-  X,
-  ChevronRight,
-} from "lucide-react"
-
+import { ArrowRight, GraduationCap, Mail, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
-
-type RevealStyle = CSSProperties & { "--reveal-index"?: number }
+import { ThemeToggle } from "@/components/theme-toggle"
+import { ProjectCard } from "@/components/project-card"
+import { WavePattern } from "@/components/wave-pattern"
 
 const mainSiteUrl = "https://www.myresearchguide.org/"
 const mrgLogoUrl = "https://www.myresearchguide.org/MRG1W.png"
 const mailingListUrl = "https://forms.gle/Sk9JS3kcKe8qw1cU6"
-const applicationUrl =
-  "mailto:myresearchguide.org@gmail.com?subject=MRG%20Research%20Competition%20Application"
 
 const navItems = [
   { label: "Timeline", href: "#timeline" },
   { label: "Projects", href: "#projects" },
   { label: "Researchers", href: "#researchers" },
   { label: "Apply", href: "#apply" },
-  { label: "FAQ", href: "#faq" },
 ]
 
 const stats = [
-  { label: "competition route", value: "2026", icon: "calendar" },
-  { label: "mentor lanes", value: "External + UTAR", icon: "users" },
-  { label: "project tracks", value: "5", icon: "layers" },
-  { label: "expected participants", value: "50+", icon: "target" },
-]
-
-const timeline = [
-  {
-    date: "June 28, 2026",
-    title: "Competition Structure Established",
-    body: "Navigation, programme structure, application directories, and content blocks are ready for confirmed details.",
-    status: "complete",
-  },
-  {
-    date: "July 2026",
-    title: "Project Directory Opens",
-    body: "Participants browse available projects, mentor categories, suggested prerequisites, and application routing.",
-    status: "active",
-  },
-  {
-    date: "August 2026",
-    title: "Applicant Matching",
-    body: "Teams indicate preferred project tracks and are routed toward external or UTAR researcher panels for review.",
-    status: "upcoming",
-  },
-  {
-    date: "September 2026",
-    title: "Research Sprint Begins",
-    body: "Selected cohorts move through guided milestones, check-ins, and evidence logs with MRG support.",
-    status: "upcoming",
-  },
-  {
-    date: "Final Showcase",
-    title: "Panel Review and Recognition",
-    body: "Researchers and partner organisations review outputs, select distinctions, and publish the showcase directory.",
-    status: "upcoming",
-  },
-]
-
-const tracks = [
-  "All",
-  "AI & Data",
-  "BioScience",
-  "Engineering",
-  "Economics",
-  "Policy",
+  { label: "Competition Route", value: "2026" },
+  { label: "Mentor Lanes", value: "External + UTAR" },
+  { label: "Project Tracks", value: "5" },
+  { label: "Expected Participants", value: "50+" },
 ]
 
 const projects = [
@@ -97,12 +30,8 @@ const projects = [
     mentor: "External researcher panel",
     participants: "3-5",
     time: "5-7 hours/week",
-    abstract:
-      "Build a lightweight workflow for turning student curiosity into tractable research questions. The project can later expand into literature mapping, dataset discovery, and prompt-aided hypothesis refinement.",
-    directory: "Apply through the AI & Data directory",
-    status: "open",
-    prerequisites: "Basic programming knowledge, curiosity about ML",
-    outcomes: "Research paper, working prototype, methodology documentation",
+    abstract: "Build a lightweight workflow for turning student curiosity into tractable research questions. The project can later expand into literature mapping, dataset discovery, and prompt-aided hypothesis refinement.",
+    status: "open" as const,
   },
   {
     id: "B-2",
@@ -111,12 +40,8 @@ const projects = [
     mentor: "UTAR and external life-science mentors",
     participants: "2-4",
     time: "4-6 hours/week",
-    abstract:
-      "Design a practical map of beginner-friendly wet-lab, dry-lab, and review-based project options for students without institutional lab access.",
-    directory: "Apply through the BioScience directory",
-    status: "open",
-    prerequisites: "Interest in biology, no lab experience required",
-    outcomes: "Student pathway guide, resource compilation, case studies",
+    abstract: "Design a practical map of beginner-friendly wet-lab, dry-lab, and review-based project options for students without institutional lab access.",
+    status: "open" as const,
   },
   {
     id: "E-3",
@@ -125,12 +50,8 @@ const projects = [
     mentor: "UTAR engineering category",
     participants: "3-6",
     time: "6 hours/week",
-    abstract:
-      "Prototype a modular engineering research challenge where participants can document design constraints, test logs, and technical tradeoffs.",
-    directory: "Apply through the Engineering directory",
-    status: "open",
-    prerequisites: "Basic electronics or programming experience helpful",
-    outcomes: "Functional prototype, technical documentation, outreach materials",
+    abstract: "Prototype a modular engineering research challenge where participants can document design constraints, test logs, and technical tradeoffs.",
+    status: "open" as const,
   },
   {
     id: "C-4",
@@ -139,12 +60,8 @@ const projects = [
     mentor: "External social-science panel",
     participants: "2-5",
     time: "4 hours/week",
-    abstract:
-      "Investigate how Malaysian and regional students discover research opportunities, with an emphasis on transparent access, cost, and mentorship channels.",
-    directory: "Apply through the Economics and Policy directory",
-    status: "open",
-    prerequisites: "Interest in education policy, survey/interview skills",
-    outcomes: "Research report, data analysis, policy recommendations",
+    abstract: "Investigate how Malaysian and regional students discover research opportunities, with an emphasis on transparent access, cost, and mentorship channels.",
+    status: "open" as const,
   },
   {
     id: "P-5",
@@ -153,851 +70,187 @@ const projects = [
     mentor: "Mixed external and UTAR review panel",
     participants: "3-5",
     time: "5 hours/week",
-    abstract:
-      "Create a clear student-facing guide for ethical authorship, data handling, mentor credit, and public communication of early research work.",
-    directory: "Apply through the Policy directory",
-    status: "open",
-    prerequisites: "Critical thinking, interest in research ethics",
-    outcomes: "Ethics guidebook, case studies, student workshops",
+    abstract: "Create a clear student-facing guide for ethical authorship, data handling, mentor credit, and public communication of early research work.",
+    status: "open" as const,
   },
 ]
-
-const researcherGroups = [
-  {
-    label: "External Researchers",
-    icon: GraduationCap,
-    body: "International mentors, graduate researchers, and field specialists connected through the MYResearchGuide network.",
-    people: [
-      "AI safety and machine learning",
-      "Bioengineering and data science",
-      "Physics, mathematics, and materials",
-    ],
-  },
-  {
-    label: "UTAR Researchers",
-    icon: Landmark,
-    body: "UTAR-aligned academic reviewers and category mentors for local institutional continuity.",
-    people: [
-      "Engineering and robotics",
-      "Life sciences and biotechnology",
-      "Economics, policy, and community research",
-    ],
-  },
-  {
-    label: "Reviewer Bench",
-    icon: Users,
-    body: "A flexible panel used for application review, midpoint feedback, and final project recognition.",
-    people: [
-      "Methodology review",
-      "Presentation and poster review",
-      "Sponsor and partner review",
-    ],
-  },
-]
-
-const applicationDirectories = [
-  {
-    title: "Participant Applications",
-    description: "For students applying into a project cohort.",
-    items: [
-      "Preferred tracks",
-      "Background and prerequisites",
-      "Portfolio or short statement",
-    ],
-  },
-  {
-    title: "Project Proposals",
-    description: "For researchers proposing or refining project briefs.",
-    items: ["Mentor category", "Time expectation", "Output and merge criteria"],
-  },
-  {
-    title: "Sponsor and Partner Interest",
-    description:
-      "For organisations supporting prizes, judging, venues, or outreach.",
-    items: [
-      "Sponsor tier",
-      "Organisation profile",
-      "Preferred contribution lane",
-    ],
-  },
-]
-
-const organisations = [
-  {
-    label: "MYResearchGuide",
-    type: "Host platform",
-    description:
-      "Student-led research guidance, interviews, and community infrastructure.",
-  },
-  {
-    label: "UTAR",
-    type: "Institutional research lane",
-    description:
-      "Local academic continuity for researcher panels, category review, and student pathways.",
-  },
-  {
-    label: "Sponsors",
-    type: "Awards and operations",
-    description:
-      "Prize funding, event support, research resources, and final showcase support.",
-  },
-  {
-    label: "Partner Organisations",
-    type: "Community reach",
-    description:
-      "Outreach partners, STEM societies, university communities, and field-specific groups.",
-  },
-]
-
-const faqs = [
-  {
-    question: "Who can apply?",
-    answer:
-      "The competition is structured for secondary, pre-university, and early undergraduate students. Final eligibility details can be added once the organising team confirms the cohort scope.",
-  },
-  {
-    question: "Can a team choose more than one project?",
-    answer:
-      "Yes. The application directory asks for ranked project preferences so reviewers can route applicants toward the best-fit mentor lane.",
-  },
-  {
-    question: "Where do UTAR and external researchers appear?",
-    answer:
-      "The researcher panel separates external categories, UTAR categories, and flexible reviewers so confirmed names can be added without redesigning the page.",
-  },
-  {
-    question: "How is this connected to MYResearchGuide?",
-    answer:
-      "The header, footer, and calls to action link directly back to the main MRG site and mailing-list flow. This microsite can be deployed as a competition route or linked from the main navigation.",
-  },
-  {
-    question: "What still needs to be filled in later?",
-    answer:
-      "Final dates, application URLs, confirmed project mentors, sponsor logos, prize details, and official UTAR contact language are intentionally structured as editable content blocks.",
-  },
-]
-
-function revealStyle(index: number): RevealStyle {
-  return { "--reveal-index": index }
-}
-
-function useRevealMotion() {
-  useEffect(() => {
-    const targets = Array.from(
-      document.querySelectorAll<HTMLElement>("[data-reveal]")
-    )
-    const prefersReducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)"
-    )
-
-    if (prefersReducedMotion.matches || !("IntersectionObserver" in window)) {
-      return
-    }
-
-    document.documentElement.dataset.motionReady = "true"
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting) {
-            return
-          }
-
-          entry.target.setAttribute("data-revealed", "true")
-          observer.unobserve(entry.target)
-        })
-      },
-      {
-        rootMargin: "0px 0px -12% 0px",
-        threshold: 0.12,
-      }
-    )
-
-    targets.forEach((target) => observer.observe(target))
-
-    const revealAllTimer = window.setTimeout(() => {
-      targets.forEach((target) => {
-        target.setAttribute("data-revealed", "true")
-        observer.unobserve(target)
-      })
-    }, 1400)
-
-    return () => {
-      window.clearTimeout(revealAllTimer)
-      observer.disconnect()
-      delete document.documentElement.dataset.motionReady
-    }
-  }, [])
-}
 
 function App() {
-  useRevealMotion()
-
-  const [selectedProjectId, setSelectedProjectId] = useState(projects[0].id)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedTrack, setSelectedTrack] = useState("All")
-  const [showAnnouncement, setShowAnnouncement] = useState(true)
-
-  const filteredProjects = projects.filter((project) => {
-    const matchesSearch =
-      searchQuery === "" ||
-      project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      project.abstract.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      project.track.toLowerCase().includes(searchQuery.toLowerCase())
-
-    const matchesTrack =
-      selectedTrack === "All" || project.track === selectedTrack
-
-    return matchesSearch && matchesTrack
-  })
-
-  const selectedProject =
-    projects.find((p) => p.id === selectedProjectId) || projects[0]
-
   return (
-    <div className="min-h-dvh bg-background text-foreground">
-      <a
-        href="#main"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
-      >
-        Skip to main content
-      </a>
-
-      {showAnnouncement && (
-        <div className="announcement-bar">
-          <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 md:px-6">
-            <div className="flex items-center gap-3">
-              <Bell className="h-4 w-4 text-primary" />
-              <p className="text-sm">
-                <span className="font-semibold text-foreground">Applications now open!</span>
-                <span className="ml-2 text-muted-foreground">2026 Research Competition accepting submissions until August 15th</span>
-              </p>
-            </div>
-            <button
-              onClick={() => setShowAnnouncement(false)}
-              className="text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="Close announcement"
-            >
-              <X className="h-4 w-4" />
-            </button>
+    <div className="min-h-screen bg-background text-foreground">
+      {/* Navigation */}
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-16 items-center justify-between">
+          <div className="flex items-center gap-8">
+            <a href={mainSiteUrl} className="flex items-center gap-2">
+              <img src={mrgLogoUrl} alt="MRG Logo" className="h-8" />
+            </a>
+            <nav className="hidden md:flex items-center gap-6">
+              {navItems.map((item) => (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {item.label}
+                </a>
+              ))}
+            </nav>
           </div>
-        </div>
-      )}
-
-      <header className="site-header sticky top-0 border-b border-border/70 bg-background/92 backdrop-blur supports-[backdrop-filter]:bg-background/78"
-        style={{ top: showAnnouncement ? '0' : '0' }}
-      >
-        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-4 md:px-6 lg:flex-row lg:items-center lg:justify-between">
-          <a
-            className="flex items-center gap-3 no-underline"
-            href={mainSiteUrl}
-          >
-            <span className="flex size-11 items-center justify-center rounded-md border border-border bg-foreground text-sm font-semibold text-background">
-              MRG
-            </span>
-            <span className="flex flex-col">
-              <span className="text-sm leading-tight font-semibold">
-                MYResearchGuide
-              </span>
-              <span className="text-xs text-muted-foreground">
-                Research Competition
-              </span>
-            </span>
-          </a>
-          <nav
-            aria-label="Competition navigation"
-            className="flex flex-wrap items-center gap-2 text-sm"
-          >
-            {navItems.map((item) => (
-              <a
-                key={item.href}
-                href={item.href}
-                className="rounded-md px-3 py-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-              >
-                {item.label}
-              </a>
-            ))}
-            <Button asChild size="sm" variant="outline">
-              <a href={mainSiteUrl}>
-                Main MRG
-                <ExternalLink data-icon="inline-end" />
+          <div className="flex items-center gap-4">
+            <Button asChild variant="outline" size="sm">
+              <a href={mailingListUrl}>
+                <Mail className="mr-2 h-4 w-4" />
+                Join Mailing List
               </a>
             </Button>
-          </nav>
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 
-      <main id="main">
-        <section className="hero-dark relative overflow-hidden">
-          <div className="hero-wave-background" />
-          <div className="hero-rule absolute inset-x-0 top-0 h-px bg-primary" />
-          <div className="mx-auto grid min-h-[86dvh] max-w-7xl gap-10 px-4 py-16 md:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-end lg:py-24">
-            <div className="flex flex-col gap-8">
-              <div className="motion-rise flex flex-wrap items-center gap-3 text-xs font-semibold tracking-wide">
-                <span className="text-primary">MRG x UTAR research basecamp</span>
+      <main>
+        {/* Hero Section */}
+        <section className="hero-section">
+          <WavePattern />
+          <div className="container hero-content">
+            <div className="max-w-4xl space-y-6 animate-fade-in-up">
+              <div className="inline-flex items-center gap-3 text-sm font-medium text-primary">
+                <span>MRG x UTAR research basecamp</span>
                 <span className="h-px w-12 bg-primary" />
-                <span className="text-muted-foreground">2026 programme</span>
+                <span>2026 programme</span>
               </div>
-              <div className="flex flex-col gap-6">
-                <h1 className="motion-rise motion-delay-1 max-w-4xl text-[clamp(2.5rem,7vw,4.5rem)] leading-[0.95] font-semibold tracking-tight">
-                  Research Competition Base Camp
-                </h1>
-                <p className="motion-rise motion-delay-2 dark-soft max-w-2xl text-lg leading-relaxed">
-                  A structured competition hub for timelines, researcher panels,
-                  available projects, application directories, and sponsor or
-                  UTAR involvement. Built as the attachable companion route for
-                  MYResearchGuide.
-                </p>
-              </div>
-              <div className="motion-rise motion-delay-3 flex flex-wrap gap-3">
+
+              <h1 className="text-5xl md:text-7xl font-bold leading-tight">
+                Research Competition<br />Base Camp
+              </h1>
+
+              <p className="text-xl text-muted-foreground max-w-2xl leading-relaxed">
+                A structured competition hub for timelines, researcher panels, available projects,
+                application directories, and sponsor or UTAR involvement.
+              </p>
+
+              <div className="flex flex-wrap gap-4 pt-4">
                 <Button asChild size="lg">
-                  <a href="#apply">
-                    Open application directories
-                    <ArrowRight data-icon="inline-end" />
+                  <a href="#projects">
+                    Explore Projects
+                    <ArrowRight className="ml-2 h-5 w-5" />
                   </a>
                 </Button>
-                <Button
-                  asChild
-                  className="dark-outline-button"
-                  size="lg"
-                  variant="outline"
-                >
+                <Button asChild variant="outline" size="lg">
                   <a href={mainSiteUrl}>
                     Return to main MRG
-                    <ExternalLink data-icon="inline-end" />
+                    <ExternalLink className="ml-2 h-5 w-5" />
                   </a>
                 </Button>
               </div>
             </div>
-
-            <aside
-              aria-label="Competition quick facts"
-              className="hero-fact-grid motion-panel grid gap-3 p-4 md:grid-cols-3 lg:grid-cols-1"
-            >
-              <div className="hero-logo-cell">
-                <img
-                  src={mrgLogoUrl}
-                  alt="MYResearchGuide"
-                  className="h-10 w-auto object-contain"
-                />
-                <span className="hero-wordmark">MYResearchGuide</span>
-                <p className="dark-muted mt-3 text-sm">
-                  Attached competition route for Malaysia's student research
-                  guide.
-                </p>
-              </div>
-              {stats.map((stat) => (
-                <div key={stat.label} className="hero-fact p-5">
-                  <p className="text-3xl font-bold text-primary">{stat.value}</p>
-                  <p className="dark-muted mt-2 text-xs font-semibold tracking-wide uppercase">
-                    {stat.label}
-                  </p>
-                </div>
-              ))}
-            </aside>
           </div>
-        </section>
 
-        <section className="border-b border-border bg-secondary/70" data-reveal>
-          <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-5 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between md:px-6">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-                <span className="font-semibold text-foreground">Live Updates:</span>
-              </div>
-              <span>Timeline, projects, researchers, applications, and organisation sections are ready for confirmed details.</span>
-            </div>
-            <a
-              className="inline-flex items-center gap-2 font-semibold text-primary hover:text-primary/80 transition-colors"
-              href={mailingListUrl}
-            >
-              Join the MRG mailing list
-              <ChevronRight className="h-4 w-4" data-icon="inline-end" />
-            </a>
-          </div>
-        </section>
-
-        <section id="impact" className="py-16 md:py-20 border-b border-border">
-          <div className="mx-auto max-w-7xl px-4 md:px-6">
-            <div className="text-center mb-12" data-reveal>
-              <p className="section-kicker mb-3">Research Impact</p>
-              <h2 className="text-3xl leading-tight font-semibold md:text-4xl">
-                Building Malaysia's Research Future
-              </h2>
-            </div>
-            <div className="grid gap-8 md:grid-cols-3">
-              <div className="stat-card" data-reveal>
-                <div className="stat-icon">
-                  <Users className="h-6 w-6" />
-                </div>
-                <div className="stat-value">100+</div>
-                <div className="stat-label">Student Researchers Expected</div>
-                <p className="stat-description">
-                  Secondary, pre-university, and early undergraduate participants
-                </p>
-              </div>
-              <div className="stat-card" data-reveal style={revealStyle(1)}>
-                <div className="stat-icon">
-                  <GraduationCap className="h-6 w-6" />
-                </div>
-                <div className="stat-value">20+</div>
-                <div className="stat-label">Expert Mentors</div>
-                <p className="stat-description">
-                  International researchers and UTAR faculty guiding projects
-                </p>
-              </div>
-              <div className="stat-card" data-reveal style={revealStyle(2)}>
-                <div className="stat-icon">
-                  <Award className="h-6 w-6" />
-                </div>
-                <div className="stat-value">5</div>
-                <div className="stat-label">Research Tracks</div>
-                <p className="stat-description">
-                  AI & Data, BioScience, Engineering, Economics, and Policy
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section id="timeline" className="light-band py-16 md:py-24">
-          <div className="mx-auto grid max-w-7xl gap-10 px-4 md:px-6 lg:grid-cols-[0.8fr_1.2fr]">
-            <div className="flex flex-col gap-5" data-reveal>
-              <p className="section-kicker">Important dates</p>
-              <h2 className="text-4xl leading-tight font-semibold md:text-5xl">
-                Competition Timeline
-              </h2>
-              <p className="max-w-md text-muted-foreground leading-relaxed">
-                A clean timeline mirrors the reference structure while keeping
-                dates editable as organisers finalise the programme.
-              </p>
-            </div>
-            <ol className="relative flex flex-col gap-6 border-l border-border pl-6">
-              {timeline.map((item, index) => (
-                <li
-                  key={item.title}
-                  className="relative"
-                  data-reveal
-                  style={revealStyle(index)}
-                >
-                      <span
-                        className={cn(
-                          "absolute -left-[43px] flex size-9 items-center justify-center rounded-full border bg-card text-sm font-semibold shadow-sm",
-                          item.status === "active" &&
-                            "border-primary bg-primary text-primary-foreground",
-                          item.status === "complete" &&
-                            "border-primary/40 bg-primary/10 text-primary"
-                        )}
-                      >
-                        {index + 1}
-                      </span>
-                  <div
-                    className={cn(
-                      "rounded-lg border border-transparent p-5",
-                      item.status === "active" && "border-primary/30 bg-accent"
-                    )}
-                  >
-                    <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                      {item.date}
-                    </p>
-                    <h3 className="mt-2 text-lg font-semibold">{item.title}</h3>
-                    <p className="mt-2 text-muted-foreground leading-relaxed">{item.body}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </section>
-
-        <section id="projects" className="project-section py-16 md:py-24">
-          <div className="mx-auto max-w-7xl px-4 md:px-6">
-            <div className="mb-10 flex flex-col gap-4" data-reveal>
-              <p className="section-kicker">Research Programme</p>
-              <h2 className="text-4xl leading-tight font-semibold md:text-5xl">
-                Available Research Projects
-              </h2>
-              <p className="dark-soft max-w-2xl text-base leading-relaxed">
-                Browse our curated collection of research projects across five tracks. Each project is designed to provide hands-on research experience with structured mentorship and clear outcomes.
-              </p>
-            </div>
-
-            <div className="grid gap-8 md:grid-cols-1 lg:grid-cols-[1fr_1.5fr]">
-              <div className="flex flex-col gap-6" data-reveal>
-                <div className="project-controls-card">
-                  <div className="grid gap-4">
-                    <label className="dark-muted flex flex-col gap-2 text-xs font-semibold tracking-wide uppercase">
-                      <span className="inline-flex items-center gap-2">
-                        <Search className="h-4 w-4" data-icon="inline-start" />
-                        Search Projects
-                      </span>
-                      <input
-                        className="project-input h-10 border-0 border-b bg-transparent text-sm font-normal tracking-normal normal-case outline-none focus:border-primary"
-                        placeholder="Search by title, track, or keywords..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                      />
-                    </label>
-                    <label className="dark-muted flex flex-col gap-2 text-xs font-semibold tracking-wide uppercase">
-                      <span className="inline-flex items-center gap-2">
-                        <Filter className="h-4 w-4" data-icon="inline-start" />
-                        Filter by Track
-                      </span>
-                      <select
-                        className="project-select h-10 border px-3 text-sm font-normal tracking-normal normal-case"
-                        value={selectedTrack}
-                        onChange={(e) => setSelectedTrack(e.target.value)}
-                      >
-                        {tracks.map((track) => (
-                          <option key={track}>{track}</option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <div className="dark-muted text-xs font-semibold tracking-wide uppercase px-1">
-                    {filteredProjects.length} {filteredProjects.length === 1 ? 'Project' : 'Projects'} Available
-                  </div>
-                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
-                    {filteredProjects.map((project, index) => (
-                      <button
-                        key={project.id}
-                        onClick={() => setSelectedProjectId(project.id)}
-                        className={cn(
-                          "project-card-compact text-left",
-                          project.id === selectedProjectId && "project-card-active"
-                        )}
-                        data-reveal
-                        style={revealStyle(index)}
-                        type="button"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0 flex-1">
-                            <h3 className="font-semibold text-base leading-tight mb-2">
-                              {project.title}
-                            </h3>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="project-track-badge-sm">
-                                {project.track}
-                              </span>
-                              <span className={cn(
-                                "project-status-badge-sm",
-                                project.status === "open" && "project-status-open"
-                              )}>
-                                {project.status === "open" ? "Open" : "Closed"}
-                              </span>
-                            </div>
-                          </div>
-                          <span className="text-muted-foreground font-mono text-xs shrink-0">
-                            {project.id}
-                          </span>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                  {filteredProjects.length === 0 && (
-                    <div className="dark-muted mt-4 text-center text-sm p-8 border border-dashed rounded-lg" style={{ borderColor: 'var(--surface-inverse-border)' }}>
-                      No projects match your search criteria. Try adjusting your filters.
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div
-                className="project-detail min-w-0"
-                data-reveal
-                style={revealStyle(2)}
-                key={selectedProject.id}
-              >
-                <article className="p-6 md:p-8">
-                  <div className="flex items-start justify-between gap-4 mb-6">
-                    <div className="flex items-center gap-3">
-                      <span className="project-track-badge-large">
-                        {selectedProject.track}
-                      </span>
-                      <span className={cn(
-                        "project-status-badge-large",
-                        selectedProject.status === "open" && "project-status-open"
-                      )}>
-                        {selectedProject.status === "open" ? "Applications Open" : "Applications Closed"}
-                      </span>
-                    </div>
-                    <span className="dark-muted font-mono text-sm font-bold">
-                      {selectedProject.id}
-                    </span>
-                  </div>
-
-                  <h3 className="max-w-3xl font-serif text-3xl leading-tight font-semibold md:text-4xl">
-                    {selectedProject.title}
-                  </h3>
-
-                  <div className="project-meta-grid mt-8 grid gap-4 py-5 text-sm md:grid-cols-3">
-                    <div className="flex items-start gap-3">
-                      <GraduationCap className="h-5 w-5 text-primary mt-0.5" />
-                      <div>
-                        <p className="meta-label mb-1">Mentor</p>
-                        <p className="dark-soft text-sm leading-relaxed">
-                          {selectedProject.mentor}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <UsersRound className="h-5 w-5 text-primary mt-0.5" />
-                      <div>
-                        <p className="meta-label mb-1">Team Size</p>
-                        <p className="dark-soft text-sm leading-relaxed">
-                          {selectedProject.participants} participants
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <Clock className="h-5 w-5 text-primary mt-0.5" />
-                      <div>
-                        <p className="meta-label mb-1">Time Commitment</p>
-                        <p className="dark-soft text-sm leading-relaxed">
-                          {selectedProject.time}
-                        </p>
-                      </div>
+          {/* Stats Bar */}
+          <div className="absolute bottom-0 left-0 right-0 border-t bg-background/50 backdrop-blur">
+            <div className="container">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 py-8">
+                {stats.map((stat) => (
+                  <div key={stat.label} className="text-center">
+                    <div className="text-3xl font-bold text-primary mb-1">{stat.value}</div>
+                    <div className="text-xs uppercase tracking-wider text-muted-foreground">
+                      {stat.label}
                     </div>
                   </div>
-
-                  <div className="mt-8 space-y-6">
-                    <div className="project-abstract border-l-4 border-primary p-5">
-                      <p className="meta-label mb-3 flex items-center gap-2">
-                        <BookOpen className="h-4 w-4" />
-                        Project Abstract
-                      </p>
-                      <p className="dark-soft leading-7">
-                        {selectedProject.abstract}
-                      </p>
-                    </div>
-
-                    <div className="project-info-grid grid gap-4 md:grid-cols-2">
-                      <div className="project-info-card">
-                        <p className="meta-label mb-2">Prerequisites</p>
-                        <p className="dark-soft text-sm leading-relaxed">
-                          {selectedProject.prerequisites}
-                        </p>
-                      </div>
-                      <div className="project-info-card">
-                        <p className="meta-label mb-2 flex items-center gap-2">
-                          <Award className="h-4 w-4" />
-                          Expected Outcomes
-                        </p>
-                        <p className="dark-soft text-sm leading-relaxed">
-                          {selectedProject.outcomes}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-8 flex flex-col gap-4 pt-6 border-t" style={{ borderColor: 'var(--surface-inverse-border)' }}>
-                    <div className="dark-muted text-sm">
-                      <p className="font-semibold mb-1">Application Path</p>
-                      <p>{selectedProject.directory}</p>
-                    </div>
-                    <div className="flex flex-wrap gap-3">
-                      <Button asChild size="lg">
-                        <a href="#apply">
-                          Apply to this project
-                          <ArrowRight data-icon="inline-end" />
-                        </a>
-                      </Button>
-                      <Button
-                        asChild
-                        className="dark-outline-button"
-                        size="lg"
-                        variant="outline"
-                      >
-                        <a href="#researchers">
-                          Meet the mentors
-                          <Users data-icon="inline-end" />
-                        </a>
-                      </Button>
-                    </div>
-                  </div>
-                </article>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section id="researchers" className="py-16 md:py-24">
-          <div className="mx-auto max-w-7xl px-4 md:px-6">
-            <div className="grid gap-8 lg:grid-cols-[0.75fr_1.25fr]">
-              <div data-reveal>
-                <p className="section-kicker">Researcher panel</p>
-                <h2 className="mt-3 text-4xl leading-tight font-semibold md:text-5xl">
-                  External categories and UTAR lanes
-                </h2>
-              </div>
-              <div className="grid gap-4 md:grid-cols-3">
-                {researcherGroups.map((group, index) => {
-                  const Icon = group.icon
-
-                  return (
-                    <article
-                      key={group.label}
-                      className="entity-card"
-                      data-reveal
-                      style={revealStyle(index)}
-                    >
-                      <Icon aria-hidden="true" />
-                      <h3>{group.label}</h3>
-                      <p>{group.body}</p>
-                      <ul>
-                        {group.people.map((person) => (
-                          <li key={person}>{person}</li>
-                        ))}
-                      </ul>
-                    </article>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section id="apply" className="bg-secondary/65 py-16 md:py-24">
-          <div className="mx-auto max-w-7xl px-4 md:px-6">
-            <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
-              <div className="flex flex-col gap-5" data-reveal>
-                <p className="section-kicker">Application directories</p>
-                <h2 className="text-4xl leading-tight font-semibold md:text-5xl">
-                  Clear paths for applicants, mentors, and sponsors
-                </h2>
-                <p className="max-w-xl text-muted-foreground leading-relaxed">
-                  Each path is separated so the organising team can connect
-                  final forms, mentor review, and sponsor intake without
-                  redesigning the page.
-                </p>
-                <div className="flex flex-wrap gap-3">
-                  <Button asChild size="lg">
-                    <a href={applicationUrl}>
-                      Start application
-                      <Mail data-icon="inline-end" />
-                    </a>
-                  </Button>
-                  <Button asChild size="lg" variant="outline">
-                    <a href={mailingListUrl}>
-                      Mailing list
-                      <ExternalLink data-icon="inline-end" />
-                    </a>
-                  </Button>
-                </div>
-              </div>
-              <div className="grid gap-4">
-                {applicationDirectories.map((directory, index) => (
-                  <article
-                    key={directory.title}
-                    className="directory-card"
-                    data-reveal
-                    style={revealStyle(index)}
-                  >
-                    <div>
-                      <h3>{directory.title}</h3>
-                      <p>{directory.description}</p>
-                    </div>
-                    <ul>
-                      {directory.items.map((item) => (
-                        <li key={item}>
-                          <CheckCircle2 data-icon="inline-start" />
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  </article>
                 ))}
               </div>
             </div>
           </div>
         </section>
 
-        <section id="organisations" className="py-16 md:py-24">
-          <div className="mx-auto max-w-7xl px-4 md:px-6">
-            <div
-              className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between"
-              data-reveal
-            >
-              <div>
-                <p className="section-kicker">Organisations involved</p>
-                <h2 className="mt-3 text-4xl font-semibold md:text-5xl">
-                  Sponsors, partners, and UTAR
-                </h2>
+        {/* Projects Grid */}
+        <section id="projects" className="py-24">
+          <div className="container">
+            <div className="max-w-3xl mb-16">
+              <div className="inline-flex items-center gap-2 text-sm font-medium text-primary mb-4">
+                <GraduationCap className="h-4 w-4" />
+                Research Programme
               </div>
-              <p className="max-w-md text-muted-foreground leading-relaxed">
-                Sponsor tiers and confirmed partner logos can be inserted into
-                this section without changing the layout.
+              <h2 className="text-4xl md:text-5xl font-bold mb-4">
+                Available Research Projects
+              </h2>
+              <p className="text-lg text-muted-foreground">
+                Browse our curated collection of research projects across five tracks.
+                Each project provides hands-on research experience with structured mentorship.
               </p>
             </div>
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {organisations.map((org, index) => (
-                <article
-                  key={org.label}
-                  className="organisation-card"
-                  data-reveal
-                  style={revealStyle(index)}
+
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {projects.map((project, index) => (
+                <div
+                  key={project.id}
+                  style={{ animationDelay: `${index * 100}ms` }}
+                  className="animate-fade-in-up"
                 >
-                  <Building2 aria-hidden="true" className="h-6 w-6" />
-                  <p className="text-xs font-semibold tracking-wide text-primary uppercase">
-                    {org.type}
-                  </p>
-                  <h3>{org.label}</h3>
-                  <p>{org.description}</p>
-                </article>
+                  <ProjectCard
+                    id={project.id}
+                    track={project.track}
+                    title={project.title}
+                    mentor={project.mentor}
+                    participants={project.participants}
+                    time={project.time}
+                    abstract={project.abstract}
+                    status={project.status}
+                    onClick={() => {
+                      window.location.hash = `project-${project.id}`
+                    }}
+                  />
+                </div>
               ))}
             </div>
           </div>
         </section>
 
-        <section id="faq" className="light-band py-16 md:py-24">
-          <div className="mx-auto grid max-w-7xl gap-10 px-4 md:px-6 lg:grid-cols-[0.65fr_1.35fr]">
-            <div data-reveal>
-              <p className="section-kicker">FAQ</p>
-              <h2 className="mt-3 text-4xl font-semibold md:text-5xl">
-                Frequently asked questions
+        {/* CTA Section */}
+        <section className="border-t py-24">
+          <div className="container text-center">
+            <div className="max-w-2xl mx-auto space-y-6">
+              <h2 className="text-3xl md:text-5xl font-bold">
+                Ready to start your research journey?
               </h2>
-            </div>
-            <div className="grid gap-4">
-              {faqs.map((faq, index) => (
-                <article
-                  key={faq.question}
-                  className="faq-card"
-                  data-reveal
-                  style={revealStyle(index)}
-                >
-                  <h3>{faq.question}</h3>
-                  <p>{faq.answer}</p>
-                </article>
-              ))}
+              <p className="text-lg text-muted-foreground">
+                Join the 2026 cohort and work with expert mentors on real research projects.
+              </p>
+              <div className="flex flex-wrap justify-center gap-4 pt-4">
+                <Button asChild size="lg">
+                  <a href="#apply">
+                    Apply Now
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </a>
+                </Button>
+                <Button asChild variant="outline" size="lg">
+                  <a href={mailingListUrl}>
+                    <Mail className="mr-2 h-5 w-5" />
+                    Get Updates
+                  </a>
+                </Button>
+              </div>
             </div>
           </div>
         </section>
       </main>
 
-      <footer className="hero-dark" data-reveal>
-        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 md:grid-cols-[1fr_auto] md:px-6">
-          <div>
-            <p className="text-xl font-semibold">MRG Research Competition</p>
-            <p className="dark-muted mt-3 max-w-2xl text-sm leading-6">
-              Attached competition microsite for MYResearchGuide. Organisers can
-              now add confirmed names, dates, prizes, and forms into stable
-              sections.
+      {/* Footer */}
+      <footer className="border-t py-12">
+        <div className="container">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <p className="text-sm text-muted-foreground">
+              © 2026 MYResearchGuide. Attached competition route.
             </p>
-          </div>
-          <div className="flex flex-col gap-3 text-sm">
-            <a className="footer-link" href={mainSiteUrl}>
-              <MapPin data-icon="inline-start" />
-              Main MYResearchGuide site
-            </a>
-            <a
-              className="footer-link"
-              href="mailto:myresearchguide.org@gmail.com"
-            >
-              <Mail data-icon="inline-start" />
-              myresearchguide.org@gmail.com
-            </a>
+            <div className="flex items-center gap-6">
+              <a href={mainSiteUrl} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Main Website
+              </a>
+              <a href={mailingListUrl} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Mailing List
+              </a>
+            </div>
           </div>
         </div>
       </footer>
