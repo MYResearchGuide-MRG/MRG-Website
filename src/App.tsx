@@ -1,4 +1,4 @@
-import { useEffect, type CSSProperties } from "react"
+import { useEffect, useState, type CSSProperties } from "react"
 
 import {
   ArrowRight,
@@ -12,6 +12,13 @@ import {
   MapPin,
   Search,
   Users,
+  Clock,
+  UsersRound,
+  Award,
+  BookOpen,
+  Bell,
+  X,
+  ChevronRight,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -34,9 +41,10 @@ const navItems = [
 ]
 
 const stats = [
-  { label: "competition route", value: "2026" },
-  { label: "mentor lanes", value: "External + UTAR" },
-  { label: "project tracks", value: "5" },
+  { label: "competition route", value: "2026", icon: "calendar" },
+  { label: "mentor lanes", value: "External + UTAR", icon: "users" },
+  { label: "project tracks", value: "5", icon: "layers" },
+  { label: "expected participants", value: "50+", icon: "target" },
 ]
 
 const timeline = [
@@ -92,6 +100,9 @@ const projects = [
     abstract:
       "Build a lightweight workflow for turning student curiosity into tractable research questions. The project can later expand into literature mapping, dataset discovery, and prompt-aided hypothesis refinement.",
     directory: "Apply through the AI & Data directory",
+    status: "open",
+    prerequisites: "Basic programming knowledge, curiosity about ML",
+    outcomes: "Research paper, working prototype, methodology documentation",
   },
   {
     id: "B-2",
@@ -103,6 +114,9 @@ const projects = [
     abstract:
       "Design a practical map of beginner-friendly wet-lab, dry-lab, and review-based project options for students without institutional lab access.",
     directory: "Apply through the BioScience directory",
+    status: "open",
+    prerequisites: "Interest in biology, no lab experience required",
+    outcomes: "Student pathway guide, resource compilation, case studies",
   },
   {
     id: "E-3",
@@ -114,6 +128,9 @@ const projects = [
     abstract:
       "Prototype a modular engineering research challenge where participants can document design constraints, test logs, and technical tradeoffs.",
     directory: "Apply through the Engineering directory",
+    status: "open",
+    prerequisites: "Basic electronics or programming experience helpful",
+    outcomes: "Functional prototype, technical documentation, outreach materials",
   },
   {
     id: "C-4",
@@ -125,6 +142,9 @@ const projects = [
     abstract:
       "Investigate how Malaysian and regional students discover research opportunities, with an emphasis on transparent access, cost, and mentorship channels.",
     directory: "Apply through the Economics and Policy directory",
+    status: "open",
+    prerequisites: "Interest in education policy, survey/interview skills",
+    outcomes: "Research report, data analysis, policy recommendations",
   },
   {
     id: "P-5",
@@ -136,6 +156,9 @@ const projects = [
     abstract:
       "Create a clear student-facing guide for ethical authorship, data handling, mentor credit, and public communication of early research work.",
     directory: "Apply through the Policy directory",
+    status: "open",
+    prerequisites: "Critical thinking, interest in research ethics",
+    outcomes: "Ethics guidebook, case studies, student workshops",
   },
 ]
 
@@ -310,7 +333,26 @@ function useRevealMotion() {
 function App() {
   useRevealMotion()
 
-  const featuredProject = projects[0]
+  const [selectedProjectId, setSelectedProjectId] = useState(projects[0].id)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [selectedTrack, setSelectedTrack] = useState("All")
+  const [showAnnouncement, setShowAnnouncement] = useState(true)
+
+  const filteredProjects = projects.filter((project) => {
+    const matchesSearch =
+      searchQuery === "" ||
+      project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      project.abstract.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      project.track.toLowerCase().includes(searchQuery.toLowerCase())
+
+    const matchesTrack =
+      selectedTrack === "All" || project.track === selectedTrack
+
+    return matchesSearch && matchesTrack
+  })
+
+  const selectedProject =
+    projects.find((p) => p.id === selectedProjectId) || projects[0]
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
@@ -320,7 +362,31 @@ function App() {
       >
         Skip to main content
       </a>
-      <header className="site-header sticky top-0 border-b border-border/70 bg-background/92 backdrop-blur supports-[backdrop-filter]:bg-background/78">
+
+      {showAnnouncement && (
+        <div className="announcement-bar">
+          <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 md:px-6">
+            <div className="flex items-center gap-3">
+              <Bell className="h-4 w-4 text-primary" />
+              <p className="text-sm">
+                <span className="font-semibold text-foreground">Applications now open!</span>
+                <span className="ml-2 text-muted-foreground">2026 Research Competition accepting submissions until August 15th</span>
+              </p>
+            </div>
+            <button
+              onClick={() => setShowAnnouncement(false)}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Close announcement"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      <header className="site-header sticky top-0 border-b border-border/70 bg-background/92 backdrop-blur supports-[backdrop-filter]:bg-background/78"
+        style={{ top: showAnnouncement ? '0' : '0' }}
+      >
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-4 md:px-6 lg:flex-row lg:items-center lg:justify-between">
           <a
             className="flex items-center gap-3 no-underline"
@@ -363,19 +429,20 @@ function App() {
 
       <main id="main">
         <section className="hero-dark relative overflow-hidden">
+          <div className="hero-wave-background" />
           <div className="hero-rule absolute inset-x-0 top-0 h-px bg-primary" />
           <div className="mx-auto grid min-h-[86dvh] max-w-7xl gap-10 px-4 py-16 md:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-end lg:py-24">
             <div className="flex flex-col gap-8">
-              <div className="motion-rise dark-muted flex flex-wrap items-center gap-3 text-xs font-semibold tracking-[0.08em] uppercase">
-                <span>MRG x UTAR research basecamp</span>
+              <div className="motion-rise flex flex-wrap items-center gap-3 text-xs font-semibold tracking-wide">
+                <span className="text-primary">MRG x UTAR research basecamp</span>
                 <span className="h-px w-12 bg-primary" />
-                <span>2026 programme</span>
+                <span className="text-muted-foreground">2026 programme</span>
               </div>
               <div className="flex flex-col gap-6">
-                <h1 className="motion-rise motion-delay-1 max-w-4xl text-[clamp(3rem,9vw,7rem)] leading-[0.9] font-medium">
+                <h1 className="motion-rise motion-delay-1 max-w-4xl text-[clamp(2.5rem,7vw,4.5rem)] leading-[0.95] font-semibold tracking-tight">
                   Research Competition Base Camp
                 </h1>
-                <p className="motion-rise motion-delay-2 dark-soft max-w-2xl text-lg leading-8">
+                <p className="motion-rise motion-delay-2 dark-soft max-w-2xl text-lg leading-relaxed">
                   A structured competition hub for timelines, researcher panels,
                   available projects, application directories, and sponsor or
                   UTAR involvement. Built as the attachable companion route for
@@ -421,8 +488,8 @@ function App() {
               </div>
               {stats.map((stat) => (
                 <div key={stat.label} className="hero-fact p-5">
-                  <p className="text-2xl font-semibold">{stat.value}</p>
-                  <p className="dark-muted mt-2 text-xs font-semibold tracking-[0.08em] uppercase">
+                  <p className="text-3xl font-bold text-primary">{stat.value}</p>
+                  <p className="dark-muted mt-2 text-xs font-semibold tracking-wide uppercase">
                     {stat.label}
                   </p>
                 </div>
@@ -433,20 +500,63 @@ function App() {
 
         <section className="border-b border-border bg-secondary/70" data-reveal>
           <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-5 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between md:px-6">
-            <p>
-              <span className="font-semibold text-foreground">
-                Competition route:
-              </span>{" "}
-              timeline, projects, researchers, applications, and organisation
-              sections are ready for confirmed details.
-            </p>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                <span className="font-semibold text-foreground">Live Updates:</span>
+              </div>
+              <span>Timeline, projects, researchers, applications, and organisation sections are ready for confirmed details.</span>
+            </div>
             <a
-              className="inline-flex items-center gap-2 font-semibold text-primary"
+              className="inline-flex items-center gap-2 font-semibold text-primary hover:text-primary/80 transition-colors"
               href={mailingListUrl}
             >
               Join the MRG mailing list
-              <ArrowRight data-icon="inline-end" />
+              <ChevronRight className="h-4 w-4" data-icon="inline-end" />
             </a>
+          </div>
+        </section>
+
+        <section id="impact" className="py-16 md:py-20 border-b border-border">
+          <div className="mx-auto max-w-7xl px-4 md:px-6">
+            <div className="text-center mb-12" data-reveal>
+              <p className="section-kicker mb-3">Research Impact</p>
+              <h2 className="text-3xl leading-tight font-semibold md:text-4xl">
+                Building Malaysia's Research Future
+              </h2>
+            </div>
+            <div className="grid gap-8 md:grid-cols-3">
+              <div className="stat-card" data-reveal>
+                <div className="stat-icon">
+                  <Users className="h-6 w-6" />
+                </div>
+                <div className="stat-value">100+</div>
+                <div className="stat-label">Student Researchers Expected</div>
+                <p className="stat-description">
+                  Secondary, pre-university, and early undergraduate participants
+                </p>
+              </div>
+              <div className="stat-card" data-reveal style={revealStyle(1)}>
+                <div className="stat-icon">
+                  <GraduationCap className="h-6 w-6" />
+                </div>
+                <div className="stat-value">20+</div>
+                <div className="stat-label">Expert Mentors</div>
+                <p className="stat-description">
+                  International researchers and UTAR faculty guiding projects
+                </p>
+              </div>
+              <div className="stat-card" data-reveal style={revealStyle(2)}>
+                <div className="stat-icon">
+                  <Award className="h-6 w-6" />
+                </div>
+                <div className="stat-value">5</div>
+                <div className="stat-label">Research Tracks</div>
+                <p className="stat-description">
+                  AI & Data, BioScience, Engineering, Economics, and Policy
+                </p>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -454,10 +564,10 @@ function App() {
           <div className="mx-auto grid max-w-7xl gap-10 px-4 md:px-6 lg:grid-cols-[0.8fr_1.2fr]">
             <div className="flex flex-col gap-5" data-reveal>
               <p className="section-kicker">Important dates</p>
-              <h2 className="text-4xl leading-tight font-medium md:text-6xl">
+              <h2 className="text-4xl leading-tight font-semibold md:text-5xl">
                 Competition Timeline
               </h2>
-              <p className="max-w-md text-muted-foreground">
+              <p className="max-w-md text-muted-foreground leading-relaxed">
                 A clean timeline mirrors the reference structure while keeping
                 dates editable as organisers finalise the programme.
               </p>
@@ -470,28 +580,28 @@ function App() {
                   data-reveal
                   style={revealStyle(index)}
                 >
-                  <span
-                    className={cn(
-                      "absolute -left-[43px] flex size-9 items-center justify-center rounded-full border bg-card text-sm font-semibold shadow-sm",
-                      item.status === "active" &&
-                        "border-primary bg-primary text-primary-foreground",
-                      item.status === "complete" &&
-                        "border-primary/30 text-primary"
-                    )}
-                  >
-                    {index + 1}
-                  </span>
+                      <span
+                        className={cn(
+                          "absolute -left-[43px] flex size-9 items-center justify-center rounded-full border bg-card text-sm font-semibold shadow-sm",
+                          item.status === "active" &&
+                            "border-primary bg-primary text-primary-foreground",
+                          item.status === "complete" &&
+                            "border-primary/40 bg-primary/10 text-primary"
+                        )}
+                      >
+                        {index + 1}
+                      </span>
                   <div
                     className={cn(
                       "rounded-lg border border-transparent p-5",
-                      item.status === "active" && "border-primary/25 bg-accent"
+                      item.status === "active" && "border-primary/30 bg-accent"
                     )}
                   >
-                    <p className="text-xs font-bold tracking-[0.08em] text-muted-foreground uppercase">
+                    <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                       {item.date}
                     </p>
-                    <h3 className="mt-2 text-xl font-semibold">{item.title}</h3>
-                    <p className="mt-2 text-muted-foreground">{item.body}</p>
+                    <h3 className="mt-2 text-lg font-semibold">{item.title}</h3>
+                    <p className="mt-2 text-muted-foreground leading-relaxed">{item.body}</p>
                   </div>
                 </li>
               ))}
@@ -501,39 +611,96 @@ function App() {
 
         <section id="projects" className="project-section py-16 md:py-24">
           <div className="mx-auto max-w-7xl px-4 md:px-6">
-            <div className="grid gap-8 lg:grid-cols-[0.72fr_1.18fr]">
+            <div className="mb-10 flex flex-col gap-4" data-reveal>
+              <p className="section-kicker">Research Programme</p>
+              <h2 className="text-4xl leading-tight font-semibold md:text-5xl">
+                Available Research Projects
+              </h2>
+              <p className="dark-soft max-w-2xl text-base leading-relaxed">
+                Browse our curated collection of research projects across five tracks. Each project is designed to provide hands-on research experience with structured mentorship and clear outcomes.
+              </p>
+            </div>
+
+            <div className="grid gap-8 md:grid-cols-1 lg:grid-cols-[1fr_1.5fr]">
               <div className="flex flex-col gap-6" data-reveal>
-                <div>
-                  <p className="section-kicker">Projects</p>
-                  <h2 className="mt-3 text-5xl leading-none font-light">
-                    Available projects
-                  </h2>
+                <div className="project-controls-card">
+                  <div className="grid gap-4">
+                    <label className="dark-muted flex flex-col gap-2 text-xs font-semibold tracking-wide uppercase">
+                      <span className="inline-flex items-center gap-2">
+                        <Search className="h-4 w-4" data-icon="inline-start" />
+                        Search Projects
+                      </span>
+                      <input
+                        className="project-input h-10 border-0 border-b bg-transparent text-sm font-normal tracking-normal normal-case outline-none focus:border-primary"
+                        placeholder="Search by title, track, or keywords..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                      />
+                    </label>
+                    <label className="dark-muted flex flex-col gap-2 text-xs font-semibold tracking-wide uppercase">
+                      <span className="inline-flex items-center gap-2">
+                        <Filter className="h-4 w-4" data-icon="inline-start" />
+                        Filter by Track
+                      </span>
+                      <select
+                        className="project-select h-10 border px-3 text-sm font-normal tracking-normal normal-case"
+                        value={selectedTrack}
+                        onChange={(e) => setSelectedTrack(e.target.value)}
+                      >
+                        {tracks.map((track) => (
+                          <option key={track}>{track}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-                  {projects.map((project, index) => (
-                    <button
-                      key={project.id}
-                      className={cn(
-                        "project-row text-left",
-                        index === 0 && "project-row-active"
-                      )}
-                      data-reveal
-                      style={revealStyle(index)}
-                      type="button"
-                    >
-                      <span className="min-w-0">
-                        <span className="block font-semibold">
-                          {project.title}
-                        </span>
-                        <span className="dark-muted mt-2 block text-xs tracking-[0.08em] uppercase">
-                          {project.track}
-                        </span>
-                      </span>
-                      <span className="dark-muted font-mono text-xs">
-                        {project.id}
-                      </span>
-                    </button>
-                  ))}
+
+                <div className="flex flex-col gap-2">
+                  <div className="dark-muted text-xs font-semibold tracking-wide uppercase px-1">
+                    {filteredProjects.length} {filteredProjects.length === 1 ? 'Project' : 'Projects'} Available
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+                    {filteredProjects.map((project, index) => (
+                      <button
+                        key={project.id}
+                        onClick={() => setSelectedProjectId(project.id)}
+                        className={cn(
+                          "project-card-compact text-left",
+                          project.id === selectedProjectId && "project-card-active"
+                        )}
+                        data-reveal
+                        style={revealStyle(index)}
+                        type="button"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <h3 className="font-semibold text-base leading-tight mb-2">
+                              {project.title}
+                            </h3>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="project-track-badge-sm">
+                                {project.track}
+                              </span>
+                              <span className={cn(
+                                "project-status-badge-sm",
+                                project.status === "open" && "project-status-open"
+                              )}>
+                                {project.status === "open" ? "Open" : "Closed"}
+                              </span>
+                            </div>
+                          </div>
+                          <span className="text-muted-foreground font-mono text-xs shrink-0">
+                            {project.id}
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  {filteredProjects.length === 0 && (
+                    <div className="dark-muted mt-4 text-center text-sm p-8 border border-dashed rounded-lg" style={{ borderColor: 'var(--surface-inverse-border)' }}>
+                      No projects match your search criteria. Try adjusting your filters.
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -541,70 +708,114 @@ function App() {
                 className="project-detail min-w-0"
                 data-reveal
                 style={revealStyle(2)}
+                key={selectedProject.id}
               >
-                <div className="project-filter-grid grid gap-4 p-5 md:grid-cols-[1fr_auto]">
-                  <label className="dark-muted flex flex-col gap-2 text-xs font-semibold tracking-[0.08em] uppercase">
-                    <span className="inline-flex items-center gap-2">
-                      <Search data-icon="inline-start" />
-                      Search
-                    </span>
-                    <input
-                      className="project-input h-10 border-0 border-b bg-transparent text-sm font-normal tracking-normal normal-case outline-none focus:border-primary"
-                      placeholder="Search keywords..."
-                      readOnly
-                    />
-                  </label>
-                  <label className="dark-muted flex flex-col gap-2 text-xs font-semibold tracking-[0.08em] uppercase">
-                    <span className="inline-flex items-center gap-2">
-                      <Filter data-icon="inline-start" />
-                      Track
-                    </span>
-                    <select className="project-select h-10 border px-3 text-sm font-normal tracking-normal normal-case">
-                      {tracks.map((track) => (
-                        <option key={track}>{track}</option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
                 <article className="p-6 md:p-8">
-                  <p className="text-xs font-bold tracking-[0.08em] text-primary uppercase">
-                    {featuredProject.track}
-                  </p>
-                  <h3 className="mt-5 max-w-3xl font-serif text-4xl leading-tight font-semibold md:text-5xl">
-                    {featuredProject.title}
+                  <div className="flex items-start justify-between gap-4 mb-6">
+                    <div className="flex items-center gap-3">
+                      <span className="project-track-badge-large">
+                        {selectedProject.track}
+                      </span>
+                      <span className={cn(
+                        "project-status-badge-large",
+                        selectedProject.status === "open" && "project-status-open"
+                      )}>
+                        {selectedProject.status === "open" ? "Applications Open" : "Applications Closed"}
+                      </span>
+                    </div>
+                    <span className="dark-muted font-mono text-sm font-bold">
+                      {selectedProject.id}
+                    </span>
+                  </div>
+
+                  <h3 className="max-w-3xl font-serif text-3xl leading-tight font-semibold md:text-4xl">
+                    {selectedProject.title}
                   </h3>
-                  <div className="project-meta-grid mt-6 grid gap-3 py-4 text-sm md:grid-cols-3">
-                    <p>
-                      <span className="meta-label">Mentor</span>{" "}
-                      {featuredProject.mentor}
-                    </p>
-                    <p>
-                      <span className="meta-label">Participants</span>{" "}
-                      {featuredProject.participants}
-                    </p>
-                    <p>
-                      <span className="meta-label">Time</span>{" "}
-                      {featuredProject.time}
-                    </p>
+
+                  <div className="project-meta-grid mt-8 grid gap-4 py-5 text-sm md:grid-cols-3">
+                    <div className="flex items-start gap-3">
+                      <GraduationCap className="h-5 w-5 text-primary mt-0.5" />
+                      <div>
+                        <p className="meta-label mb-1">Mentor</p>
+                        <p className="dark-soft text-sm leading-relaxed">
+                          {selectedProject.mentor}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <UsersRound className="h-5 w-5 text-primary mt-0.5" />
+                      <div>
+                        <p className="meta-label mb-1">Team Size</p>
+                        <p className="dark-soft text-sm leading-relaxed">
+                          {selectedProject.participants} participants
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Clock className="h-5 w-5 text-primary mt-0.5" />
+                      <div>
+                        <p className="meta-label mb-1">Time Commitment</p>
+                        <p className="dark-soft text-sm leading-relaxed">
+                          {selectedProject.time}
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="project-abstract mt-6 border-l-4 border-primary p-5">
-                    <p className="meta-label mb-3">Abstract</p>
-                    <p className="dark-soft leading-8">
-                      {featuredProject.abstract}
-                    </p>
+
+                  <div className="mt-8 space-y-6">
+                    <div className="project-abstract border-l-4 border-primary p-5">
+                      <p className="meta-label mb-3 flex items-center gap-2">
+                        <BookOpen className="h-4 w-4" />
+                        Project Abstract
+                      </p>
+                      <p className="dark-soft leading-7">
+                        {selectedProject.abstract}
+                      </p>
+                    </div>
+
+                    <div className="project-info-grid grid gap-4 md:grid-cols-2">
+                      <div className="project-info-card">
+                        <p className="meta-label mb-2">Prerequisites</p>
+                        <p className="dark-soft text-sm leading-relaxed">
+                          {selectedProject.prerequisites}
+                        </p>
+                      </div>
+                      <div className="project-info-card">
+                        <p className="meta-label mb-2 flex items-center gap-2">
+                          <Award className="h-4 w-4" />
+                          Expected Outcomes
+                        </p>
+                        <p className="dark-soft text-sm leading-relaxed">
+                          {selectedProject.outcomes}
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="dark-muted mt-5 flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-                    <p>{featuredProject.directory}</p>
-                    <Button
-                      asChild
-                      className="dark-outline-button"
-                      variant="outline"
-                    >
-                      <a href="#apply">
-                        View directories
-                        <ArrowRight data-icon="inline-end" />
-                      </a>
-                    </Button>
+
+                  <div className="mt-8 flex flex-col gap-4 pt-6 border-t" style={{ borderColor: 'var(--surface-inverse-border)' }}>
+                    <div className="dark-muted text-sm">
+                      <p className="font-semibold mb-1">Application Path</p>
+                      <p>{selectedProject.directory}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-3">
+                      <Button asChild size="lg">
+                        <a href="#apply">
+                          Apply to this project
+                          <ArrowRight data-icon="inline-end" />
+                        </a>
+                      </Button>
+                      <Button
+                        asChild
+                        className="dark-outline-button"
+                        size="lg"
+                        variant="outline"
+                      >
+                        <a href="#researchers">
+                          Meet the mentors
+                          <Users data-icon="inline-end" />
+                        </a>
+                      </Button>
+                    </div>
                   </div>
                 </article>
               </div>
@@ -617,7 +828,7 @@ function App() {
             <div className="grid gap-8 lg:grid-cols-[0.75fr_1.25fr]">
               <div data-reveal>
                 <p className="section-kicker">Researcher panel</p>
-                <h2 className="mt-3 text-4xl leading-tight font-medium md:text-6xl">
+                <h2 className="mt-3 text-4xl leading-tight font-semibold md:text-5xl">
                   External categories and UTAR lanes
                 </h2>
               </div>
@@ -653,10 +864,10 @@ function App() {
             <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
               <div className="flex flex-col gap-5" data-reveal>
                 <p className="section-kicker">Application directories</p>
-                <h2 className="text-4xl leading-tight font-medium md:text-6xl">
+                <h2 className="text-4xl leading-tight font-semibold md:text-5xl">
                   Clear paths for applicants, mentors, and sponsors
                 </h2>
-                <p className="max-w-xl text-muted-foreground">
+                <p className="max-w-xl text-muted-foreground leading-relaxed">
                   Each path is separated so the organising team can connect
                   final forms, mentor review, and sponsor intake without
                   redesigning the page.
@@ -711,11 +922,11 @@ function App() {
             >
               <div>
                 <p className="section-kicker">Organisations involved</p>
-                <h2 className="mt-3 text-4xl font-medium md:text-6xl">
+                <h2 className="mt-3 text-4xl font-semibold md:text-5xl">
                   Sponsors, partners, and UTAR
                 </h2>
               </div>
-              <p className="max-w-md text-muted-foreground">
+              <p className="max-w-md text-muted-foreground leading-relaxed">
                 Sponsor tiers and confirmed partner logos can be inserted into
                 this section without changing the layout.
               </p>
@@ -728,8 +939,8 @@ function App() {
                   data-reveal
                   style={revealStyle(index)}
                 >
-                  <Building2 aria-hidden="true" />
-                  <p className="text-xs font-bold tracking-[0.08em] text-primary uppercase">
+                  <Building2 aria-hidden="true" className="h-6 w-6" />
+                  <p className="text-xs font-semibold tracking-wide text-primary uppercase">
                     {org.type}
                   </p>
                   <h3>{org.label}</h3>
@@ -744,7 +955,7 @@ function App() {
           <div className="mx-auto grid max-w-7xl gap-10 px-4 md:px-6 lg:grid-cols-[0.65fr_1.35fr]">
             <div data-reveal>
               <p className="section-kicker">FAQ</p>
-              <h2 className="mt-3 text-4xl font-medium md:text-6xl">
+              <h2 className="mt-3 text-4xl font-semibold md:text-5xl">
                 Frequently asked questions
               </h2>
             </div>
