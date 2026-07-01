@@ -123,28 +123,51 @@ function App() {
 
       {/* Navigation */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center justify-between">
-          <div className="flex items-center gap-8">
-            <a href={mainSiteUrl} className="flex items-center gap-2">
-              <img src={mrgLogoUrl} alt="MRG Logo" className="h-8" />
-            </a>
-            <nav className="hidden md:flex items-center gap-6">
-              {navItems.map((item) => (
-                <a
-                  key={item.href}
-                  href={item.href}
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {item.label}
+        <div className="container">
+          {/* Partner Logos Row */}
+          <div className="border-b py-3">
+            <div className="flex items-center justify-between gap-4">
+              <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+                Our Partners
+              </div>
+              <div className="flex items-center gap-8">
+                <a href="https://www.utar.edu.my/" target="_blank" rel="noopener noreferrer" className="opacity-70 hover:opacity-100 transition-opacity">
+                  <img src="/utar-logo.jpg" alt="UTAR" className="h-8 object-contain" />
                 </a>
-              ))}
-            </nav>
+                <a href={mainSiteUrl} className="opacity-70 hover:opacity-100 transition-opacity">
+                  <img src={mrgLogoUrl} alt="MRG" className="h-6 object-contain" />
+                </a>
+                <a href="#partners" className="opacity-70 hover:opacity-100 transition-opacity">
+                  <img src="/mabecs-logo.jpg" alt="MABECS Global" className="h-8 object-contain" />
+                </a>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
-            <Button asChild variant="default" size="sm">
-              <a href="#apply">Apply Now</a>
-            </Button>
-            <ThemeToggle />
+
+          {/* Main Navigation */}
+          <div className="flex h-16 items-center justify-between">
+            <div className="flex items-center gap-8">
+              <a href={mainSiteUrl} className="flex items-center gap-2">
+                <img src={mrgLogoUrl} alt="MRG Logo" className="h-8" />
+              </a>
+              <nav className="hidden md:flex items-center gap-6">
+                {navItems.map((item) => (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {item.label}
+                  </a>
+                ))}
+              </nav>
+            </div>
+            <div className="flex items-center gap-4">
+              <Button asChild variant="default" size="sm">
+                <a href="#apply">Apply Now</a>
+              </Button>
+              <ThemeToggle />
+            </div>
           </div>
         </div>
       </header>
