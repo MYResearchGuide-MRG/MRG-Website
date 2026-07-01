@@ -143,7 +143,6 @@ function App() {
             <Button asChild variant="default" size="sm">
               <a href="#apply">Apply Now</a>
             </Button>
-            <ThemeToggle />
           </div>
         </div>
       </header>
