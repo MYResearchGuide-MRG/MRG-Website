@@ -123,51 +123,28 @@ function App() {
 
       {/* Navigation */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container">
-          {/* Partner Logos Row */}
-          <div className="border-b py-3">
-            <div className="flex items-center justify-between gap-4">
-              <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
-                Our Partners
-              </div>
-              <div className="flex items-center gap-8">
-                <a href="https://www.utar.edu.my/" target="_blank" rel="noopener noreferrer" className="opacity-70 hover:opacity-100 transition-opacity">
-                  <img src="/utar-logo.jpg" alt="UTAR" className="h-8 object-contain" />
+        <div className="container flex h-16 items-center justify-between">
+          <div className="flex items-center gap-8">
+            <a href={mainSiteUrl} className="flex items-center gap-2">
+              <img src={mrgLogoUrl} alt="MRG Logo" className="h-8" />
+            </a>
+            <nav className="hidden md:flex items-center gap-6">
+              {navItems.map((item) => (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {item.label}
                 </a>
-                <a href={mainSiteUrl} className="opacity-70 hover:opacity-100 transition-opacity">
-                  <img src={mrgLogoUrl} alt="MRG" className="h-6 object-contain" />
-                </a>
-                <a href="#partners" className="opacity-70 hover:opacity-100 transition-opacity">
-                  <img src="/mabecs-logo.jpg" alt="MABECS Global" className="h-8 object-contain" />
-                </a>
-              </div>
-            </div>
+              ))}
+            </nav>
           </div>
-
-          {/* Main Navigation */}
-          <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center gap-8">
-              <a href={mainSiteUrl} className="flex items-center gap-2">
-                <img src={mrgLogoUrl} alt="MRG Logo" className="h-8" />
-              </a>
-              <nav className="hidden md:flex items-center gap-6">
-                {navItems.map((item) => (
-                  <a
-                    key={item.href}
-                    href={item.href}
-                    className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {item.label}
-                  </a>
-                ))}
-              </nav>
-            </div>
-            <div className="flex items-center gap-4">
-              <Button asChild variant="default" size="sm">
-                <a href="#apply">Apply Now</a>
-              </Button>
-              <ThemeToggle />
-            </div>
+          <div className="flex items-center gap-4">
+            <Button asChild variant="default" size="sm">
+              <a href="#apply">Apply Now</a>
+            </Button>
+            <ThemeToggle />
           </div>
         </div>
       </header>
@@ -224,6 +201,38 @@ function App() {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Partners Section */}
+        <section className="py-16 border-b bg-muted/30">
+          <div className="container">
+            <div className="text-center mb-8">
+              <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-2">
+                Our Partners
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Supported by leading educational institutions and research organizations
+              </p>
+            </div>
+            <div className="flex flex-wrap justify-center items-center gap-12 md:gap-16">
+              {partners.map((partner, index) => (
+                <a
+                  key={index}
+                  href={partner.url}
+                  className="transition-all duration-300 hover:scale-110"
+                  title={partner.description}
+                  target={partner.url.startsWith('http') ? '_blank' : undefined}
+                  rel={partner.url.startsWith('http') ? 'noopener noreferrer' : undefined}
+                >
+                  <img
+                    src={partner.logo}
+                    alt={partner.name}
+                    className="h-16 object-contain filter brightness-0 dark:brightness-100 dark:invert-0 hover:filter-none transition-all"
+                  />
+                </a>
+              ))}
             </div>
           </div>
         </section>
@@ -557,34 +566,7 @@ function App() {
           </div>
         </section>
 
-        {/* Partners Section */}
-        <section className="py-24 border-b">
-          <div className="container">
-            <div className="max-w-3xl mb-16 text-center mx-auto">
-              <h2 className="text-4xl md:text-5xl font-bold mb-4">
-                Our Partners
-              </h2>
-              <p className="text-lg text-muted-foreground">
-                Supported by leading educational institutions and research organizations.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap justify-center items-center gap-12">
-              {partners.map((partner, index) => (
-                <a
-                  key={index}
-                  href={partner.url}
-                  className="grayscale hover:grayscale-0 transition-all opacity-60 hover:opacity-100"
-                  title={partner.description}
-                >
-                  <img src={partner.logo} alt={partner.name} className="h-16 object-contain" />
-                </a>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Final CTA Section */}
+        {/* CTA Section */}
         <section className="py-24">
           <div className="container text-center">
             <div className="max-w-2xl mx-auto space-y-6">
