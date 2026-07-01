@@ -262,11 +262,10 @@ export const partners = [
   },
   {
     name: "MYResearchGuide",
-    logo: mrgLogoUrl,
+    logo: "https://www.myresearchguide.org/MRG1W.png",
     description: "Malaysia's Student Research Platform",
     url: "https://www.myresearchguide.org/",
   },
-  // Placeholders for actual sponsors
   {
     name: "Research Sponsor",
     logo: "/partners/placeholder-sponsor.svg",
