@@ -2,43 +2,50 @@ export const timeline = [
   {
     date: "TBD",
     title: "Applications Open",
-    description: "Online application portal opens for all eligible students. Submit your project preferences and team information.",
+    description:
+      "Online application portal opens for all eligible students. Submit your project preferences and team information.",
     status: "complete" as const,
   },
   {
     date: "TBD",
     title: "Early Application Deadline",
-    description: "Priority review for early applicants. Get feedback on your application before final deadline.",
+    description:
+      "Priority review for early applicants. Get feedback on your application before final deadline.",
     status: "complete" as const,
   },
   {
     date: "TBD",
     title: "Final Application Deadline",
-    description: "Last day to submit applications. All materials must be received by 11:59 PM MYT.",
+    description:
+      "Last day to submit applications. All materials must be received by 11:59 PM MYT.",
     status: "active" as const,
   },
   {
     date: "TBD",
     title: "Application Review",
-    description: "Expert panel reviews all submissions. Applicants may be contacted for additional information.",
+    description:
+      "Expert panel reviews all submissions. Applicants may be contacted for additional information.",
     status: "upcoming" as const,
   },
   {
     date: "TBD",
     title: "Acceptance Notifications",
-    description: "Selected participants notified via email. Orientation materials and next steps provided.",
+    description:
+      "Selected participants notified via email. Orientation materials and next steps provided.",
     status: "upcoming" as const,
   },
   {
     date: "TBD",
     title: "Research Period",
-    description: "12-week intensive research sprint with weekly mentor check-ins and milestone reviews.",
+    description:
+      "12-week intensive research sprint with weekly mentor check-ins and milestone reviews.",
     status: "upcoming" as const,
   },
   {
     date: "TBD",
     title: "Final Presentations",
-    description: "Teams present findings to panel of researchers and industry experts. Awards ceremony follows.",
+    description:
+      "Teams present findings to panel of researchers and industry experts. Awards ceremony follows.",
     status: "upcoming" as const,
   },
 ]
@@ -104,7 +111,8 @@ export const eligibility = {
     },
     {
       title: "Education Level",
-      description: "Currently enrolled in secondary school, pre-university, or undergraduate",
+      description:
+        "Currently enrolled in secondary school, pre-university, or undergraduate",
       icon: "graduation",
     },
     {
@@ -124,7 +132,8 @@ export const eligibility = {
     },
     {
       title: "Prerequisites",
-      description: "Basic research skills, curiosity, and commitment (project-specific requirements vary)",
+      description:
+        "Basic research skills, curiosity, and commitment (project-specific requirements vary)",
       icon: "check",
     },
   ],
@@ -140,31 +149,36 @@ export const applicationSteps = [
   {
     step: 1,
     title: "Review Projects",
-    description: "Browse available research projects and select up to 3 preferences based on your interests and skills.",
+    description:
+      "Browse available research projects and select up to 3 preferences based on your interests and skills.",
     duration: "30 minutes",
   },
   {
     step: 2,
     title: "Create Account",
-    description: "Register on the application portal with your email and basic information.",
+    description:
+      "Register on the application portal with your email and basic information.",
     duration: "5 minutes",
   },
   {
     step: 3,
     title: "Complete Application",
-    description: "Submit personal information, academic background, project preferences, and statement of interest (500 words).",
+    description:
+      "Submit personal information, academic background, project preferences, and statement of interest (500 words).",
     duration: "1-2 hours",
   },
   {
     step: 4,
     title: "Upload Documents",
-    description: "Provide academic transcript, one letter of recommendation, and proof of enrollment.",
+    description:
+      "Provide academic transcript, one letter of recommendation, and proof of enrollment.",
     duration: "15 minutes",
   },
   {
     step: 5,
     title: "Submit & Track",
-    description: "Review your application, submit, and track status through the portal.",
+    description:
+      "Review your application, submit, and track status through the portal.",
     duration: "5 minutes",
   },
 ]
@@ -176,7 +190,11 @@ export const mentors = [
     title: "AI & Data Track",
     affiliation: "External Researchers (TBC)",
     track: "AI & Data",
-    expertise: ["Machine Learning", "Natural Language Processing", "Research Methodology"],
+    expertise: [
+      "Machine Learning",
+      "Natural Language Processing",
+      "Research Methodology",
+    ],
     bio: "Expert panel to be confirmed - experienced researchers in AI and data science",
     image: "/mentors/placeholder-1.jpg",
     placeholder: true,
@@ -220,7 +238,11 @@ export const mentors = [
     title: "Policy Track",
     affiliation: "Mixed Panel (TBC)",
     track: "Policy",
-    expertise: ["Research Ethics", "Publication Standards", "Academic Integrity"],
+    expertise: [
+      "Research Ethics",
+      "Publication Standards",
+      "Academic Integrity",
+    ],
     bio: "Ethics and policy experts to be confirmed",
     image: "/mentors/placeholder-5.jpg",
     placeholder: true,
@@ -230,35 +252,43 @@ export const mentors = [
 export const faqs = [
   {
     question: "Do I need previous research experience?",
-    answer: "No! This competition is designed for students new to research. We provide mentorship and guidance throughout the process.",
+    answer:
+      "No! This competition is designed for students new to research. We provide mentorship and guidance throughout the process.",
   },
   {
     question: "Can I apply if I'm not from Malaysia?",
-    answer: "Yes, the competition is open to students from all ASEAN countries. International applicants are welcome.",
+    answer:
+      "Yes, the competition is open to students from all ASEAN countries. International applicants are welcome.",
   },
   {
     question: "How are teams formed?",
-    answer: "You can apply as an individual or with a pre-formed team. Some projects allow solo work, others require teams of 2-5. Check individual project requirements.",
+    answer:
+      "You can apply as an individual or with a pre-formed team. Some projects allow solo work, others require teams of 2-5. Check individual project requirements.",
   },
   {
     question: "What if I can't commit to the full 12 weeks?",
-    answer: "The 12-week commitment is required to complete the program and be eligible for awards. Plan accordingly before applying.",
+    answer:
+      "The 12-week commitment is required to complete the program and be eligible for awards. Plan accordingly before applying.",
   },
   {
     question: "Are there any costs to participate?",
-    answer: "No! The competition is completely free. All resources, mentorship, and materials are provided at no cost.",
+    answer:
+      "No! The competition is completely free. All resources, mentorship, and materials are provided at no cost.",
   },
   {
     question: "How is the competition conducted?",
-    answer: "The program is primarily virtual with weekly video meetings with mentors. Some projects may have optional in-person components at UTAR.",
+    answer:
+      "The program is primarily virtual with weekly video meetings with mentors. Some projects may have optional in-person components at UTAR.",
   },
   {
     question: "What happens if my application isn't accepted?",
-    answer: "We receive more applications than available spots. Unsuccessful applicants receive feedback and are encouraged to apply next year with priority consideration.",
+    answer:
+      "We receive more applications than available spots. Unsuccessful applicants receive feedback and are encouraged to apply next year with priority consideration.",
   },
   {
     question: "Can I change my project after being accepted?",
-    answer: "Project assignments are made based on your preferences and mentor capacity. Changes are rare but can be discussed with program coordinators in the first week.",
+    answer:
+      "Project assignments are made based on your preferences and mentor capacity. Changes are rare but can be discussed with program coordinators in the first week.",
   },
 ]
 
@@ -271,7 +301,7 @@ export const partners = [
   },
   {
     name: "MYResearchGuide",
-    logo: "https://www.myresearchguide.org/MRG1W.png",
+    logo: "/mrg-logo-inverted.png",
     description: "Malaysia's Student Research Platform",
     url: "https://www.myresearchguide.org/",
   },
