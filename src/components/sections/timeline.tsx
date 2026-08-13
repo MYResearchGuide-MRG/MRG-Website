@@ -18,16 +18,21 @@ function statusOf(phase: { start: string; end: string }, today: string): Status 
   return "upcoming"
 }
 
+/**
+ * Round, and drawn against --color-muted-foreground rather than --color-border.
+ * Border-coloured hairline squares all but vanished on the dark background,
+ * which left the rail reading as a bare line with no milestones on it.
+ */
 function StatusMark({ status }: { status: Status }) {
   return (
     <span
       aria-hidden
       className={cn(
-        "relative z-10 block size-2.5 shrink-0 translate-y-[0.4rem] bg-background",
+        "relative z-10 block size-2.5 shrink-0 translate-y-[0.4rem] rounded-full",
         status === "complete" && "bg-foreground",
         status === "active" &&
-          "bg-background ring-[1.5px] ring-foreground ring-offset-2 ring-offset-background",
-        status === "upcoming" && "border border-border bg-background"
+          "bg-background ring-2 ring-foreground ring-offset-2 ring-offset-background",
+        status === "upcoming" && "border-[1.5px] border-muted-foreground bg-background"
       )}
     />
   )
@@ -69,10 +74,12 @@ export function Timeline() {
 
       <div ref={railRef} className="relative mt-8">
         {/* Static rail + scroll-drawn progress overlay. The offset lands on the
-            centre of the 0.625rem status mark. */}
+            centre of the 0.625rem status mark. The rail is drawn a step above
+            --color-border: at border weight the not-yet-reached stretch below
+            the progress line disappeared entirely against the dark panel. */}
         <div
           aria-hidden
-          className="absolute top-2 bottom-2 left-[calc(0.3125rem-0.5px)] w-px bg-border"
+          className="absolute top-2 bottom-2 left-[calc(0.3125rem-0.5px)] w-px bg-muted-foreground/35"
         />
         {!reduced && (
           <motion.div
