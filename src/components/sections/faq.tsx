@@ -14,6 +14,10 @@ import { contactMailto } from "@/lib/site"
  * FAQ and the programme timeline share a section. Neither has enough content
  * to justify a full screen of its own, and read side by side the timeline
  * answers half the questions before they get asked.
+ *
+ * The timeline leads. It is the narrower column of the two, and placed second
+ * the much wider FAQ swallowed it — both on desktop, where the eye starts
+ * left, and when stacked, where it fell below eight accordion rows.
  */
 export function Faq() {
   return (
@@ -22,7 +26,9 @@ export function Faq() {
       className="scroll-mt-24 border-t border-border bg-muted/40 py-24 md:py-32"
     >
       <div className="container">
-        <div className="grid gap-14 lg:grid-cols-[1fr_20rem] lg:gap-20">
+        <div className="grid gap-14 lg:grid-cols-[22rem_1fr] lg:gap-20">
+          <Timeline />
+
           <div>
             <SectionHeading
               kicker="Questions"
@@ -55,8 +61,6 @@ export function Faq() {
               </a>
             </Reveal>
           </div>
-
-          <Timeline />
         </div>
       </div>
     </section>
