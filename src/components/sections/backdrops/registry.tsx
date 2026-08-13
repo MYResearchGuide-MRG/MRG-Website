@@ -14,7 +14,10 @@ type FigureComponent = React.ComponentType<{ className?: string }>
 /**
  * Each variant pairs a full-bleed backdrop with an optional figure that fills
  * the empty right half of the hero. Variants whose backdrop already occupies
- * that space (neuron, words) declare no figure.
+ * that space (neuron, waves, words) declare no figure, and the hero centres
+ * its content for those.
+ *
+ * Order matters: index 0 is what the page loads with, so neuron leads.
  */
 export const BACKDROPS: ReadonlyArray<{
   id: string
@@ -22,6 +25,7 @@ export const BACKDROPS: ReadonlyArray<{
   Component: React.ComponentType
   Figure?: FigureComponent
 }> = [
+  { id: "neuron", label: "Neuron", Component: NeuronBackdrop },
   { id: "grid", label: "Seal", Component: GridBackdrop, Figure: HeroSeal },
   { id: "globe", label: "Globe", Component: GridBackdrop, Figure: LazyGlobeFigure },
   {
@@ -31,7 +35,6 @@ export const BACKDROPS: ReadonlyArray<{
     Figure: LatticeFigure,
   },
   { id: "waves", label: "Waves", Component: WavesBackdrop },
-  { id: "neuron", label: "Neuron", Component: NeuronBackdrop },
   { id: "words", label: "Words", Component: TextBackdrop },
 ]
 

@@ -13,6 +13,9 @@ type ThemeProviderProps = {
 
 type ThemeProviderState = {
   theme: Theme
+  /* `theme` may be "system"; consumers that need to pick a light or dark asset
+     want the concrete answer, not the preference. */
+  resolvedTheme: ResolvedTheme
   setTheme: (theme: Theme) => void
 }
 
@@ -92,6 +95,25 @@ export function ThemeProvider({
 
     return defaultTheme
   })
+
+  /* Tracked unconditionally, not just while theme === "system", so
+     `resolvedTheme` stays honest the moment a user flips back to system. */
+  const [systemTheme, setSystemTheme] =
+    React.useState<ResolvedTheme>(getSystemTheme)
+
+  React.useEffect(() => {
+    const mediaQuery = window.matchMedia(COLOR_SCHEME_QUERY)
+    const sync = () => {
+      setSystemTheme(mediaQuery.matches ? "dark" : "light")
+    }
+
+    sync()
+    mediaQuery.addEventListener("change", sync)
+
+    return () => {
+      mediaQuery.removeEventListener("change", sync)
+    }
+  }, [])
 
   const setTheme = React.useCallback(
     (nextTheme: Theme) => {
@@ -207,9 +229,10 @@ export function ThemeProvider({
   const value = React.useMemo(
     () => ({
       theme,
+      resolvedTheme: theme === "system" ? systemTheme : theme,
       setTheme,
     }),
-    [theme, setTheme]
+    [theme, systemTheme, setTheme]
   )
 
   return (

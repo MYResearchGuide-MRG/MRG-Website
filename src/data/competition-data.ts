@@ -537,58 +537,66 @@ export type TimelinePhase = {
 }
 
 /**
- * Tentative schedule from the committee update. Dates are expected to shift
- * slightly and are marked as tentative on screen; the finalised version arrives
- * with the participant info pack.
+ * Schedule from the committee update. Dates are open to slight shifts
+ * according to programme progress; the finalised version arrives with the
+ * participant info pack.
  */
 export const timeline: TimelinePhase[] = [
   {
-    date: "20 August 2026",
+    date: "21 August 2026",
     title: "Applications Open",
     description:
       "Announced via social media and partnered institutions. The portal opens for all eligible students.",
-    start: "2026-08-20",
-    end: "2026-08-20",
+    start: "2026-08-21",
+    end: "2026-08-21",
   },
   {
-    date: "8 September 2026",
+    date: "10 September 2026",
     title: "Application Deadline",
     description:
       "All student submissions due. The Board of Executive Directors shortlists applicants on a rolling basis, so applying early helps.",
-    start: "2026-09-08",
-    end: "2026-09-08",
+    start: "2026-09-10",
+    end: "2026-09-10",
   },
   {
-    date: "8-12 September 2026",
+    date: "11-12 September 2026",
     title: "Final Review",
     description:
       "The Lead Researcher reviews the final selection. Up to three students are placed on each project.",
-    start: "2026-09-08",
+    start: "2026-09-11",
     end: "2026-09-12",
   },
   {
-    date: "10-12 September 2026",
-    title: "Announcement",
+    date: "13 September 2026",
+    title: "Participants Announced",
     description:
       "Students are matched with a mentor and a research project, and team leaders are assigned for bi-weekly progress checks.",
-    start: "2026-09-10",
-    end: "2026-09-12",
+    start: "2026-09-13",
+    end: "2026-09-13",
   },
   {
     date: "15 September 2026",
-    title: "Onboarding & Burn-in",
+    title: "Opening Ceremony",
     description:
-      "Orientation, introductions, and preparatory tasks assigned by your mentor.",
+      "The programme opens with introductions to the mentor panel and the cohort.",
     start: "2026-09-15",
     end: "2026-09-15",
   },
   {
-    date: "15 Sept - 10 Nov 2026",
+    date: "15-20 September 2026",
+    title: "Onboarding Period",
+    description:
+      "Orientation, team formation, and preparatory tasks assigned by your mentor.",
+    start: "2026-09-15",
+    end: "2026-09-20",
+  },
+  {
+    date: "20 Sept - 12 Nov 2026",
     title: "Main Research Period",
     description:
       "Core research and project work, roughly eight weeks, with regular mentor contact throughout.",
-    start: "2026-09-15",
-    end: "2026-11-10",
+    start: "2026-09-20",
+    end: "2026-11-12",
   },
   {
     date: "15 October 2026",
@@ -599,72 +607,20 @@ export const timeline: TimelinePhase[] = [
     end: "2026-10-15",
   },
   {
-    date: "10 November 2026",
-    title: "Programme Ends",
+    date: "12 November 2026",
+    title: "Project Submission Deadline",
     description:
       "Students finalise and submit their completed research papers or reports.",
-    start: "2026-11-10",
-    end: "2026-11-10",
+    start: "2026-11-12",
+    end: "2026-11-12",
   },
   {
     date: "Mid-November 2026",
     title: "Malaysia Science Scholars' Demo Day",
     description:
-      "Virtual showcase of every research work, followed by the awards.",
+      "Virtual showcase of every research work, closing out the programme.",
     start: "2026-11-13",
     end: "2026-11-20",
-  },
-]
-
-export const prizes = [
-  {
-    title: "Grand Prize",
-    amount: "TBD",
-    description: "Best overall research project across all tracks",
-    benefits: [
-      "Cash prize (amount to be confirmed)",
-      "Publication opportunity in partner journal",
-      "Feature on MRG website",
-      "Certificate of Excellence",
-      "Mentorship continuation for 6 months",
-    ],
-    placeholder: true,
-  },
-  {
-    title: "Track Winners",
-    amount: "TBD",
-    description: "Top project in each of the 5 research tracks",
-    benefits: [
-      "Cash prize per track (amount to be confirmed)",
-      "Certificate of Achievement",
-      "Research showcase feature",
-      "UTAR recommendation letter",
-    ],
-    placeholder: true,
-  },
-  {
-    title: "Honorable Mentions",
-    amount: "TBD",
-    description: "Up to 10 outstanding projects",
-    benefits: [
-      "Cash prize (amount to be confirmed)",
-      "Certificate of Recognition",
-      "Portfolio showcase",
-    ],
-    placeholder: true,
-  },
-  {
-    title: "All Participants",
-    amount: "Guaranteed",
-    description: "Everyone who completes the program receives",
-    benefits: [
-      "Certificate of Participation",
-      "Letter of Recommendation",
-      "Access to MRG Alumni Network",
-      "Research Portfolio Documentation",
-      "Future Competition Priority",
-    ],
-    placeholder: false,
   },
 ]
 
@@ -683,7 +639,8 @@ export const eligibility = {
     },
     {
       title: "Geographic Location",
-      description: "Open to students in Malaysia and ASEAN countries",
+      description:
+        "All projects (online & campus-based) are only available to students based in Malaysia",
       icon: "map",
     },
     {
@@ -695,7 +652,7 @@ export const eligibility = {
     {
       title: "Time Commitment",
       description:
-        "4-7 hours per week for the research period, 15 September to 10 November 2026",
+        "Minimum 4-5 hours a week. Commitment varies according to listed projects",
       icon: "clock",
     },
     {
@@ -718,48 +675,21 @@ export const applicationSteps = [
     step: 1,
     title: "Review Projects",
     description:
-      "Browse available research projects and select up to 3 preferences based on your interests and skills.",
-    duration: "30 minutes",
+      "Browse the research projects and pick up to 3 preferences based on your interests and skills.",
   },
   {
     step: 2,
     title: "Create Account",
     description:
       "Register on the application portal with your email and basic information.",
-    duration: "5 minutes",
   },
   {
     step: 3,
     title: "Complete Application",
     description:
       "Submit personal information, academic background, project preferences, and statement of interest (500 words).",
-    duration: "1-2 hours",
-  },
-  {
-    step: 4,
-    title: "Upload Documents",
-    description:
-      "Provide academic transcript, one letter of recommendation, and proof of enrollment.",
-    duration: "15 minutes",
-  },
-  {
-    step: 5,
-    title: "Submit & Track",
-    description:
-      "Review your application, submit, and track status through the portal.",
-    duration: "5 minutes",
   },
 ]
-
-/**
- * Headline counts. `accepted` is derived so it can never disagree with the list
- * below; `expected` is the committee's figure, covering the 2 UTAR and 1
- * external researcher who have not yet replied.
- */
-export const projectCounts = {
-  accepted: projects.length,
-  expected: 14,
-} as const
 
 export type Mentor = {
   name: string
@@ -804,12 +734,12 @@ export const faqs = [
   {
     question: "Do I need previous research experience?",
     answer:
-      "No! This competition is designed for students new to research. We provide mentorship and guidance throughout the process.",
+      "No! MYSSP is designed for students new to research. We provide mentorship and guidance throughout the programme.",
   },
   {
     question: "Can I apply if I'm not from Malaysia?",
     answer:
-      "Yes, the competition is open to students from all ASEAN countries. International applicants are welcome.",
+      "Unfortunately, due to our organisation's scope and limited availability at this time, MYSSP is only open to Malaysian citizens.",
   },
   {
     question: "How are teams formed?",
@@ -819,27 +749,27 @@ export const faqs = [
   {
     question: "What if I can't commit to the full research period?",
     answer:
-      "The research period runs from 15 September to 10 November 2026, and completing it is required to be eligible for awards. Plan accordingly before applying.",
+      "The research period runs from 20 September to 12 November 2026, and completing it is required to finish the programme. Plan accordingly before applying.",
   },
   {
     question: "Are there any costs to participate?",
     answer:
-      "No! The competition is completely free. All resources, mentorship, and materials are provided at no cost.",
+      "No! MYSSP is completely free. All resources, mentorship, and materials are provided at no cost.",
   },
   {
-    question: "How is the competition conducted?",
+    question: "How is the programme conducted?",
     answer:
-      "The program is primarily virtual with weekly video meetings with mentors. Some projects may have optional in-person components at UTAR.",
+      "MYSSP runs primarily online with regular video meetings with your mentor. A small number of projects are campus-based and involve hands-on lab work; the project brief says which.",
   },
   {
     question: "What happens if my application isn't accepted?",
     answer:
-      "We receive more applications than available spots. Unsuccessful applicants receive feedback and are encouraged to apply next year with priority consideration.",
+      "We receive more applications than available spots. Unsuccessful applicants receive feedback and are encouraged to apply next year.",
   },
   {
     question: "Can I change my project after being accepted?",
     answer:
-      "Project assignments are made based on your preferences and mentor capacity. Changes are rare but can be discussed with program coordinators in the first week.",
+      "Project assignments are made based on your preferences and mentor capacity. Changes are rare but can be discussed with the programme coordinators in the first week.",
   },
 ]
 
@@ -853,18 +783,18 @@ export const faqs = [
  */
 export const partners = [
   {
+    name: "MYResearchGuide",
+    logo: "/mrg-logo-inverted.png",
+    description: "Programme Organiser",
+    url: "https://www.myresearchguide.org/",
+    cap: "max-h-9",
+  },
+  {
     name: "UTAR",
     logo: "/utar-logo.jpg",
     description: "Universiti Tunku Abdul Rahman",
     url: "https://www.utar.edu.my/",
     cap: "max-h-14",
-  },
-  {
-    name: "MYResearchGuide",
-    logo: "/mrg-logo-inverted.png",
-    description: "Malaysia's Student Research Platform",
-    url: "https://www.myresearchguide.org/",
-    cap: "max-h-9",
   },
   {
     name: "MABECS Global",
