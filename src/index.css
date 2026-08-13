@@ -1,7 +1,6 @@
 @import "tailwindcss";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/geist";
-@import "@fontsource/instrument-serif";
+@import "@fontsource-variable/inter";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -15,8 +14,11 @@
    -------------------------------------------------------------------------- */
 
 @theme {
-  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Instrument Serif", ui-serif, Georgia, serif;
+  /* One family for the whole page, matching myresearchguide.org. The display
+     token is kept separate from --font-sans so headline weight and tracking
+     can move independently of body copy — see .display-* below. */
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
 
   /* Light — white dominant */
   --color-background: oklch(1 0 0);
@@ -55,9 +57,12 @@
   --color-bronze: oklch(0.58 0.082 52);
   --color-accent-warm: oklch(0.62 0.1 78);
 
-  /* Fluid editorial type scale */
-  --text-display: clamp(2.75rem, 1.2rem + 6.6vw, 6.5rem);
-  --text-h2: clamp(2rem, 1.1rem + 3.6vw, 3.75rem);
+  /* Fluid editorial type scale.
+     Sized down from the Instrument Serif original: a 600-weight grotesk at the
+     old 6.5rem cap put far more ink on screen than the serif did and pushed
+     the hero's copy and CTAs below the fold on a laptop. */
+  --text-display: clamp(2.5rem, 1.4rem + 4.4vw, 4.75rem);
+  --text-h2: clamp(1.875rem, 1.2rem + 2.6vw, 3rem);
   --text-h3: clamp(1.375rem, 1.1rem + 1.1vw, 1.875rem);
 
   /* Foreground as plain sRGB channels, for canvas backdrops.
@@ -194,37 +199,42 @@
 
   /* Display type -------------------------------------------------------- */
 
+  /* Instrument Serif carried these at weight 400; a grotesk at 400 goes thin
+     and papery at display sizes, so the whole ramp moves to 600 and the
+     tracking tightens to compensate for the wider sans sidebearings. */
+
   .font-display {
     font-family: var(--font-display);
-    font-weight: 400;
+    font-weight: 600;
+    letter-spacing: -0.02em;
   }
 
   .display-xl {
     font-family: var(--font-display);
-    font-weight: 400;
+    font-weight: 600;
     font-size: var(--text-display);
-    line-height: 0.94;
-    letter-spacing: -0.025em;
+    line-height: 0.95;
+    letter-spacing: -0.04em;
   }
 
   .display-lg {
     font-family: var(--font-display);
-    font-weight: 400;
+    font-weight: 600;
     font-size: var(--text-h2);
-    line-height: 1;
-    letter-spacing: -0.02em;
+    line-height: 1.02;
+    letter-spacing: -0.032em;
     text-wrap: balance;
   }
 
   .display-md {
     font-family: var(--font-display);
-    font-weight: 400;
+    font-weight: 600;
     font-size: var(--text-h3);
-    line-height: 1.15;
-    letter-spacing: -0.015em;
+    line-height: 1.18;
+    letter-spacing: -0.022em;
   }
 
-  /* The small uppercase Geist label used for kickers, field names and column
+  /* The small uppercase label used for kickers, field names and column
      headings.
      Reserved for *labels*. Content — a date, an affiliation, a person's name —
      belongs in sentence case at body size: 11px letterspaced caps was being
@@ -332,6 +342,24 @@
       transparent 0%,
       rgba(0, 0, 0, 0.14) 24%,
       #000 62%
+    );
+  }
+
+  /* The left-to-right veil above assumes copy in the left column. The hero's
+     figure-less backdrops centre their copy instead, so the field has to open
+     out from the middle rather than from one edge. */
+  .backdrop-veil-center {
+    -webkit-mask-image: radial-gradient(
+      ellipse 58% 62% at 50% 48%,
+      rgba(0, 0, 0, 0.08) 0%,
+      rgba(0, 0, 0, 0.4) 52%,
+      #000 100%
+    );
+    mask-image: radial-gradient(
+      ellipse 58% 62% at 50% 48%,
+      rgba(0, 0, 0, 0.08) 0%,
+      rgba(0, 0, 0, 0.4) 52%,
+      #000 100%
     );
   }
 

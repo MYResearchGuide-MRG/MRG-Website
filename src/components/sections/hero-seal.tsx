@@ -1,7 +1,7 @@
 import { motion, useReducedMotion } from "motion/react"
 
 const SEAL_TEXT =
-  "MY RESEARCH GUIDE · RESEARCH COMPETITION 2026 · UTAR BASECAMP · "
+  "MALAYSIA SCIENCE SCHOLAR'S PROGRAMME · MYSSP 2026 · MY RESEARCH GUIDE · "
 
 /**
  * Rotating circular wordmark that anchors the empty half of the hero.
@@ -86,10 +86,10 @@ export function HeroSeal({ className }: { className?: string }) {
         {/* Centre mark */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="font-display text-6xl leading-none md:text-7xl">
-            MRG
+            MYSSP
           </span>
-          <span className="label-micro mt-3 text-muted-foreground">
-            Research Basecamp
+          <span className="label-micro mt-3 text-center text-muted-foreground">
+            Science Scholar&rsquo;s Programme
           </span>
           <motion.span
             className="mt-5 h-px w-14 origin-center bg-border"

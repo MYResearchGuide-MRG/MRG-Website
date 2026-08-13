@@ -8,9 +8,9 @@ export function ClosingCta() {
   return (
     <section className="bg-foreground text-background">
       <div className="container py-28 md:py-40">
-        <div className="max-w-4xl">
+        <div className="mx-auto max-w-4xl text-center">
           <Reveal>
-            <p className="label-micro text-background/55">2026 Cohort</p>
+            <p className="label-micro text-background/55">MYSSP 2026 Cohort</p>
           </Reveal>
 
           <Reveal delay={0.08}>
@@ -20,14 +20,14 @@ export function ClosingCta() {
           </Reveal>
 
           <Reveal delay={0.14}>
-            <p className="mt-8 max-w-xl text-lg leading-relaxed text-background/70">
+            <p className="mx-auto mt-8 max-w-xl text-lg leading-relaxed text-background/70">
               Work with expert mentors on a real research project. Applications
-              close April 15, 2026.
+              close September 10, 2026.
             </p>
           </Reveal>
 
           <Reveal delay={0.2}>
-            <div className="mt-11 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-11 flex flex-col gap-3 sm:flex-row sm:justify-center">
               <Button asChild size="xl" variant="inverse" className="group">
                 <a href={siteConfig.applicationFormUrl}>
                   Apply now

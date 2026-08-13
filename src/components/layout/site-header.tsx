@@ -14,7 +14,7 @@ import { navItems, siteConfig } from "@/lib/site"
 import { cn } from "@/lib/utils"
 
 export function SiteHeader() {
-  const { theme, setTheme } = useTheme()
+  const { resolvedTheme, setTheme } = useTheme()
   const [scrolled, setScrolled] = React.useState(false)
   const [menuOpen, setMenuOpen] = React.useState(false)
   const reduced = useReducedMotion()
@@ -53,8 +53,10 @@ export function SiteHeader() {
     return () => window.removeEventListener("keydown", onKey)
   }, [menuOpen])
 
+  /* resolvedTheme, not theme: under "system" the latter is neither "dark" nor
+     "light" and would silently fall through to the dark-on-light mark. */
   const logoSrc =
-    theme === "dark" ? siteConfig.darkLogoUrl : siteConfig.lightLogoUrl
+    resolvedTheme === "dark" ? siteConfig.darkLogoUrl : siteConfig.lightLogoUrl
 
   return (
     <header
@@ -66,12 +68,19 @@ export function SiteHeader() {
       )}
     >
       <div className="container flex h-16 items-center justify-between gap-4 md:h-20">
+        {/* Lockup, not a logo: there is no MYSSP mark yet, so the programme
+            name rides alongside the MRG wordmark as type. Swap the whole
+            block for a single <img> once an asset exists. */}
         <a
           href={siteConfig.mainSiteUrl}
-          className="flex shrink-0 items-center"
+          className="flex shrink-0 items-center gap-3"
           aria-label="MYResearchGuide home"
         >
           <img src={logoSrc} alt="MYResearchGuide" className="h-6 md:h-7" />
+          <span aria-hidden className="hidden h-5 w-px bg-border sm:block" />
+          <span className="label-micro hidden text-muted-foreground sm:block">
+            MYSSP
+          </span>
         </a>
 
         <nav className="hidden items-center gap-8 md:flex">
@@ -89,8 +98,8 @@ export function SiteHeader() {
         <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
+            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+            className="relative flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
             aria-label="Toggle theme"
           >
             <Sun className="size-4 scale-100 rotate-0 transition-transform duration-500 dark:scale-0 dark:-rotate-90" />

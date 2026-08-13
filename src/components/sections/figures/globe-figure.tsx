@@ -5,25 +5,27 @@ import { Globe } from "@/components/ui/globe"
 import { useTheme } from "@/components/theme-provider"
 
 /**
- * Markers are the cities the competition actually draws from — Kampar (UTAR's
- * main campus) weighted largest, then Malaysian centres, then the wider ASEAN
- * reach the eligibility rules describe. Decorative marker sets were the point
- * of the original demo; here the dots say something true.
+ * Two things at once: the Malaysian cities students apply from (applicants must
+ * be based in Malaysia) weighted largest, and the institutions the mentor panel
+ * actually sits in. Decorative marker sets were the point of the original demo;
+ * here every dot corresponds to a real entry in `projects`.
  */
 const CITIES: COBEOptions["markers"] = [
-  { location: [4.3312, 101.1435], size: 0.11 }, // Kampar — UTAR
-  { location: [3.139, 101.6869], size: 0.09 }, // Kuala Lumpur
+  // Malaysia — where applicants are
+  { location: [3.139, 101.6869], size: 0.11 }, // Kuala Lumpur
+  { location: [4.3312, 101.1435], size: 0.08 }, // Kampar
   { location: [5.4141, 100.3288], size: 0.06 }, // George Town
   { location: [1.4927, 103.7414], size: 0.05 }, // Johor Bahru
   { location: [5.9804, 116.0735], size: 0.05 }, // Kota Kinabalu
   { location: [1.5533, 110.3592], size: 0.05 }, // Kuching
-  { location: [1.3521, 103.8198], size: 0.06 }, // Singapore
-  { location: [13.7563, 100.5018], size: 0.05 }, // Bangkok
-  { location: [-6.2088, 106.8456], size: 0.06 }, // Jakarta
-  { location: [14.5995, 120.9842], size: 0.05 }, // Manila
-  { location: [21.0278, 105.8342], size: 0.045 }, // Hanoi
-  { location: [11.5564, 104.9282], size: 0.04 }, // Phnom Penh
-  { location: [4.9031, 114.9398], size: 0.04 }, // Bandar Seri Begawan
+  // Mentor institutions
+  { location: [1.3521, 103.8198], size: 0.06 }, // Singapore — NUS
+  { location: [35.0116, 135.7681], size: 0.05 }, // Kyoto
+  { location: [23.1291, 113.2644], size: 0.05 }, // Guangzhou — HKUST (GZ)
+  { location: [52.2053, 0.1218], size: 0.05 }, // Cambridge
+  { location: [52.3793, -1.5615], size: 0.045 }, // Coventry — Warwick
+  { location: [41.4993, -81.6944], size: 0.05 }, // Cleveland
+  { location: [36.7783, -119.4179], size: 0.05 }, // California
 ]
 
 /**
@@ -40,7 +42,7 @@ export function GlobeFigure({ className }: { className?: string }) {
       width: 800,
       height: 800,
       devicePixelRatio: 2,
-      // Longitude ~107°E puts Malaysia and the ASEAN cluster facing the viewer.
+      // Longitude ~107°E puts Malaysia and the Asian mentor cluster in view.
       phi: -1.87,
       theta: 0.22,
       dark: isDark ? 1 : 0,
@@ -95,7 +97,7 @@ export function GlobeFigure({ className }: { className?: string }) {
         />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center">
           <span className="label-micro text-muted-foreground">
-            Malaysia &amp; ASEAN &middot; Drag to spin
+            Malaysian students, global mentors &middot; Drag to spin
           </span>
         </div>
       </div>
