@@ -1,52 +1,618 @@
-export const timeline = [
+/**
+ * Project schema, modelled on EleutherAI's SOAR project list
+ * (https://www.eleuther.ai/soar) at the committee's request.
+ *
+ * Entries are transcribed from the mentor submission form, so each field maps
+ * to a form question: `type` is "Research Area / Tags / Keywords",
+ * `skillsDescription` is "Skills Required/Preferred", `preferences` is
+ * "Additional Preferences", and so on. Adding a project means filling this same
+ * set of fields — nothing in the display needs to change.
+ */
+export type Project = {
+  id: string
+  track: Track
+  /** Sub-area, shown under the title in the list. SOAR calls this "type". */
+  type: string
+  title: string
+  mentor: string
+  affiliation: string
+  mentorBio: string
+  /** Headshot submitted with the project, cropped 4:5. */
+  photo: string
+  /** Personal site or profile, where the mentor gave one. The submission form
+      does not ask for LinkedIn or Scholar, so most have none. */
+  mentorUrl?: string
+  /** Which mentor lane the project sits in. The committee tracks this split. */
+  institution: "UTAR" | "External"
+  participants: string
+  timeInvestment: string
+  description: string
+  skillsDescription: string
+  skills: string[]
+  prepWork: string[]
+  tasks: string[]
+  deliverables: string[]
+  /** Mentor's own stated preference for who they want, where they gave one. */
+  preferences?: string
+  /** "pending" while the mentor has not yet confirmed their project. */
+  status: "confirmed" | "pending"
+}
+
+/**
+ * Tracks are the "Project Field" values the mentor submission form actually
+ * collects, not a taxonomy invented here — so a new submission always lands in
+ * an existing track.
+ */
+export type Track =
+  | "AI & Computer Sciences"
+  | "Biology"
+  | "Chemistry"
+  | "Mathematics"
+  | "Interdisciplinary & Social Sciences"
+
+/** Display order, and the letter each project code is built from (A-1, B-2…). */
+export const trackOrder: Track[] = [
+  "AI & Computer Sciences",
+  "Biology",
+  "Chemistry",
+  "Mathematics",
+  "Interdisciplinary & Social Sciences",
+]
+
+const trackPrefix: Record<Track, string> = {
+  "AI & Computer Sciences": "A",
+  Biology: "B",
+  Chemistry: "C",
+  Mathematics: "M",
+  "Interdisciplinary & Social Sciences": "I",
+}
+
+/**
+ * Project codes are derived, not authored, so they stay contiguous when a
+ * project is added, withdrawn, or reordered — the sheet is still moving.
+ */
+export function projectCodes(list: Project[]): Map<string, string> {
+  const codes = new Map<string, string>()
+  for (const track of trackOrder) {
+    list
+      .filter((p) => p.track === track)
+      .forEach((p, i) => codes.set(p.id, `${trackPrefix[track]}-${i + 1}`))
+  }
+  return codes
+}
+
+/**
+ * The 11 accepted projects, transcribed from the mentor submission sheet.
+ * Struck-out rows (rejected or superseded by a re-submission) are excluded.
+ *
+ * `skills` are short tags derived from each mentor's own "Skills
+ * Required/Preferred" answer, which the sheet collects as prose; the full
+ * answer is kept verbatim in `skillsDescription`.
+ */
+export const projects: Project[] = [
   {
-    date: "TBD",
+    id: "object-detector-occlusion",
+    photo: "/mentors/leong-kuan-yew.jpg",
+    track: "AI & Computer Sciences",
+    type: "Computer Vision / Machine Learning",
+    title:
+      "Evaluating the Robustness of a Pretrained Object Detector under Controlled Object Occlusion",
+    mentor: "Dr. Leong Kuan Yew",
+    affiliation: "A.I. System Research Co. Ltd., Kyoto, Japan",
+    mentorBio:
+      "Leong Kuan Yew specialises in computer vision, wearable technology and AI, with 20 years of combined academic and industrial experience. He earned his PhD from Monash University, where he was nominated for the Mollie Holman Award and the Vice-Chancellor's Commendation. He is lead researcher at an AI research corporation in Kyoto, working on optimising deep learning models for face recognition, auto-annotation, image classification and object detection, alongside generative AI.",
+    institution: "External",
+    participants: "Up to 3",
+    timeInvestment: "6 hours/week",
+    description:
+      "This project investigates how well a pretrained object detector can recognise everyday objects when they are partly hidden. Students prepare a controlled test set using common items such as bottles, cups, books and backpacks, photographed from different viewpoints and backgrounds, then covered at several occlusion levels and positions. Using a fixed pretrained model with no retraining, they record detection results and confidence scores, calculate performance at each occlusion level, and identify common failure patterns.",
+    skillsDescription: "Python, GitHub, statistics.",
+    skills: ["Python", "GitHub", "Statistics"],
+    prepWork: [
+      "Students need their own laptop to work on the analysis.",
+    ],
+    tasks: [
+      "Photograph everyday objects such as bottles, cups, books and backpacks.",
+      "Create a controlled test set in which objects are hidden at different percentages and positions.",
+      "Organise and annotate the images using a clear naming system.",
+      "Code the evaluation metrics in Python.",
+      "Calculate detection rates and compare results across object types and occlusion levels.",
+      "Create graphs, tables and visual examples of AI successes and failures.",
+    ],
+    deliverables: [
+      "A structured image test set containing everyday objects with different levels and positions of occlusion.",
+      "A complete record of object-detection results, including predicted labels and confidence scores.",
+      "Evaluation tables comparing performance across object classes and occlusion conditions.",
+      "Graphs showing how detection accuracy and confidence change as more of an object is hidden.",
+      "A collection of successful detections, missed objects and incorrect predictions for failure analysis.",
+    ],
+    status: "confirmed",
+  },
+  {
+    id: "llm-personality-emotion",
+    photo: "/mentors/tan-jing-jie.jpg",
+    mentorUrl: "https://jingjietan.com/",
+    track: "AI & Computer Sciences",
+    type: "NLP & Large Language Models",
+    title: "Large Language Models for Personality and Emotion Understanding",
+    mentor: "Dr. Tan Jing Jie",
+    affiliation: "National University of Singapore",
+    mentorBio:
+      "Dr. Tan Jing Jie (Jay) is a Research Fellow at the National University of Singapore working on natural language processing, machine learning and trustworthy AI. He has published in high-impact journals, secured over USD 160,000 in competitive research funding including five international mobility grants, and won more than 10 national and international AI and innovation competitions. His research is supported by high-performance computing resources, so students can run large-scale AI experiments.",
+    institution: "External",
+    participants: "Up to 3",
+    timeInvestment: "24 hours/week",
+    description:
+      "Large Language Models have shown remarkable capabilities in understanding and generating human language, yet accurately modelling personality and emotion remains a significant challenge. This project investigates a focused research question in personality recognition, emotion analysis or human behaviour understanding from text. Depending on the topic, students may work with public datasets, explore prompt engineering or parameter-efficient fine-tuning, evaluate different LLMs, or develop new approaches to improve performance, robustness or interpretability. Outstanding projects may be developed further for submission to an academic conference or journal.",
+    skillsDescription:
+      "Strong mathematical foundation (Additional Mathematics at grade A or equivalent). Programming experience in Python is preferred. Prior exposure to machine learning is beneficial but not required. Curiosity, self-motivation and a willingness to conduct independent research.",
+    skills: ["Python", "PyTorch", "Mathematics", "Machine Learning"],
+    prepWork: [
+      "No prior preparation is required before the programme begins.",
+      "Familiarity with Python and working in Google Colab or VS Code is recommended.",
+      "Prior experience with PyTorch is beneficial but not essential.",
+      "Reading a few recent AI research papers beforehand is encouraged.",
+    ],
+    tasks: [
+      "Identify a focused research question in personality recognition, emotion analysis or human behaviour understanding using LLMs.",
+      "Conduct a literature review to find research gaps and formulate a hypothesis.",
+      "Set up the research environment: Python, PyTorch, Hugging Face Transformers, Overleaf and Git.",
+      "Prepare and preprocess public datasets, including cleaning, tokenisation and exploratory analysis.",
+      "Implement and evaluate baseline models and state-of-the-art LLMs using prompt engineering, in-context learning, parameter-efficient fine-tuning, RAG or multimodal learning.",
+      "Run experiments on high-performance computing resources and analyse results with appropriate metrics.",
+      "Attend weekly research meetings to present progress and plan milestones.",
+      "Prepare technical documentation and, where appropriate, contribute to a manuscript.",
+    ],
+    deliverables: [
+      "A clearly defined research problem, objectives and proposed methodology.",
+      "A literature review summarising the state of the art and identifying research gaps.",
+      "A preliminary implementation with initial experimental results or proof of concept.",
+      "A slide presentation summarising the project and key findings for Demo Day.",
+      "A short technical report or paper draft prepared in LaTeX, where appropriate.",
+    ],
+    preferences:
+      "Preference is given to applicants with a strong interest in AI research who are self-motivated and committed to contributing consistently. Applicants who want to continue the project beyond the programme with the goal of a conference or journal publication are especially encouraged.",
+    status: "confirmed",
+  },
+  {
+    id: "self-evolving-agents-physics",
+    photo: "/mentors/fan-xiaoyan.jpg",
+    track: "AI & Computer Sciences",
+    type: "AI Agents & Benchmarking",
+    title:
+      "Benchmarking Self-Evolving AI Agents for Automated Physics Discovery",
+    mentor: "Fan Xiaoyan",
+    affiliation:
+      "AI Thrust, HKUST (Guangzhou) / Physics Department, Universiti Malaya",
+    mentorBio:
+      "Xiaoyan Fan is an M.Phil. researcher in Artificial Intelligence at the Hong Kong University of Science and Technology (Guangzhou) and a Physics graduate from Universiti Malaya. Specialising in the interdisciplinary frontier of fundamental physics and machine learning, he draws on research internships at Tsinghua University (neutrino detection), Shanghai Jiao Tong University (dark matter detection) and the University of Tokyo (neutrino oscillation).",
+    institution: "External",
+    participants: "Up to 3",
+    timeInvestment: "6 hours/week",
+    description:
+      "The intersection of AI and fundamental physics is moving beyond data analysis toward systems that can autonomously discover scientific laws. This project evaluates how well self-evolving AI agents can deduce physics formulas from simulated experimental testbenches. Students run benchmark tests on various state-of-the-art LLMs and critically analyse their reasoning processes and formula-derivation accuracy, learning to set up evaluation pipelines and gaining hands-on experience with Python and API integration.",
+    skillsDescription:
+      "High-school level (IGCSE/SPM/A-Level) understanding of general physics and mechanics. Basic Python programming: variables, loops and data handling. Basic statistical analysis and logical reasoning. Familiarity with calling APIs or general exposure to LLMs is preferred. A curiosity-driven mindset and patience for troubleshooting code.",
+    skills: ["Python", "APIs", "Physics", "Statistics"],
+    prepWork: [
+      "Install and familiarise yourself with Visual Studio Code, which suits running and evaluating AI agent frameworks.",
+      "Watch a short beginner-friendly video introducing Large Language Models.",
+      "Briefly review fundamental classical mechanics concepts.",
+    ],
+    tasks: [
+      "Install and configure VS Code; review foundational classical mechanics and introductory LLM concepts.",
+      "Explore the benchmark testbench structure; run initial tests using basic AI agents to practise Python scripting and API integration.",
+      "Execute full evaluation pipelines using state-of-the-art LLMs; collect data on the models' ability to derive physical principles.",
+      "Critically analyse the agents' reasoning and formula-derivation accuracy; identify common failure cases and refine prompts or code.",
+      "Compile benchmark results, create visual performance comparisons, and finalise a short technical report and slides.",
+    ],
+    deliverables: [
+      "A well-documented evaluation codebase containing the Python scripts, API integration setups and prompt logs.",
+      "Comparative data visualisations illustrating the performance, accuracy and failure rates of different LLMs on the physics testbenches.",
+      "A short technical paper summarising the benchmarking methodology and key findings.",
+      "A slide presentation prepared for Demo Day.",
+    ],
+    preferences:
+      "Applicants with a genuine, curiosity-driven interest in the intersection of AI and fundamental physics. Ideal candidates are proactive communicators with a collaborative mindset, and resilient when troubleshooting code. A laptop is required.",
+    status: "confirmed",
+  },
+  {
+    id: "financial-document-tampering",
+    photo: "/mentors/lim-jia-yu.jpg",
+    track: "AI & Computer Sciences",
+    type: "Computer Vision",
+    title:
+      "Detecting Tampering in Financial Documents: From Synthetic Data to Detection Benchmarks",
+    mentor: "Lim Jia Yu",
+    affiliation: "School of Computing, National University of Singapore",
+    mentorBio:
+      "Researcher at the School of Computing, National University of Singapore.",
+    institution: "External",
+    participants: "Up to 3",
+    timeInvestment: "6 hours/week",
+    description:
+      "Financial fraud increasingly relies on digitally altered documents — edited bank statements, doctored invoices, manipulated financial reports — that are very hard to catch by eye. Working with realistic templates, students build a labelled dataset of synthetically tampered documents covering both text-level edits and image-level manipulations, each paired with ground-truth information on exactly what was changed and where. They then test existing tampering-detection methods against that dataset, measuring how well each catches different kinds of forgery and analysing where and why they fail.",
+    skillsDescription:
+      "Python, basic SPM-level mathematics and statistics. Image editing experience is a bonus.",
+    skills: ["Python", "OpenCV", "Statistics"],
+    prepWork: [
+      "Install Python via Anaconda or set up a free Google Colab account (guidance provided).",
+      "Complete a short beginner-friendly introduction to OpenCV and image basics.",
+      "Look at a few genuine versus altered document examples to build intuition for what tampering looks like.",
+    ],
+    tasks: [
+      "Complete introductory Python and OpenCV tutorials; review example tampered and genuine documents to build a shared tampering taxonomy.",
+      "Build a labelled dataset of synthetically tampered bank and financial statement samples with ground-truth annotations.",
+      "Peer-review and quality-check the dataset samples; consolidate into one combined labelled dataset.",
+      "Run baseline tampering-detection methods against the dataset; compute precision, recall and localisation accuracy, and analyse failure cases.",
+      "Interpret results with the mentor and begin drafting the write-up.",
+      "Finalise visualisations and compile findings into a short report and slides.",
+    ],
+    deliverables: [
+      "A labelled synthetic dataset of tampered financial documents covering multiple tampering types with ground-truth annotations.",
+      "Evaluation results showing how well baseline detection methods perform, including annotated examples of successes and failures.",
+      "A short written report on the dataset, methodology and findings, with implications for financial document verification.",
+      "A slide presentation suitable for Demo Day.",
+    ],
+    preferences:
+      "Be proactive, responsible, willing to learn and communicative.",
+    status: "confirmed",
+  },
+  {
+    id: "llm-inference-nondeterminism",
+    photo: "/mentors/alizishaan-khatri.jpg",
+    track: "AI & Computer Sciences",
+    type: "AI Safety & Model Internals",
+    title: "Investigating non-determinism in LLM inference",
+    mentor: "Alizishaan Khatri",
+    affiliation: "Wrynx Inc, California",
+    mentorBio:
+      "Alizishaan Khatri is founder and CEO of Wrynx Inc, an AI safety research lab focused on runtime analysis of AI model internals. Before founding Wrynx he worked in the safety and AI infrastructure space at Roblox and Meta.",
+    institution: "External",
+    participants: "Up to 3",
+    timeInvestment: "10+ hours/week for about 2-3 weeks",
+    description:
+      "Foundational AI models such as LLMs and video generation models behave non-deterministically during inference: the same input can produce different outputs for a variety of reasons. This project runs experiments to better understand that behaviour by analysing the internal states of the model during inference. The end goal is a workshop paper disseminating the findings.",
+    skillsDescription:
+      "Moderate to strong programming skills, preferably in Python, plus PyTorch and an understanding of AI fundamentals.",
+    skills: ["Python", "PyTorch", "AI Fundamentals"],
+    prepWork: [
+      "Ramp up on AI and ML fundamentals.",
+      "Brush up Python and PyTorch.",
+      "Get familiar with AI coding tools.",
+    ],
+    tasks: [
+      "Write scripts to log LLM internal states under a variety of test conditions.",
+      "Write scripts to analyse the logged states.",
+      "Run experiments on the cloud and share findings.",
+      "Disseminate findings through a research manuscript written in LaTeX.",
+    ],
+    deliverables: [
+      "Logging and analysis scripts for LLM internal states.",
+      "Experimental findings from cloud-run experiments.",
+      "A research manuscript prepared in LaTeX.",
+    ],
+    status: "confirmed",
+  },
+  {
+    id: "cancer-immunotherapy",
+    photo: "/mentors/yee-peng-phoon.jpg",
+    track: "Biology",
+    type: "Cancer Immunology",
+    title: "How does immunotherapy help the body fight cancer?",
+    mentor: "Dr. Yee Peng Phoon",
+    affiliation: "Cancer Sciences, Cleveland Clinic",
+    mentorBio:
+      "Dr. Phoon is a translational scientist at Cleveland Clinic specialising in cancer immunotherapy. Trained in Malaysia, Singapore, Hong Kong and Sweden, she has received international scholarships and research awards, and enjoys mentoring students, sharing STEM career insights and fostering critical thinking.",
+    institution: "External",
+    participants: "Up to 3",
+    timeInvestment: "6+ hours/week (1:1, group and self-directed)",
+    description:
+      "This project introduces students to cancer immunology and the emerging field of cancer immunotherapy: how the immune system identifies abnormal cells, how cancer cells evade immune responses, and how immune-based therapies such as checkpoint inhibitors restore anti-cancer activity. Students review scientific literature, analyse clinical evidence, and investigate the benefits and challenges of therapies targeting pathways such as PD-1/PD-L1 and CTLA-4.",
+    skillsDescription:
+      "Basic biology knowledge and basic Microsoft Office skills for research documentation, data organisation and presentation, along with curiosity about cancer and biomedical science and a willingness to engage with scientific material.",
+    skills: ["Biology", "Literature Review", "Scientific Communication"],
+    prepWork: [
+      "Get familiar with PubMed for searching and accessing biomedical research articles.",
+      "Get familiar with BioRender for creating scientific illustrations and biological diagrams.",
+      "Get familiar with Jamovi for basic data analysis and visualisation.",
+      "Work through the recommended reading on cancer statistics, immunotherapy and immune checkpoint blockade (reading list provided by the mentor).",
+      "Watch the introductory videos provided to build a foundational understanding of immunotherapy.",
+    ],
+    tasks: [
+      "Understand cancer biology, immune responses and the principles of immunotherapy.",
+      "Explore how immune checkpoint inhibitors (PD-1/PD-L1, CTLA-4) help fight cancer.",
+      "Search and review scientific literature using PubMed.",
+      "Read and evaluate scientific literature through journal discussions.",
+      "Analyse and summarise research findings and clinical evidence.",
+      "Create scientific illustrations using BioRender.",
+      "Organise and interpret data using basic analysis tools.",
+      "Develop and present research on cancer immunotherapy.",
+    ],
+    deliverables: [
+      "A research presentation summarising the background, findings and impact of cancer immunotherapy.",
+      "A scientific illustration explaining immunotherapy.",
+      "A literature review summarising key research data.",
+      "Data analysis and interpretation.",
+      "A final presentation or project report.",
+    ],
+    status: "confirmed",
+  },
+  {
+    id: "tp53-sequences-transcripts",
+    photo: "/mentors/jaiyogesh-patel.jpg",
+    track: "Biology",
+    type: "Bioinformatics & Cancer Genomics",
+    title: "Correlating TP53 Sequences to Transcripts in Cancers",
+    mentor: "Jaiyogesh Ramesh Patel",
+    affiliation: "PhD candidate and researcher",
+    mentorBio:
+      "Jai is a PhD candidate and researcher, and also a postgraduate and alumni leader as well as a mentor. His interests are mainly in cancer research and virology, following his journey through undergraduate, master's and doctorate studies looking at the role of p53 isoforms in childhood leukaemia. He would like to instil a love for research and non-classroom learning in the younger generation, because research is like a never-ending jigsaw puzzle.",
+    institution: "External",
+    participants: "Up to 3",
+    timeInvestment: "5 hours/week",
+    description:
+      "There are a variety of TP53 sequences that correlate to the p53 protein, known as the “Guardian of the Genome”. With multiple sources of these sequences, there is still no concentrated effort to combine and agree on a set number of them. This matters because TP53 sequences and their versions play a multitude of roles in cancer genomics, from promoting cancer growth to restricting it. Identifying specific sequences and the IDs they relate to helps other researchers know which transcript ID to focus on, and so better approach treatment or drug design.",
+    skillsDescription: "Basic science education and a keen eye for detail.",
+    skills: ["Bioinformatics", "Data Curation", "Attention to Detail"],
+    prepWork: [
+      "Explore NCBI and Ensembl. More will be taught later.",
+    ],
+    tasks: [
+      "Complete a brief tutorial and overview of the websites used for initial analysis.",
+      "Clean and scrutinise 50+ TP53 sequences and identify mismatches and edits.",
+      "Correlate sequences with p53 proteins.",
+      "Visualise the data and categorise sequences against p53 proteins and their known roles in cancer.",
+    ],
+    deliverables: [
+      "A set of tables and graphs showing the initial analysis performed on matching sequences.",
+      "A short report on the edits found across all 50+ TP53 sequences.",
+      "A presentation slide deck showcasing the study findings, with training provided.",
+    ],
+    preferences: "None. All are welcome.",
+    status: "confirmed",
+  },
+  {
+    id: "microalgae-harvesting",
+    photo: "/mentors/toh-pey-yi.jpg",
+    track: "Chemistry",
+    type: "Chemical Engineering",
+    title:
+      "Harvesting of microalgae via flocculation and sedimentation method",
+    mentor: "Assoc. Prof. Ir. Ts. Dr. Toh Pey Yi",
+    affiliation: "Universiti Tunku Abdul Rahman (on campus)",
+    mentorBio:
+      "Assoc. Prof. Ir. Ts. Dr. Toh Pey Yi is a chemical engineering academic at UTAR specialising in sustainable chemical engineering, microalgae technology, wastewater treatment and carbon capture. She has led industry-linked research and supervised student projects that translate engineering knowledge into practical environmental solutions.",
+    institution: "UTAR",
+    participants: "Up to 3",
+    timeInvestment: "6 hours/week",
+    description:
+      "Microalgae are promising sustainable resources for biofuels, wastewater treatment and carbon capture, but commercial use is limited by the cost and difficulty of harvesting the microscopic cells from water. This project introduces laboratory techniques for harvesting microalgae using flocculation and sedimentation. Students investigate the harvesting efficiency of sedimentation alone, optimise flocculant dosage to improve biomass recovery, and study the mechanisms behind particle aggregation and settling.",
+    skillsDescription: "Basic science education.",
+    skills: ["Laboratory Work", "Data Analysis", "Scientific Writing"],
+    prepWork: [],
+    tasks: [
+      "Complete the literature review.",
+      "Run the experiments.",
+      "Analyse the results.",
+      "Prepare the final mini thesis.",
+      "Deliver an oral presentation.",
+    ],
+    deliverables: ["A mini thesis.", "Oral presentation slides."],
+    preferences:
+      "This is hands-on lab work: expect to wash a lot of containers and glassware. Equipment is available at UTAR.",
+    status: "confirmed",
+  },
+  {
+    id: "groups-numbers-cryptography",
+    photo: "/mentors/siao-chi-mok.jpg",
+    track: "Mathematics",
+    type: "Pure Mathematics & Cryptography",
+    title: "Groups, Numbers and Cryptography",
+    mentor: "Dr. Siao Chi Mok",
+    affiliation:
+      "Department of Pure Mathematics and Mathematical Statistics, University of Cambridge",
+    mentorBio:
+      "Siao Chi recently completed her PhD in pure mathematics at the University of Cambridge, specialising in combinatorial algebraic geometry. She is passionate about empowering individuals from underrepresented groups to pursue careers in STEM.",
+    institution: "External",
+    participants: "1 (or 2 given high interest)",
+    timeInvestment: "8 hours/week",
+    description:
+      "Groups are mathematical structures that encode the notion of symmetry, and they underpin most of modern mathematics. Number theory is the study of the properties of numbers, with many applications in cryptography. This project introduces basic notions in group theory and number theory alongside two important cryptographic algorithms — the Diffie-Hellman key exchange and RSA — and students implement them in Python.",
+    skillsDescription:
+      "Required: Mathematics and Additional Mathematics (IGCSE/SPM). Desirable: Python.",
+    skills: ["Mathematics", "Python", "LaTeX"],
+    prepWork: [
+      "Set up Google Colab or Jupyter Notebook before the first session.",
+      "Familiarise yourself with modular arithmetic.",
+      "Watch short beginner-friendly videos on group theory.",
+      "Learn Python up to for and while loops before the second session.",
+      "Start learning LaTeX before the fourth session.",
+    ],
+    tasks: [
+      "Learn the basics of group theory and number theory.",
+      "Complete introductory Python tutorials.",
+      "Understand and implement the Diffie-Hellman key exchange and/or the RSA algorithm in Python.",
+      "Understand and write up the mathematics behind the algorithms.",
+      "Compile the code and write-up into a short report and presentation slides.",
+      "Time permitting, explore group theory and number theory further.",
+    ],
+    deliverables: [
+      "Working code for the Diffie-Hellman key exchange and/or the RSA algorithm.",
+      "A short written report on the mathematics behind the algorithms.",
+      "A slide presentation demonstrating the code and the underlying theory.",
+    ],
+    preferences: "Suitable for one participant, or two given a high level of interest.",
+    status: "confirmed",
+  },
+  {
+    id: "youth-wellbeing-digital-resilience",
+    photo: "/mentors/elpidia-juli.jpg",
+    track: "Interdisciplinary & Social Sciences",
+    type: "Quantitative Social Research",
+    title:
+      "Measuring Youth Well-Being & Digital Resilience: A Quantitative Psychometric & Life Satisfaction Analysis in Malaysia",
+    mentor: "Dr. Elpidia Juli",
+    affiliation: "Independent researcher (PhD, Universiti Malaysia Sabah)",
+    mentorBio:
+      "Dr. Elpidia Juli holds a PhD in Sociology and Social Anthropology from Universiti Malaysia Sabah, complemented by a background in mathematics, computer science, and health and social care. She specialises in subjective well-being, life satisfaction and socio-economic dynamics in Sabah, combining data analytics with community-based action research across mental health peer support, rural development and cultural mapping. She currently drives state-aligned research frameworks including the UPEN-endorsed Equal Pathways initiative.",
+    institution: "External",
+    participants: "1-3",
+    timeInvestment: "8 hours/week",
+    description:
+      "Youth mental health, subjective well-being and life satisfaction have become vital indicators of social progress in post-pandemic Malaysia. This project introduces the fundamentals of quantitative social science by examining how social factors, digital engagement and personal resilience influence life satisfaction among Malaysian youth. Students learn how social scientists turn abstract concepts — resilience, self-esteem, happiness — into measurable psychometric scales, then analyse open-access datasets to extract statistical insights and write a publication-ready report.",
+    skillsDescription:
+      "Basic secondary-level maths or statistics (SPM/IGCSE level), familiarity with Google Sheets or Excel, an interest in social sciences, public health or human behaviour, and basic scientific reading and written English.",
+    skills: ["Statistics", "Spreadsheets", "Survey Data", "Academic Writing"],
+    prepWork: [
+      "Read two short beginner-friendly open-access articles provided by the mentor on youth life satisfaction and basic psychometric concepts.",
+      "Set up a free Google Drive and Sheets environment for shared data organisation and collaborative report writing (guidance provided).",
+    ],
+    tasks: [
+      "Review the assigned literature on youth well-being metrics and understand the structure of the survey dataset.",
+      "Clean, code and organise survey responses; calculate composite psychometric scores such as life satisfaction and resilience indices.",
+      "Perform descriptive statistics and cross-tabulation analyses; generate clear charts illustrating trends across demographics.",
+      "Discuss findings with the mentor, interpret their public health and social relevance, and draft sections of the report.",
+      "Finalise visualisations, compile a co-authored short paper and design Demo Day slides.",
+    ],
+    deliverables: [
+      "A set of annotated data visualisations illustrating youth life satisfaction trends.",
+      "A co-authored short research report summarising findings and their social and public health implications.",
+      "A digital poster and slide deck prepared for the Demo Day presentation.",
+    ],
+    preferences:
+      "Applicants who show strong curiosity about human behaviour, enthusiasm for learning basic data analysis, and a commitment to weekly milestones. Prior experience with statistical software is welcome but not required. Roles split across up to three students: dataset cleaning and variable coding; chart visualisation and cross-tabulation; literature synthesis, write-up structure and slide design.",
+    status: "confirmed",
+  },
+  {
+    id: "active-suspension-nonlinearities",
+    photo: "/mentors/mathias-foo.jpg",
+    track: "Interdisciplinary & Social Sciences",
+    type: "Control Engineering",
+    title: "Identifying the Nonlinearities in an Active Suspension System",
+    mentor: "Dr. Mathias Foo",
+    affiliation: "School of Engineering, University of Warwick",
+    mentorBio:
+      "Dr Mathias Foo is an Associate Professor in Control and Engineering Biology at the University of Warwick. He specialises in leveraging control engineering methodologies across agriculture, automotive systems and synthetic biology, including improving crop resilience and enhancing vehicle ride comfort. He is passionate about guiding early-career researchers in control engineering fundamentals and their application to real-world problems.",
+    institution: "External",
+    participants: "2",
+    timeInvestment: "6 hours/week",
+    description:
+      "Active suspension systems improve ride comfort by actively regulating the force between the tyres and the vehicle body. The control algorithms for that regulation are typically designed using a simplified linear model of the suspension dynamics — but how well that linear approximation captures real-world behaviour is an open research question. Students analyse data from an actual lab-scale suspension system and learn basic system identification tools to separate the linear and nonlinear components of its dynamics. Python (and MATLAB where available) is taught as part of the project.",
+    skillsDescription:
+      "Python, MATLAB or any programming language, plus a good grasp of differential equations.",
+    skills: ["Python", "System Identification", "Differential Equations"],
+    prepWork: [
+      "Install a free Python notebook environment (guidance provided).",
+      "Complete several short beginner-friendly video introductions to the System Identification Toolbox.",
+    ],
+    tasks: [
+      "Complete introductory Python tutorials and cover the concept of system identification, particularly the Wiener-Hammerstein model; understand the structure of the suspension system and datasets.",
+      "Clean and organise datasets for two road profiles of differing roughness; produce initial time-series visualisations of the road profile and the vehicle body and tyre displacements.",
+      "Identify the linear and nonlinear components in the suspension system.",
+      "Interpret findings and discuss possible explanations with the mentor; begin drafting the write-up.",
+      "Finalise data visualisations and compile findings into a short report and presentation slides.",
+    ],
+    deliverables: [
+      "A set of annotated data visualisations showing the contribution of linear and nonlinear components to the suspension system's behaviour.",
+      "A short written report summarising findings.",
+      "A slide presentation suitable for Demo Day.",
+    ],
+    preferences:
+      "Two students: one focusing on data cleaning and Python scripting to identify the dominant linear component, the other on the nonlinear component using the Wiener-Hammerstein model. Both contribute to the write-up, presentation and interpretation.",
+    status: "confirmed",
+  },
+]
+
+export const tracks: Array<Track | "All"> = ["All", ...trackOrder]
+
+export type TimelinePhase = {
+  /** Human-readable date, exactly as the committee published it. */
+  date: string
+  title: string
+  description: string
+  /** ISO bounds, used to derive complete / active / upcoming at render time. */
+  start: string
+  end: string
+}
+
+/**
+ * Tentative schedule from the committee update. Dates are expected to shift
+ * slightly and are marked as tentative on screen; the finalised version arrives
+ * with the participant info pack.
+ */
+export const timeline: TimelinePhase[] = [
+  {
+    date: "20 August 2026",
     title: "Applications Open",
     description:
-      "Online application portal opens for all eligible students. Submit your project preferences and team information.",
-    status: "complete" as const,
+      "Announced via social media and partnered institutions. The portal opens for all eligible students.",
+    start: "2026-08-20",
+    end: "2026-08-20",
   },
   {
-    date: "TBD",
-    title: "Early Application Deadline",
+    date: "8 September 2026",
+    title: "Application Deadline",
     description:
-      "Priority review for early applicants. Get feedback on your application before final deadline.",
-    status: "complete" as const,
+      "All student submissions due. The Board of Executive Directors shortlists applicants on a rolling basis, so applying early helps.",
+    start: "2026-09-08",
+    end: "2026-09-08",
   },
   {
-    date: "TBD",
-    title: "Final Application Deadline",
+    date: "8-12 September 2026",
+    title: "Final Review",
     description:
-      "Last day to submit applications. All materials must be received by 11:59 PM MYT.",
-    status: "active" as const,
+      "The Lead Researcher reviews the final selection. Up to three students are placed on each project.",
+    start: "2026-09-08",
+    end: "2026-09-12",
   },
   {
-    date: "TBD",
-    title: "Application Review",
+    date: "10-12 September 2026",
+    title: "Announcement",
     description:
-      "Expert panel reviews all submissions. Applicants may be contacted for additional information.",
-    status: "upcoming" as const,
+      "Students are matched with a mentor and a research project, and team leaders are assigned for bi-weekly progress checks.",
+    start: "2026-09-10",
+    end: "2026-09-12",
   },
   {
-    date: "TBD",
-    title: "Acceptance Notifications",
+    date: "15 September 2026",
+    title: "Onboarding & Burn-in",
     description:
-      "Selected participants notified via email. Orientation materials and next steps provided.",
-    status: "upcoming" as const,
+      "Orientation, introductions, and preparatory tasks assigned by your mentor.",
+    start: "2026-09-15",
+    end: "2026-09-15",
   },
   {
-    date: "TBD",
-    title: "Research Period",
+    date: "15 Sept - 10 Nov 2026",
+    title: "Main Research Period",
     description:
-      "12-week intensive research sprint with weekly mentor check-ins and milestone reviews.",
-    status: "upcoming" as const,
+      "Core research and project work, roughly eight weeks, with regular mentor contact throughout.",
+    start: "2026-09-15",
+    end: "2026-11-10",
   },
   {
-    date: "TBD",
-    title: "Final Presentations",
+    date: "15 October 2026",
+    title: "Mid-Programme Check-in",
     description:
-      "Teams present findings to panel of researchers and industry experts. Awards ceremony follows.",
-    status: "upcoming" as const,
+      "Progress updates across all teams, plus optional talks from mentors.",
+    start: "2026-10-15",
+    end: "2026-10-15",
+  },
+  {
+    date: "10 November 2026",
+    title: "Programme Ends",
+    description:
+      "Students finalise and submit their completed research papers or reports.",
+    start: "2026-11-10",
+    end: "2026-11-10",
+  },
+  {
+    date: "Mid-November 2026",
+    title: "Malaysia Science Scholars' Demo Day",
+    description:
+      "Virtual showcase of every research work, followed by the awards.",
+    start: "2026-11-13",
+    end: "2026-11-20",
   },
 ]
 
@@ -122,12 +688,14 @@ export const eligibility = {
     },
     {
       title: "Team Size",
-      description: "Individual or teams of 2-5 students (varies by project)",
+      description:
+        "Up to 3 students are placed on each project; some mentors take fewer",
       icon: "users",
     },
     {
       title: "Time Commitment",
-      description: "4-7 hours per week for 12 weeks (June-August 2026)",
+      description:
+        "4-7 hours per week for the research period, 15 September to 10 November 2026",
       icon: "clock",
     },
     {
@@ -183,71 +751,54 @@ export const applicationSteps = [
   },
 ]
 
-export const mentors = [
-  {
-    id: 1,
-    name: "Expert Mentor Panel",
-    title: "AI & Data Track",
-    affiliation: "External Researchers (TBC)",
-    track: "AI & Data",
-    expertise: [
-      "Machine Learning",
-      "Natural Language Processing",
-      "Research Methodology",
-    ],
-    bio: "Expert panel to be confirmed - experienced researchers in AI and data science",
-    image: "/mentors/placeholder-1.jpg",
-    placeholder: true,
-  },
-  {
-    id: 2,
-    name: "UTAR Faculty Panel",
-    title: "BioScience Track",
-    affiliation: "UTAR Faculty of Science (TBC)",
-    track: "BioScience",
-    expertise: ["Molecular Biology", "Lab Protocols", "Science Communication"],
-    bio: "UTAR faculty panel to be confirmed - experienced in guiding student research",
-    image: "/mentors/placeholder-2.jpg",
-    placeholder: true,
-  },
-  {
-    id: 3,
-    name: "Engineering Mentors",
-    title: "Engineering Track",
-    affiliation: "UTAR & Industry Partners (TBC)",
-    track: "Engineering",
-    expertise: ["Robotics", "Embedded Systems", "Design Thinking"],
-    bio: "Industry and academic experts to be confirmed for engineering track",
-    image: "/mentors/placeholder-3.jpg",
-    placeholder: true,
-  },
-  {
-    id: 4,
-    name: "Social Science Panel",
-    title: "Economics Track",
-    affiliation: "External Researchers (TBC)",
-    track: "Economics",
-    expertise: ["Development Economics", "Research Design", "Data Analysis"],
-    bio: "Economics and policy researchers to be confirmed",
-    image: "/mentors/placeholder-4.jpg",
-    placeholder: true,
-  },
-  {
-    id: 5,
-    name: "Ethics Advisory Panel",
-    title: "Policy Track",
-    affiliation: "Mixed Panel (TBC)",
-    track: "Policy",
-    expertise: [
-      "Research Ethics",
-      "Publication Standards",
-      "Academic Integrity",
-    ],
-    bio: "Ethics and policy experts to be confirmed",
-    image: "/mentors/placeholder-5.jpg",
-    placeholder: true,
-  },
-]
+/**
+ * Headline counts. `accepted` is derived so it can never disagree with the list
+ * below; `expected` is the committee's figure, covering the 2 UTAR and 1
+ * external researcher who have not yet replied.
+ */
+export const projectCounts = {
+  accepted: projects.length,
+  expected: 14,
+} as const
+
+export type Mentor = {
+  name: string
+  affiliation: string
+  bio: string
+  photo: string
+  url?: string
+  institution: "UTAR" | "External"
+  tracks: Track[]
+  /** Titles of every project this mentor is running. */
+  projects: string[]
+}
+
+/**
+ * Derived from `projects` rather than maintained separately: a mentor only
+ * exists here because they own a project, so the two lists can never drift.
+ */
+export const mentors: Mentor[] = (() => {
+  const byName = new Map<string, Mentor>()
+  for (const p of projects) {
+    const existing = byName.get(p.mentor)
+    if (existing) {
+      if (!existing.tracks.includes(p.track)) existing.tracks.push(p.track)
+      existing.projects.push(p.title)
+      continue
+    }
+    byName.set(p.mentor, {
+      name: p.mentor,
+      affiliation: p.affiliation,
+      bio: p.mentorBio,
+      photo: p.photo,
+      url: p.mentorUrl,
+      institution: p.institution,
+      tracks: [p.track],
+      projects: [p.title],
+    })
+  }
+  return [...byName.values()]
+})()
 
 export const faqs = [
   {
@@ -263,12 +814,12 @@ export const faqs = [
   {
     question: "How are teams formed?",
     answer:
-      "You can apply as an individual or with a pre-formed team. Some projects allow solo work, others require teams of 2-5. Check individual project requirements.",
+      "You apply as an individual. A maximum of three students are placed on each project, and some mentors have asked for fewer, so check the project brief. Team leaders are assigned at the announcement stage for bi-weekly progress checks.",
   },
   {
-    question: "What if I can't commit to the full 12 weeks?",
+    question: "What if I can't commit to the full research period?",
     answer:
-      "The 12-week commitment is required to complete the program and be eligible for awards. Plan accordingly before applying.",
+      "The research period runs from 15 September to 10 November 2026, and completing it is required to be eligible for awards. Plan accordingly before applying.",
   },
   {
     question: "Are there any costs to participate?",
@@ -292,23 +843,34 @@ export const faqs = [
   },
 ]
 
+/**
+ * `cap` is the rendered height for each mark.
+ *
+ * They cannot share one height: a wide wordmark set to the same cap height as a
+ * tall stacked mark dwarfs it, so each is sized to look equally weighted rather
+ * than to measure equally. MABECS is the tallest because its mark is portrait
+ * and reads smallest at any given height.
+ */
 export const partners = [
   {
     name: "UTAR",
     logo: "/utar-logo.jpg",
     description: "Universiti Tunku Abdul Rahman",
     url: "https://www.utar.edu.my/",
+    cap: "max-h-14",
   },
   {
     name: "MYResearchGuide",
     logo: "/mrg-logo-inverted.png",
     description: "Malaysia's Student Research Platform",
     url: "https://www.myresearchguide.org/",
+    cap: "max-h-9",
   },
   {
     name: "MABECS Global",
     logo: "/mabecs-logo.jpg",
     description: "Research Sponsor",
     url: "#",
+    cap: "max-h-20",
   },
 ]
