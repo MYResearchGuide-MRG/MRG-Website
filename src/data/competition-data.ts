@@ -793,9 +793,9 @@ export const partners = [
   },
   {
     name: "MABECS Global",
-    logo: "/mabecs-logo.jpg",
+    logo: "/mabecs-logo.png",
     description: "Research Sponsor",
-    url: "#",
+    url: "https://www.mabecs.com/en-gb",
     cap: "max-h-20",
   },
 ]

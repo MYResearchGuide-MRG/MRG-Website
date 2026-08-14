@@ -21,7 +21,7 @@ export function ClosingCta() {
 
           <Reveal delay={0.14}>
             <p className="mx-auto mt-8 max-w-xl text-lg leading-relaxed text-background/70">
-              Work with expert mentors on a real research project. Applications
+              Work with expert mentors on a science research project. Applications
               close September 10, 2026.
             </p>
           </Reveal>

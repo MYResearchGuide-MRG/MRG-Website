@@ -57,15 +57,14 @@ export function SiteFooter() {
         </p>
       </div>
 
-      {/* Wordmark flourish. Capped near its native 719px width so it stays
-          crisp — the source raster gets soft stretched any wider. */}
+      {/* Oversized wordmark, spanning the container at any viewport width. */}
       <div aria-hidden className="container pb-6">
         <img
           src={siteConfig.organiserLogoUrl}
           alt=""
-          width={719}
-          height={71}
-          className="h-auto w-full max-w-2xl select-none invert dark:invert-0"
+          width={960}
+          height={95}
+          className="h-auto w-full select-none invert dark:invert-0"
         />
       </div>
     </footer>
