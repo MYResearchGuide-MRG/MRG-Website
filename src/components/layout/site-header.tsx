@@ -54,90 +54,104 @@ export function SiteHeader() {
   }, [menuOpen])
 
   return (
-    <header
-      className={cn(
-        "fixed inset-x-0 top-0 z-40 transition-[background-color,border-color,backdrop-filter] duration-500",
-        scrolled
-          ? "border-b border-border bg-background/80 backdrop-blur-xl"
-          : "border-b border-transparent bg-transparent"
-      )}
-    >
-      <div className="container flex h-16 items-center gap-4 md:h-20">
-        <div className="flex flex-1 shrink-0 items-center gap-3">
-          <a href="#" aria-label="Back to top" className="flex items-center">
-            <img
-              src={siteConfig.programmeLogoUrl}
-              alt="Malaysia Science Scholar's Programme"
-              className="h-8 invert md:h-9 dark:invert-0"
-            />
-          </a>
-          <span
-            aria-hidden
-            className="hidden h-7 w-px bg-muted-foreground/50 sm:block"
-          />
-          <a
-            href={siteConfig.mainSiteUrl}
-            aria-label="MYResearchGuide home"
-            className="hidden items-end gap-1.5 sm:flex"
-          >
-            <span className="label-micro normal-case text-muted-foreground">
-              By
-            </span>
-            <img
-              src={siteConfig.organiserLogoUrl}
-              alt="MYResearchGuide"
-              className="h-4 invert md:h-[1.1rem] dark:invert-0"
-            />
-          </a>
-        </div>
-
-        <nav className="hidden shrink-0 items-center gap-8 md:flex">
-          {navItems.map((item) => (
-            <a
-              key={item.href}
-              href={item.href}
-              className="link-wipe text-sm text-muted-foreground hover:text-foreground"
-            >
-              {item.label}
+    <>
+      <header
+        className={cn(
+          // backdrop-blur-xl stays permanently applied (never toggled) —
+          // Safari rebuilds the compositing layer every time backdrop-filter
+          // is added or removed from an element's class list, and doing that
+          // on a fixed header during scroll is what caused page content
+          // beneath it to lose its background paint mid-scroll on iOS. Only
+          // the tint's own opacity animates now, a cheap, stable transition.
+          "fixed inset-x-0 top-0 z-40 border-b backdrop-blur-xl transition-[background-color,border-color] duration-500",
+          scrolled
+            ? "border-border bg-background/80"
+            : "border-transparent bg-transparent"
+        )}
+      >
+        <div className="container flex h-16 items-center gap-4 md:h-20">
+          <div className="flex flex-1 shrink-0 items-center gap-3">
+            <a href="#" aria-label="Back to top" className="flex items-center">
+              <img
+                src={siteConfig.programmeLogoUrl}
+                alt="Malaysia Science Scholar's Programme"
+                className="h-8 invert md:h-9 dark:invert-0"
+              />
             </a>
-          ))}
-        </nav>
+            <span
+              aria-hidden
+              className="hidden h-7 w-px bg-muted-foreground/50 sm:block"
+            />
+            <a
+              href={siteConfig.mainSiteUrl}
+              aria-label="MYResearchGuide home"
+              className="hidden items-end gap-1.5 sm:flex"
+            >
+              <span className="label-micro normal-case text-muted-foreground">
+                BY
+              </span>
+              <img
+                src={siteConfig.organiserLogoUrl}
+                alt="MYResearchGuide"
+                className="h-4 invert md:h-[1.1rem] dark:invert-0"
+              />
+            </a>
+          </div>
 
-        <div className="flex flex-1 shrink-0 items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-            className="relative flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
-            aria-label="Toggle theme"
-          >
-            <Sun className="size-4 scale-100 rotate-0 transition-transform duration-500 dark:scale-0 dark:-rotate-90" />
-            <Moon className="absolute size-4 scale-0 rotate-90 transition-transform duration-500 dark:scale-100 dark:rotate-0" />
-          </button>
+          <nav className="hidden shrink-0 items-center gap-8 md:flex">
+            {navItems.map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                className="link-wipe text-sm text-muted-foreground hover:text-foreground"
+              >
+                {item.label}
+              </a>
+            ))}
+          </nav>
 
-          <Button asChild size="sm" className="hidden rounded-full sm:inline-flex">
-            <a href={siteConfig.applicationFormUrl}>Apply</a>
-          </Button>
+          <div className="flex flex-1 shrink-0 items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+              className="relative flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
+              aria-label="Toggle theme"
+            >
+              <Sun className="size-4 scale-100 rotate-0 transition-transform duration-500 dark:scale-0 dark:-rotate-90" />
+              <Moon className="absolute size-4 scale-0 rotate-90 transition-transform duration-500 dark:scale-100 dark:rotate-0" />
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setMenuOpen(true)}
-            className="flex size-9 items-center justify-center rounded-full text-foreground md:hidden"
-            aria-label="Open menu"
-            aria-expanded={menuOpen}
-          >
-            <Menu className="size-5" />
-          </button>
+            <Button asChild size="sm" className="hidden rounded-full sm:inline-flex">
+              <a href={siteConfig.applicationFormUrl}>Apply</a>
+            </Button>
+
+            <button
+              type="button"
+              onClick={() => setMenuOpen(true)}
+              className="flex size-9 items-center justify-center rounded-full text-foreground md:hidden"
+              aria-label="Open menu"
+              aria-expanded={menuOpen}
+            >
+              <Menu className="size-5" />
+            </button>
+          </div>
         </div>
-      </div>
 
-      {/* Scroll progress hairline */}
-      <motion.div
-        aria-hidden
-        className="h-px origin-left bg-foreground"
-        style={{ scaleX: progress, opacity: scrolled ? 1 : 0 }}
-      />
+        {/* Scroll progress hairline */}
+        <motion.div
+          aria-hidden
+          className="h-px origin-left bg-foreground"
+          style={{ scaleX: progress, opacity: scrolled ? 1 : 0 }}
+        />
+      </header>
 
-      {/* Mobile panel */}
+      {/* Mobile panel. Rendered as a sibling of <header>, not a descendant —
+          the header carries a permanent backdrop-filter, and per spec any
+          element with backdrop-filter becomes a new containing block for its
+          position:fixed descendants. Nested here, this panel's `inset-0`
+          would resolve against the header's own (tiny) box instead of the
+          viewport, clipping it to a thin strip instead of covering the
+          screen. */}
       <AnimatePresence>
         {menuOpen && (
           <motion.div
@@ -196,6 +210,6 @@ export function SiteHeader() {
           </motion.div>
         )}
       </AnimatePresence>
-    </header>
+    </>
   )
 }
