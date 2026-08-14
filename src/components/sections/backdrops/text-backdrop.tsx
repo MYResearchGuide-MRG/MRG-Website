@@ -3,7 +3,7 @@ import { useReducedMotion } from "motion/react"
 
 import { useCanvasSize, useInk, usePaper } from "./use-ink"
 
-const WORDS = ["MRG", "RESEARCH", "BASECAMP", "UTAR", "2026"]
+const WORDS = ["MYSSP", "MALAYSIA", "SCIENCE", "SCHOLARS", "2026"]
 const PIXEL_STEP = 5
 const HOLD_FRAMES = 200
 
@@ -68,12 +68,14 @@ export function TextBackdrop() {
       off.textAlign = "center"
       off.textBaseline = "middle"
 
-      // Shrink to fit: the longest word ("BASECAMP") overflows a narrow panel
-      // at a fixed size, so measure and step down until it sits inside 78%.
+      // Shrink to fit: the longest words ("MALAYSIA", "SCHOLARS") overflow a
+      // narrow panel at a fixed size, so measure and step down until the word
+      // sits inside 78%. Canvas needs a literal family — it cannot read
+      // var(--font-display) — so this must be kept in step with index.css.
       let size = Math.min(w * 0.2, h * 0.3)
       const maxWidth = w * 0.78
       for (let i = 0; i < 12; i++) {
-        off.font = `400 ${size}px "Instrument Serif", Georgia, serif`
+        off.font = `600 ${size}px "Inter Variable", ui-sans-serif, system-ui, sans-serif`
         if (off.measureText(word).width <= maxWidth) break
         size *= 0.9
       }

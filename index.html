@@ -4,19 +4,39 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" href="/mrg-logo-inverted.png" />
-    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#000000" />
     <meta
       name="description"
-      content="MYResearchGuide Research Competition basecamp: timeline, project directory, researcher panel, application paths, UTAR involvement, and sponsor structure."
+      content="The Malaysia Science Scholar's Programme (MYSSP) is MYResearchGuide's flagship 8-week research mentorship programme for Malaysian pre-university students: project directory, researcher panel, timeline and how to apply."
     />
-    <meta property="og:title" content="MRG Research Competition" />
+    <meta property="og:title" content="Malaysia Science Scholar's Programme" />
     <meta
       property="og:description"
-      content="An attachable competition microsite for MYResearchGuide."
+      content="Malaysia's first science research programme for pre-university students, by MYResearchGuide."
     />
     <meta property="og:type" content="website" />
-    <title>MRG Research Competition</title>
+    <title>Malaysia Science Scholar's Programme — MYSSP 2026</title>
+    <!-- Stamp the theme class before first paint. The provider reads
+         localStorage during render, but without this the page paints once in
+         the wrong theme first — very visible now that the default is dark. -->
+    <script>
+      ;(function () {
+        try {
+          var stored = localStorage.getItem("theme")
+          var theme =
+            stored === "light" || stored === "dark"
+              ? stored
+              : stored === "system"
+                ? window.matchMedia("(prefers-color-scheme: dark)").matches
+                  ? "dark"
+                  : "light"
+                : "dark"
+          document.documentElement.classList.add(theme)
+        } catch (e) {
+          document.documentElement.classList.add("dark")
+        }
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

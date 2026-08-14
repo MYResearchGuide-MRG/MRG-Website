@@ -7,20 +7,17 @@ export const siteConfig = {
   lightLogoUrl: "/mrg-logo-inverted.png",
 } as const
 
-export const contactMailto = `mailto:${siteConfig.contactEmail}?subject=MRG%20Competition%20Question`
+export const contactMailto = `mailto:${siteConfig.contactEmail}?subject=MYSSP%20Question`
 
 export const navItems = [
-  { label: "Timeline", href: "#timeline" },
   { label: "Projects", href: "#projects" },
-  { label: "Prizes", href: "#prizes" },
   { label: "Eligibility", href: "#eligibility" },
-  { label: "Mentors", href: "#mentors" },
+  { label: "Timeline", href: "#timeline" },
   { label: "FAQ", href: "#faq" },
 ] as const
 
 export const heroStats = [
-  { label: "Applications Close", value: "8 Sept" },
+  { label: "Applications Close", value: "10 Sept" },
   { label: "Confirmed Projects", value: "11" },
   { label: "Research Tracks", value: "5" },
-  { label: "Mentor Lanes", value: "UTAR + External" },
 ] as const

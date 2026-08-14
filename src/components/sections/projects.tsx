@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/accordion"
 import {
   projectCodes,
-  projectCounts,
   projects,
   tracks,
   trackOrder,
@@ -246,6 +245,7 @@ function ProjectDetail({ project }: { project: Project }) {
  */
 export function Projects() {
   const [track, setTrack] = React.useState<string>("All")
+  const [groupBy, setGroupBy] = React.useState<"track" | "mentor">("track")
   const [query, setQuery] = React.useState("")
   const [activeId, setActiveId] = React.useState(projects[0]?.id ?? "")
   const [hoveredTrack, setHoveredTrack] = React.useState<string | null>(null)
@@ -299,9 +299,36 @@ export function Projects() {
   // filtering to a track you are not reading should move you, not blank the pane.
   const active = visible.find((p) => p.id === activeId) ?? visible[0] ?? null
 
-  const groups = trackOrder
-    .map((t) => ({ track: t, items: visible.filter((p) => p.track === t) }))
-    .filter((g) => g.items.length > 0)
+  /* Two ways into the same list. Mentors used to be a section of their own,
+     which meant reading a researcher's background in one place and the work
+     they actually own in another. Grouping by mentor puts both in the brief. */
+  const groups = React.useMemo(() => {
+    if (groupBy === "mentor") {
+      const byMentor = new Map<string, typeof visible>()
+      for (const p of visible) {
+        const existing = byMentor.get(p.mentor)
+        if (existing) existing.push(p)
+        else byMentor.set(p.mentor, [p])
+      }
+      return [...byMentor.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([mentor, items]) => ({
+          key: mentor,
+          label: mentor,
+          photo: items[0]?.photo,
+          items,
+        }))
+    }
+
+    return trackOrder
+      .map((t) => ({
+        key: t as string,
+        label: t as string,
+        photo: undefined as string | undefined,
+        items: visible.filter((p) => p.track === t),
+      }))
+      .filter((g) => g.items.length > 0)
+  }, [groupBy, visible])
 
   const select = (id: string) => {
     setActiveId(id)
@@ -316,30 +343,14 @@ export function Projects() {
       <div className="container">
         <SectionHeading
           kicker="Research Programme"
-          index="02"
-          title="Available projects"
-          lede="Each project is a real research question owned by a mentor, scoped so a first-time researcher finishes with something to show: a paper, a prototype, a documented method."
+          index="01"
+          title="Projects"
+          lede="Each project is a real research question owned by a mentor, scoped so a first-time researcher finishes the eight weeks with something to show: a paper, a prototype, a documented method. Open a brief to read the mentor's background and what the work involves."
         />
-
-        {/* More projects are still landing. Saying so plainly stops an
-            applicant assuming this list is final and picking too early. */}
-        <Reveal delay={0.08}>
-          <div className="mt-12 border border-border bg-muted/40 px-5 py-4 md:px-7 md:py-5">
-            <p className="label-micro text-muted-foreground">
-              Provisional listing
-            </p>
-            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-              {projectCounts.accepted} projects are confirmed. A further{" "}
-              {projectCounts.expected - projectCounts.accepted} are awaiting
-              researcher confirmation, for an expected {projectCounts.expected}{" "}
-              in total, so check back before the application deadline.
-            </p>
-          </div>
-        </Reveal>
 
         {/* Filters */}
         <Reveal delay={0.12}>
-          <div className="mt-10 flex flex-col gap-6 border-b border-border pb-5 md:flex-row md:items-end md:justify-between">
+          <div className="mt-12 flex flex-col gap-6 border-b border-border pb-5 md:flex-row md:items-end md:justify-between">
             <div className="flex flex-wrap items-center gap-x-7 gap-y-3">
               {tracks.map((t) => {
                 const activeTrack = t === track
@@ -372,16 +383,48 @@ export function Projects() {
               })}
             </div>
 
-            <div className="relative md:w-64">
-              <Search className="pointer-events-none absolute top-1/2 left-0 size-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search projects"
-                aria-label="Search projects"
-                className="w-full border-0 border-b border-transparent bg-transparent py-1.5 pl-6 text-sm outline-none placeholder:text-muted-foreground focus:border-foreground"
-              />
+            <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
+              {/* Grouping, not filtering: both views show every project that
+                  survives the track pills and the search box. */}
+              <div
+                role="group"
+                aria-label="Group projects by"
+                className="flex items-center gap-1 rounded-full border border-border p-1"
+              >
+                {(
+                  [
+                    { id: "track", label: "By track" },
+                    { id: "mentor", label: "By mentor" },
+                  ] as const
+                ).map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => setGroupBy(option.id)}
+                    aria-pressed={groupBy === option.id}
+                    className={cn(
+                      "rounded-full px-3 py-1 text-xs whitespace-nowrap transition-colors",
+                      groupBy === option.id
+                        ? "bg-foreground text-background"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="relative md:w-56">
+                <Search className="pointer-events-none absolute top-1/2 left-0 size-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search projects"
+                  aria-label="Search projects"
+                  className="w-full border-0 border-b border-transparent bg-transparent py-1.5 pl-6 text-sm outline-none placeholder:text-muted-foreground focus:border-foreground"
+                />
+              </div>
             </div>
           </div>
         </Reveal>
@@ -407,26 +450,47 @@ export function Projects() {
             {/* List, grouped by track */}
             <div>
               {groups.map((group) => {
-                const open = !collapsed.has(group.track)
+                const open = !collapsed.has(group.key)
+                const Icon = trackIcons[group.key]
                 return (
-                  <section key={group.track} className="mb-8 last:mb-0">
+                  <section key={group.key} className="mb-8 last:mb-0">
                     <h3>
                       <button
                         type="button"
-                        onClick={() => toggleTrack(group.track)}
+                        onClick={() => toggleTrack(group.key)}
                         aria-expanded={open}
-                        onMouseEnter={() => setHoveredTrack(group.track)}
+                        onMouseEnter={() => setHoveredTrack(group.key)}
                         onMouseLeave={() => setHoveredTrack(null)}
                         className="label-micro group/track flex w-full items-center gap-2 pb-3 text-left text-muted-foreground transition-colors hover:text-foreground"
                       >
-                        {trackIcons[group.track] && (
-                          <AnimatedIcon
-                            icon={trackIcons[group.track]}
-                            active={hoveredTrack === group.track}
-                            size={16}
+                        {group.photo ? (
+                          <img
+                            src={group.photo}
+                            alt=""
+                            aria-hidden
+                            loading="lazy"
+                            className="size-5 shrink-0 rounded-full object-cover"
                           />
+                        ) : (
+                          Icon && (
+                            <AnimatedIcon
+                              icon={Icon}
+                              active={hoveredTrack === group.key}
+                              size={16}
+                            />
+                          )
                         )}
-                        <span className="flex-1">{group.track}</span>
+                        {/* Track names are labels and read fine in caps; a
+                            person's name in letterspaced caps does not. */}
+                        <span
+                          className={cn(
+                            "flex-1",
+                            groupBy === "mentor" &&
+                              "text-sm font-medium tracking-normal normal-case"
+                          )}
+                        >
+                          {group.label}
+                        </span>
                         {/* Count earns its place: collapsed, it is the only clue
                           to how much is hidden. */}
                         <span className="tabular-nums">
