@@ -57,30 +57,16 @@ export function SiteFooter() {
         </p>
       </div>
 
-      {/* Oversized wordmark. Drawn as SVG with textLength so it always spans
-          the container exactly, at any viewport width, without overflowing. */}
+      {/* Wordmark flourish. Capped near its native 719px width so it stays
+          crisp — the source raster gets soft stretched any wider. */}
       <div aria-hidden className="container pb-6">
-        <svg
-          viewBox="0 0 1200 212"
-          className="w-full select-none"
-          preserveAspectRatio="xMidYMid meet"
-          role="presentation"
-        >
-          <text
-            x="0"
-            y="158"
-            textLength="1200"
-            lengthAdjust="spacingAndGlyphs"
-            fill="currentColor"
-            style={{
-              fontFamily: "var(--font-display)",
-              fontSize: "200px",
-              letterSpacing: "-0.03em",
-            }}
-          >
-            MYResearchGuide
-          </text>
-        </svg>
+        <img
+          src={siteConfig.organiserLogoUrl}
+          alt=""
+          width={719}
+          height={71}
+          className="h-auto w-full max-w-2xl select-none invert dark:invert-0"
+        />
       </div>
     </footer>
   )

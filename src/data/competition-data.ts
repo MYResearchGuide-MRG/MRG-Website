@@ -628,19 +628,20 @@ export const eligibility = {
   requirements: [
     {
       title: "Age Requirement",
-      description: "14-22 years old as of January 1, 2026",
+      description:
+        "14-20 years old as of January 1, 2026. Participants under 18 need parent/guardian consent",
       icon: "calendar",
     },
     {
       title: "Education Level",
       description:
-        "Currently enrolled in secondary school, pre-university, or undergraduate",
+        "Currently enrolled in  secondary school and pre-university",
       icon: "graduation",
     },
     {
-      title: "Geographic Location",
+      title: "Location & Access",
       description:
-        "All projects (online & campus-based) are only available to students based in Malaysia",
+        "All projects (online & campus-based) are only available to students based in Malaysia. Reliable internet access is required for virtual meetings",
       icon: "map",
     },
     {
@@ -658,15 +659,9 @@ export const eligibility = {
     {
       title: "Prerequisites",
       description:
-        "Basic research skills, curiosity, and commitment (project-specific requirements vary)",
+        "No previous research experience required — just curiosity and commitment. Technical requirements vary by project (check individual project pages)",
       icon: "check",
     },
-  ],
-  notes: [
-    "No previous research experience required",
-    "Projects have varying technical requirements (check individual project pages)",
-    "Students must have reliable internet access for virtual meetings",
-    "Parent/guardian consent required for participants under 18",
   ],
 }
 

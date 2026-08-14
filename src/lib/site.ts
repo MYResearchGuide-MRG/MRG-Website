@@ -5,6 +5,8 @@ export const siteConfig = {
   contactEmail: "myresearchguide.org@gmail.com",
   darkLogoUrl: "https://www.myresearchguide.org/MRG1W.png",
   lightLogoUrl: "/mrg-logo-inverted.png",
+  programmeLogoUrl: "/myssp-logo.png",
+  organiserLogoUrl: "/mrg-wordmark.png",
 } as const
 
 export const contactMailto = `mailto:${siteConfig.contactEmail}?subject=MYSSP%20Question`
