@@ -5,7 +5,7 @@ import { useCanvasSize, useInk } from "./use-ink"
 
 type Node = { x: number; y: number; vx: number; vy: number; r: number }
 
-const LINK_DIST = 132 // px; links only draw inside this radius
+const LINK_DIST = 150 // px; links only draw inside this radius
 const MOUSE_RADIUS = 170
 
 /**
@@ -35,7 +35,11 @@ export function NeuronBackdrop() {
     if (!canvas || !ctx || !w || !h) return
 
     const [r, g, b] = ink
-    const count = Math.min(120, Math.round((w * h) / 13000))
+    // Roughly twice the original density: this is the default backdrop now and
+    // fills the whole hero rather than sitting behind a figure, so the sparser
+    // field read as empty. The link pass is grid-bucketed, so the extra nodes
+    // cost close to linear rather than quadratic.
+    const count = Math.min(240, Math.round((w * h) / 7000))
     const nodes: Node[] = Array.from({ length: count }, () => ({
       x: Math.random() * w,
       y: Math.random() * h,
@@ -171,7 +175,7 @@ export function NeuronBackdrop() {
   return (
     <div
       ref={hostRef}
-      className="backdrop-veil absolute inset-0 text-foreground"
+      className="backdrop-veil-center absolute inset-0 text-foreground"
       aria-hidden
     >
       <canvas ref={canvasRef} className="block h-full w-full" />

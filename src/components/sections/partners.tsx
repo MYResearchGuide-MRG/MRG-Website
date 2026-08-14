@@ -7,24 +7,24 @@ import { useTheme } from "@/components/theme-provider"
 import { cn } from "@/lib/utils"
 
 export function Partners() {
-  const { theme } = useTheme()
+  const { resolvedTheme } = useTheme()
   const reduced = useReducedMotion()
 
   return (
     <section className="border-t border-border py-16 md:py-20">
       <div className="container">
-        <RevealGroup className="flex flex-col items-center gap-10 md:flex-row md:justify-between md:gap-16">
-          <RevealItem className="shrink-0">
-            <p className="label-micro max-w-[14rem] text-center text-muted-foreground md:text-left">
-              Delivered in partnership with
+        <RevealGroup className="flex flex-col items-center gap-10">
+          <RevealItem>
+            <p className="label-micro text-center text-muted-foreground">
+              A MYResearchGuide flagship programme, with
             </p>
           </RevealItem>
 
-          <RevealItem className="flex flex-wrap items-center justify-center gap-x-14 gap-y-8 md:justify-end">
+          <RevealItem className="flex flex-wrap items-center justify-center gap-x-12 gap-y-8">
             {partners.map((partner) => {
               const isMrg = partner.name === "MYResearchGuide"
               const src = isMrg
-                ? theme === "dark"
+                ? resolvedTheme === "dark"
                   ? siteConfig.darkLogoUrl
                   : siteConfig.lightLogoUrl
                 : partner.logo
@@ -41,17 +41,26 @@ export function Partners() {
                   whileHover={reduced ? undefined : { y: -3 }}
                   transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
                 >
-                  <img
-                    src={src}
-                    alt={partner.name}
-                    loading="lazy"
+                  {/* UTAR and MABECS ship as opaque white-background JPEGs. In
+                      colour they need that white to stay white, which a
+                      dark-themed page will not give them — so they sit on their
+                      own plate. MRG has a real light/dark pair and needs none. */}
+                  <span
                     className={cn(
-                      "w-auto object-contain opacity-55 transition-opacity duration-300 hover:opacity-100",
-                      // Cap height is per-partner: see the note on `partners`.
-                      partner.cap,
-                      !isMrg && "logo-plate grayscale"
+                      "flex items-center transition-opacity duration-300",
+                      isMrg
+                        ? "opacity-90 hover:opacity-100"
+                        : "rounded-md bg-white px-4 py-2 opacity-90 hover:opacity-100"
                     )}
-                  />
+                  >
+                    <img
+                      src={src}
+                      alt={partner.name}
+                      loading="lazy"
+                      // Cap height is per-partner: see the note on `partners`.
+                      className={cn("w-auto object-contain", partner.cap)}
+                    />
+                  </span>
                 </motion.a>
               )
             })}

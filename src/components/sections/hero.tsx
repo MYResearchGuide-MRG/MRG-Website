@@ -18,6 +18,11 @@ export function Hero() {
   const cycle = () => setBackdrop((i) => (i + 1) % BACKDROPS.length)
   const Figure = current.Figure
 
+  /* Backdrops that own a right-half figure keep the original two-column
+     layout, because centred text would run straight under the figure. The
+     figure-less ones (neuron, waves, words) centre the whole stack. */
+  const centred = !Figure
+
   const fade = (delay: number) =>
     reduced
       ? {}
@@ -31,7 +36,12 @@ export function Hero() {
     <section className="relative flex min-h-[100svh] flex-col justify-end overflow-hidden pt-32 pb-0">
       <HeroBackdrop variant={current.id} />
 
-      <div className="relative container flex-1 pb-16 md:flex md:flex-col md:justify-center">
+      <div
+        className={cn(
+          "relative container flex-1 pb-16 md:flex md:flex-col md:justify-center",
+          centred && "md:items-center md:text-center"
+        )}
+      >
         {/* Each variant owns the figure that fills the right half, so cycling
             swaps the figure out with the backdrop. */}
         <AnimatePresence mode="wait">
@@ -60,11 +70,14 @@ export function Hero() {
 
         {/* Kicker */}
         <motion.div
-          className="flex flex-wrap items-center gap-3 sm:gap-4"
+          className={cn(
+            "flex flex-wrap items-center gap-3 sm:gap-4",
+            centred && "md:justify-center"
+          )}
           {...fade(0.05)}
         >
           <span className="label-micro text-muted-foreground">
-            MRG &times; UTAR Research Basecamp
+            MYResearchGuide
           </span>
           <motion.span
             aria-hidden
@@ -73,28 +86,44 @@ export function Hero() {
             animate={reduced ? undefined : { scaleX: 1 }}
             transition={{ delay: 0.25, duration: 0.8, ease: easeOutExpo }}
           />
-          <span className="label-micro text-muted-foreground">
-            2026 Programme
-          </span>
+          <span className="label-micro text-muted-foreground">MYSSP 2026</span>
         </motion.div>
 
         {/* Display headline */}
         <h1 className="display-xl mt-8 md:mt-10">
-          <MaskedLines lines={["Research Competition", "Base Camp"]} />
+          <MaskedLines lines={["Malaysia Science", "Scholar’s Programme"]} />
         </h1>
 
         <motion.p
-          className="mt-8 max-w-2xl text-lg leading-relaxed text-muted-foreground md:mt-10"
+          className={cn(
+            "mt-8 max-w-2xl text-lg leading-relaxed text-muted-foreground md:mt-10",
+            centred && "md:mx-auto"
+          )}
           {...fade(0.5)}
         >
-          Join Malaysia&rsquo;s premier student research competition. Collaborate
-          with leading academics, tackle real-world research challenges, and gain
-          publication opportunities that launch your research career. Prizes and
-          judging panels to be announced.
+          Welcome to the Malaysia Science Scholar&rsquo;s Programme (MYSSP),
+          Malaysia&rsquo;s first science research programme for pre-university
+          students. MYSSP, crafted by MYResearchGuide, is an 8-week free
+          mentorship programme pairing students with experienced researchers
+          under a selection of STEM-based projects.
+        </motion.p>
+
+        <motion.p
+          className={cn(
+            "mt-4 max-w-2xl text-lg leading-relaxed text-muted-foreground",
+            centred && "md:mx-auto"
+          )}
+          {...fade(0.55)}
+        >
+          For further information, refer to our participant information pack
+          below. Applications close September 10th.
         </motion.p>
 
         <motion.div
-          className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center"
+          className={cn(
+            "mt-10 flex flex-col gap-3 sm:flex-row sm:items-center",
+            centred && "md:justify-center"
+          )}
           {...fade(0.6)}
         >
           <Button asChild size="lg" className="group">
@@ -114,7 +143,10 @@ export function Hero() {
         {/* Backdrop control. Each tick selects its variant directly — with six
             of them, cycle-only would mean up to five clicks to compare two. */}
         <motion.div
-          className="mt-10 flex flex-wrap items-center gap-x-4 gap-y-3"
+          className={cn(
+            "mt-10 flex flex-wrap items-center gap-x-4 gap-y-3",
+            centred && "md:justify-center"
+          )}
           {...fade(0.9)}
         >
           <span className="label-micro w-20 text-muted-foreground">
@@ -150,18 +182,17 @@ export function Hero() {
         {...fade(0.75)}
       >
         <div className="container">
-          <dl className="grid grid-cols-2 md:grid-cols-4">
+          <dl className="grid grid-cols-1 sm:grid-cols-3">
             {heroStats.map((stat, i) => (
               <div
                 key={stat.label}
                 className={cn(
                   "py-6 md:py-8",
-                  // 2-up on mobile: divider before the right-hand cell
-                  i % 2 === 1 && "border-l border-border pl-5",
-                  i >= 2 && "border-t border-border md:border-t-0",
-                  // 4-up from md: divider before every cell but the first
-                  "md:border-l md:border-border md:pl-6",
-                  i === 0 && "md:border-l-0 md:pl-0"
+                  // Stacked on mobile: a rule between rows, none above the first
+                  i > 0 && "border-t border-border sm:border-t-0",
+                  // 3-up from sm: divider before every cell but the first
+                  "sm:border-l sm:border-border sm:pl-6",
+                  i === 0 && "sm:border-l-0 sm:pl-0"
                 )}
               >
                 <dd className="font-display text-2xl leading-none md:text-3xl">

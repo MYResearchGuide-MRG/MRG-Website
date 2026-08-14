@@ -2,7 +2,6 @@ import * as React from "react"
 import { motion, useReducedMotion, useScroll, useSpring } from "motion/react"
 
 import { RevealGroup, RevealItem } from "@/components/motion/reveal"
-import { SectionHeading } from "./section-heading"
 import { timeline } from "@/data/competition-data"
 import { cn } from "@/lib/utils"
 
@@ -19,21 +18,32 @@ function statusOf(phase: { start: string; end: string }, today: string): Status 
   return "upcoming"
 }
 
+/**
+ * Round, and drawn against --color-muted-foreground rather than --color-border.
+ * Border-coloured hairline squares all but vanished on the dark background,
+ * which left the rail reading as a bare line with no milestones on it.
+ */
 function StatusMark({ status }: { status: Status }) {
   return (
     <span
       aria-hidden
       className={cn(
-        "relative z-10 block size-2.5 shrink-0 translate-y-[0.45rem] bg-background",
+        "relative z-10 block size-2.5 shrink-0 translate-y-[0.4rem] rounded-full",
         status === "complete" && "bg-foreground",
         status === "active" &&
-          "bg-background ring-[1.5px] ring-foreground ring-offset-2 ring-offset-background",
-        status === "upcoming" && "border border-border bg-background"
+          "bg-background ring-2 ring-foreground ring-offset-2 ring-offset-background",
+        status === "upcoming" && "border-[1.5px] border-muted-foreground bg-background"
       )}
     />
   )
 }
 
+/**
+ * Compact rail, sized to sit in a narrow column beside the FAQ rather than
+ * across a full-width section. The old layout put the date in an 11rem gutter
+ * that only existed above `md`; here it stacks above the title instead, so the
+ * marker offset is the same at every width and the rail needs a single value.
+ */
 export function Timeline() {
   const railRef = React.useRef<HTMLDivElement>(null)
   const reduced = useReducedMotion()
@@ -55,66 +65,51 @@ export function Timeline() {
   })
 
   return (
-    <section
-      id="timeline"
-      className="scroll-mt-24 border-t border-border bg-muted/40 py-24 md:py-32"
-    >
-      <div className="container">
-        <SectionHeading
-          kicker="Important Dates"
-          index="01"
-          title="Competition timeline"
-          lede="From application through Demo Day. Dates below are tentative and may shift slightly; the finalised schedule ships with the participant info pack."
+    <div id="timeline" className="scroll-mt-24">
+      <h2 className="display-md">Programme Timeline</h2>
+      <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+        From our application dates to the Malaysia Science Scholars&rsquo; Demo
+        Day. Dates are open to slight shifts according to programme progress.
+      </p>
+
+      <div ref={railRef} className="relative mt-8">
+        {/* Static rail + scroll-drawn progress overlay. The offset lands on the
+            centre of the 0.625rem status mark. The rail is drawn a step above
+            --color-border: at border weight the not-yet-reached stretch below
+            the progress line disappeared entirely against the dark panel. */}
+        <div
+          aria-hidden
+          className="absolute top-2 bottom-2 left-[calc(0.3125rem-0.5px)] w-px bg-muted-foreground/35"
         />
-
-        <div ref={railRef} className="relative mt-16 md:mt-24">
-          {/* Static rail + scroll-drawn progress overlay.
-              Left offset must land on the centre of the status mark:
-              mobile the mark is the first child; on md the date column
-              (11rem) plus the 2.5rem gap sit before it. */}
-          <div
+        {!reduced && (
+          <motion.div
             aria-hidden
-            className="absolute top-2 bottom-2 left-[calc(0.3125rem-0.5px)] w-px bg-border md:left-[calc(13.5rem+0.3125rem-0.5px)]"
+            className="absolute top-2 bottom-2 left-[calc(0.3125rem-0.5px)] w-px origin-top bg-foreground"
+            style={{ scaleY }}
           />
-          {!reduced && (
-            <motion.div
-              aria-hidden
-              className="absolute top-2 bottom-2 left-[calc(0.3125rem-0.5px)] w-px origin-top bg-foreground md:left-[calc(13.5rem+0.3125rem-0.5px)]"
-              style={{ scaleY }}
-            />
-          )}
+        )}
 
-          <RevealGroup as="ol">
-            {timeline.map((item, i) => (
-              <RevealItem
-                as="li"
-                key={i}
-                className="relative flex gap-6 border-b border-border py-7 last:border-b-0 md:gap-10"
-              >
-                {/* The date is the point of the row, so it reads as text, not
-                    as a letterspaced micro-label. */}
-                <div className="hidden w-44 shrink-0 pt-[0.3rem] text-sm font-medium md:block">
+        <RevealGroup as="ol">
+          {timeline.map((item, i) => (
+            <RevealItem
+              as="li"
+              key={i}
+              className="relative flex gap-4 border-b border-border py-4 last:border-b-0"
+            >
+              <StatusMark status={statusOf(item, today)} />
+
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-medium text-muted-foreground">
                   {item.date}
                 </div>
-
-                <StatusMark status={statusOf(item, today)} />
-
-                <div className="min-w-0 flex-1 md:pl-4">
-                  <div className="mb-2 text-sm font-medium md:hidden">
-                    {item.date}
-                  </div>
-                  <h3 className="font-display text-xl leading-tight md:text-2xl">
-                    {item.title}
-                  </h3>
-                  <p className="mt-2 max-w-2xl leading-relaxed text-muted-foreground">
-                    {item.description}
-                  </p>
-                </div>
-              </RevealItem>
-            ))}
-          </RevealGroup>
-        </div>
+                <h3 className="mt-1 font-display text-base leading-snug">
+                  {item.title}
+                </h3>
+              </div>
+            </RevealItem>
+          ))}
+        </RevealGroup>
       </div>
-    </section>
+    </div>
   )
 }
