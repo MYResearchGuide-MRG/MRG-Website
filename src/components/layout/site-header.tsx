@@ -53,11 +53,6 @@ export function SiteHeader() {
     return () => window.removeEventListener("keydown", onKey)
   }, [menuOpen])
 
-  /* resolvedTheme, not theme: under "system" the latter is neither "dark" nor
-     "light" and would silently fall through to the dark-on-light mark. */
-  const logoSrc =
-    resolvedTheme === "dark" ? siteConfig.darkLogoUrl : siteConfig.lightLogoUrl
-
   return (
     <header
       className={cn(
@@ -67,23 +62,33 @@ export function SiteHeader() {
           : "border-b border-transparent bg-transparent"
       )}
     >
-      <div className="container flex h-16 items-center justify-between gap-4 md:h-20">
-        {/* Lockup, not a logo: there is no MYSSP mark yet, so the programme
-            name rides alongside the MRG wordmark as type. Swap the whole
-            block for a single <img> once an asset exists. */}
-        <a
-          href={siteConfig.mainSiteUrl}
-          className="flex shrink-0 items-center gap-3"
-          aria-label="MYResearchGuide home"
-        >
-          <img src={logoSrc} alt="MYResearchGuide" className="h-6 md:h-7" />
-          <span aria-hidden className="hidden h-5 w-px bg-border sm:block" />
-          <span className="label-micro hidden text-muted-foreground sm:block">
-            MYSSP
-          </span>
-        </a>
+      <div className="container flex h-16 items-center gap-4 md:h-20">
+        <div className="flex flex-1 shrink-0 items-center gap-3">
+          <a href="#" aria-label="Back to top" className="flex items-center">
+            <img
+              src={siteConfig.programmeLogoUrl}
+              alt="Malaysia Science Scholar's Programme"
+              className="h-8 invert md:h-9 dark:invert-0"
+            />
+          </a>
+          <span
+            aria-hidden
+            className="hidden h-7 w-px bg-muted-foreground/50 sm:block"
+          />
+          <a
+            href={siteConfig.mainSiteUrl}
+            aria-label="MYResearchGuide home"
+            className="hidden items-center sm:flex"
+          >
+            <img
+              src={siteConfig.organiserLogoUrl}
+              alt="MYResearchGuide"
+              className="h-5 invert dark:invert-0"
+            />
+          </a>
+        </div>
 
-        <nav className="hidden items-center gap-8 md:flex">
+        <nav className="hidden shrink-0 items-center gap-8 md:flex">
           {navItems.map((item) => (
             <a
               key={item.href}
@@ -95,7 +100,7 @@ export function SiteHeader() {
           ))}
         </nav>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex flex-1 shrink-0 items-center justify-end gap-2">
           <button
             type="button"
             onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
@@ -140,7 +145,11 @@ export function SiteHeader() {
             transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
           >
             <div className="container flex h-16 items-center justify-between">
-              <img src={logoSrc} alt="MYResearchGuide" className="h-6" />
+              <img
+                src={siteConfig.programmeLogoUrl}
+                alt="Malaysia Science Scholar's Programme"
+                className="h-8 invert dark:invert-0"
+              />
               <button
                 type="button"
                 onClick={() => setMenuOpen(false)}
