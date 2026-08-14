@@ -27,27 +27,9 @@ export function Hero() {
         <NeuronBackdrop />
       </div>
 
-      <div className="relative container flex-1 pb-16 md:flex md:flex-col md:items-center md:justify-center md:text-center">
-        {/* Kicker */}
-        <motion.div
-          className="flex flex-wrap items-center gap-3 sm:gap-4 md:justify-center"
-          {...fade(0.05)}
-        >
-          <span className="label-micro text-muted-foreground">
-            MYResearchGuide
-          </span>
-          <motion.span
-            aria-hidden
-            className="h-px w-10 origin-left bg-border sm:w-16"
-            initial={reduced ? undefined : { scaleX: 0 }}
-            animate={reduced ? undefined : { scaleX: 1 }}
-            transition={{ delay: 0.25, duration: 0.8, ease: easeOutExpo }}
-          />
-          <span className="label-micro text-muted-foreground">MYSSP 2026</span>
-        </motion.div>
-
+      <div className="relative container flex flex-1 flex-col items-center justify-center pb-16 text-center">
         {/* Display headline */}
-        <h1 className="mt-8 md:mt-10">
+        <h1>
           <img
             src={siteConfig.programmeLogoUrl}
             alt="Malaysia Science Scholar's Programme"
@@ -58,26 +40,34 @@ export function Hero() {
         </h1>
 
         <motion.p
-          className="mt-8 max-w-2xl text-lg leading-relaxed text-muted-foreground md:mt-10 md:mx-auto"
+          className="mt-8 max-w-2xl text-lg leading-relaxed text-muted-foreground md:mt-10"
           {...fade(0.5)}
         >
           Welcome to the Malaysia Science Scholar&rsquo;s Programme (MYSSP),
           Malaysia&rsquo;s first science research programme for pre-university
-          students. MYSSP, crafted by MYResearchGuide, is an 8-week free
-          mentorship programme pairing students with experienced researchers
-          under a selection of STEM-based projects.
+          students. MYSSP, crafted by{" "}
+          <a
+            href={siteConfig.mainSiteUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="link-wipe text-foreground"
+          >
+            MYResearchGuide
+          </a>
+          , is an 8-week free mentorship programme pairing students with
+          experienced researchers under a selection of STEM-based projects.
         </motion.p>
 
-        <motion.p
+        {/* <motion.p
           className="mt-4 max-w-2xl text-lg leading-relaxed text-muted-foreground md:mx-auto"
           {...fade(0.55)}
         >
           For further information, refer to our participant information pack
           below. Applications close September 10th.
-        </motion.p>
+        </motion.p> */}
 
         <motion.div
-          className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center md:justify-center"
+          className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-center"
           {...fade(0.6)}
         >
           <Button asChild size="lg" className="group">

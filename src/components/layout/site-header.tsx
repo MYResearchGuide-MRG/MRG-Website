@@ -78,12 +78,15 @@ export function SiteHeader() {
           <a
             href={siteConfig.mainSiteUrl}
             aria-label="MYResearchGuide home"
-            className="hidden items-center sm:flex"
+            className="hidden items-end gap-1.5 sm:flex"
           >
+            <span className="label-micro normal-case text-muted-foreground">
+              By
+            </span>
             <img
               src={siteConfig.organiserLogoUrl}
               alt="MYResearchGuide"
-              className="h-5 invert dark:invert-0"
+              className="h-4 invert md:h-[1.1rem] dark:invert-0"
             />
           </a>
         </div>

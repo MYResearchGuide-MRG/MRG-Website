@@ -100,7 +100,7 @@ export function NeuronBackdrop() {
                   const near =
                     Math.hypot(p.x - mouse.x, p.y - mouse.y) < MOUSE_RADIUS
                   ctx.strokeStyle = `rgba(${r},${g},${b},${
-                    t * (near ? 0.34 : 0.14)
+                    t * (near ? 0.52 : 0.24)
                   })`
                   ctx.beginPath()
                   ctx.moveTo(p.x, p.y)
@@ -113,7 +113,7 @@ export function NeuronBackdrop() {
         }
       }
 
-      ctx.fillStyle = `rgba(${r},${g},${b},0.42)`
+      ctx.fillStyle = `rgba(${r},${g},${b},0.62)`
       for (const n of nodes) {
         ctx.beginPath()
         ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2)

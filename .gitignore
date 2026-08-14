@@ -34,3 +34,4 @@ dist-ssr
 .legacy-src/
 public/old/
 .vercel
+.env*
