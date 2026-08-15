@@ -73,7 +73,7 @@ function BulletList({ items }: { items: string[] }) {
         >
           <span
             aria-hidden
-            className="mt-[0.65rem] h-px w-3 shrink-0 bg-border"
+            className="mt-[0.65rem] h-0.5 w-3 shrink-0 bg-muted-foreground"
           />
           <span>{item}</span>
         </li>

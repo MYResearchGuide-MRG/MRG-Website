@@ -5,6 +5,11 @@ const resourceLinks = [
   { label: "Mailing list", href: siteConfig.mailingListUrl, external: true },
   { label: "Apply", href: siteConfig.applicationFormUrl, external: true },
   { label: "Contact", href: contactMailto, external: false },
+  {
+    label: "Code of Conduct",
+    href: siteConfig.codeOfConductUrl,
+    external: true,
+  },
 ]
 
 export function SiteFooter() {
