@@ -727,15 +727,15 @@ export const applicationSteps = [
   },
   {
     step: 2,
-    title: "Create Account",
-    description:
-      "Register on the application portal with your email and basic information.",
-  },
-  {
-    step: 3,
     title: "Complete Application",
     description:
       "Submit personal information, academic background, project preferences, and statement of interest (500 words).",
+  },
+  {
+    step: 3,
+    title: "Decision Announcements",
+    description:
+      "Decisions will be sent via email after the application period closes.",
   },
 ]
 

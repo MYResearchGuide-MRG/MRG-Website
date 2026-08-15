@@ -86,7 +86,7 @@ export function SiteFooter() {
           <div className="max-w-sm">
             <p className="label-micro text-muted-foreground">MYSSP 2026</p>
             <p className="mt-5 leading-relaxed text-muted-foreground">
-              Malaysia&rsquo;s #1 research programme for pre-university students.
+              Malaysia&rsquo;s #1 science research programme for pre-university students.
             </p>
             <div className="mt-6 flex items-center gap-4">
               {socialLinks.map((link) => {
