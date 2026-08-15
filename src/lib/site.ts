@@ -3,7 +3,7 @@ export const siteConfig = {
   mailingListUrl: "https://forms.gle/Sk9JS3kcKe8qw1cU6",
   applicationFormUrl: "https://forms.gle/MV9XgBVsSfSJ1THe8",
   contactEmail: "myresearchguide.org@gmail.com",
-  darkLogoUrl: "https://www.myresearchguide.org/MRG1W.png",
+  darkLogoUrl: "/mrg-wordmark.png",
   lightLogoUrl: "/mrg-logo-inverted.png",
   programmeLogoUrl: "/myssp-logo.png",
   organiserLogoUrl: "/mrg-wordmark.png",
