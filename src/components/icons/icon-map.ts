@@ -15,9 +15,7 @@ import MagnifierIcon from "./magnifier-icon"
 import MapPinIcon from "./map-pin-icon"
 import RosetteDiscountCheckIcon from "./rosette-discount-check-icon"
 import ScanHeartIcon from "./scan-heart-icon"
-import UploadIcon from "./upload-icon"
 import UserCheckIcon from "./user-check-icon"
-import UserPlusIcon from "./user-plus-icon"
 import UsersGroupIcon from "./users-group-icon"
 
 export type IconComponent = React.ForwardRefExoticComponent<
@@ -37,10 +35,8 @@ export const requirementIcons: Record<string, IconComponent> = {
 /** Keyed by application step number. */
 export const applicationStepIcons: Record<number, IconComponent> = {
   1: MagnifierIcon,
-  2: UserPlusIcon,
-  3: FileDescriptionIcon,
-  4: UploadIcon,
-  5: DoubleCheckIcon,
+  2: FileDescriptionIcon,
+  3: DoubleCheckIcon,
 }
 
 /** Keyed by research track name — the form's "Project Field" values. */
