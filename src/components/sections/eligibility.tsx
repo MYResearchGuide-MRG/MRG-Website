@@ -65,7 +65,7 @@ export function Eligibility() {
           {/* Application steps */}
           <div id="apply" className="scroll-mt-24">
             <h3 className="label-micro text-muted-foreground">
-              3 simple steps
+              APPLICATION
             </h3>
             <RevealGroup as="ol" className="mt-6 border-t border-border">
               {applicationSteps.map((step) => {
@@ -120,25 +120,6 @@ export function Eligibility() {
             </Reveal>
           </div>
         </div>
-
-        {/* Caveats. A footnote row rather than the old inverted slab — these are
-            qualifications on the list above, not a headline of their own. */}
-        <Reveal delay={0.1}>
-          <ul className="mt-14 grid gap-x-10 gap-y-3 border-t border-border pt-8 sm:grid-cols-2">
-            {eligibility.notes.map((note) => (
-              <li
-                key={note}
-                className="flex gap-3 text-sm leading-relaxed text-muted-foreground"
-              >
-                <span
-                  aria-hidden
-                  className="mt-[0.6rem] h-px w-3 shrink-0 bg-border"
-                />
-                <span>{note}</span>
-              </li>
-            ))}
-          </ul>
-        </Reveal>
       </div>
     </section>
   )

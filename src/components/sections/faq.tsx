@@ -33,8 +33,18 @@ export function Faq() {
             <SectionHeading
               kicker="Questions"
               index="03"
-              title="Frequently asked"
-              lede="Can't find it here? Email us and a coordinator will reply."
+              title="Frequently Asked Questions"
+              lede={
+                <>
+                  Can&rsquo;t find it here? Email us at{" "}
+                  <a
+                    href={contactMailto}
+                    className="link-wipe text-foreground"
+                  >
+                    myresearchguide.org@gmail.com
+                  </a>
+                </>
+              }
             />
 
             <Reveal delay={0.06}>
@@ -52,14 +62,6 @@ export function Faq() {
               </Accordion>
             </Reveal>
 
-            <Reveal delay={0.18}>
-              <a
-                href={contactMailto}
-                className="link-wipe mt-10 inline-block text-sm font-medium"
-              >
-                Contact the team
-              </a>
-            </Reveal>
           </div>
         </div>
       </div>
