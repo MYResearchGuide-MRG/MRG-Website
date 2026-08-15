@@ -49,6 +49,7 @@ export type Track =
   | "Chemistry"
   | "Mathematics"
   | "Interdisciplinary & Social Sciences"
+  | "Physics"
 
 /** Display order, and the letter each project code is built from (A-1, B-2…). */
 export const trackOrder: Track[] = [
@@ -57,6 +58,7 @@ export const trackOrder: Track[] = [
   "Chemistry",
   "Mathematics",
   "Interdisciplinary & Social Sciences",
+  "Physics",
 ]
 
 const trackPrefix: Record<Track, string> = {
@@ -65,6 +67,7 @@ const trackPrefix: Record<Track, string> = {
   Chemistry: "C",
   Mathematics: "M",
   "Interdisciplinary & Social Sciences": "I",
+  Physics: "P",
 }
 
 /**
@@ -522,6 +525,51 @@ export const projects: Project[] = [
       "Two students: one focusing on data cleaning and Python scripting to identify the dominant linear component, the other on the nonlinear component using the Wiener-Hammerstein model. Both contribute to the write-up, presentation and interpretation.",
     status: "confirmed",
   },
+  {
+    id: "cosmic-ray-muon-imaging",
+    photo: "/mentors/kim-siang-khaw.jpg",
+    track: "Physics",
+    type: "Physics, Engineering, Computer Science",
+    title:
+      "Seeing Through Solid Rock: Finding a Hidden Chamber with Cosmic-Ray Muons",
+    mentor: "Dr. Khaw Kim Siang",
+    affiliation: "Tsung-Dao Lee Institute, Shanghai Jiao Tong University",
+    mentorBio:
+      "Dr. Khaw Kim Siang is a Penang-born particle physicist and Associate Professor at the Tsung-Dao Lee Institute, Shanghai Jiao Tong University, where he leads research on muons — from one of the most precise measurements in all of physics to imaging the inside of tunnels and mountains. His own path ran from a Chung Ling classroom in Penang to Kyoto, Tokyo, Zurich, Seattle, and now Shanghai. He has mentored students from high school to PhD level on building detectors and analyzing real experimental data, and believes the best way in is to start small: build your own detector, get your hands on messy data, and let curiosity do the rest.",
+    institution: "External",
+    participants: "Up to 3",
+    timeInvestment: "8 hours/week",
+    description:
+      "Every second, cosmic rays striking the upper atmosphere shower Earth with muons — heavy cousins of the electron that can pass through hundreds of meters of solid rock. Dense material absorbs slightly more of them than empty space, so counting the muons that survive a journey through a mountain reveals what lies inside. This is muography, and in 2017 it revealed a previously unknown void inside the Great Pyramid of Khufu. Today, it is used to monitor volcanoes, inspect tunnels, and survey underground structures. In this project, students build a working simulation of that measurement from scratch in Python. They construct a virtual target with a hidden chamber, trace muons through it, calculate how many survive, and add the random noise any real detector experiences — then attempt to recover the chamber from the simulated data. The central questions: how does a hidden void reveal itself in muon data, and how long must a detector collect data before that signal can be distinguished from chance?",
+    skillsDescription:
+      "Basic science and mathematics education, Python or any other programming skills, AI tools.",
+    skills: ["Physics", "Mathematics", "Python", "AI Tools"],
+    prepWork: [
+      "Set up a Python Jupyter notebook and read a few articles on muography and the basics of particle physics.",
+    ],
+    tasks: [
+      "Complete introductory Python tutorials (NumPy and Matplotlib basics); learn what a cosmic-ray muon is and why it penetrates hundreds of meters of rock, and reproduce a plot of muon flux versus zenith angle using a provided formula.",
+      "Build a simple 1D model: calculate how many muons survive a straight path through a given thickness of rock using the flux formula and a range–energy relation. Verify the result by hand for one or two test cases.",
+      "Construct a virtual target — a 2D density map representing a mountain or pyramid, with a hidden low-density chamber inside — and extend the supplied single-ray tracing function to send muons through the target along many directions, accumulating the material encountered along each path.",
+      'Convert the accumulated opacity into a predicted muon count for each viewing direction, then add Poisson counting noise to generate a realistic simulated dataset — the "measurement" a real detector would return.',
+      "Produce the reconstructed image and determine whether the hidden chamber is visible; repeat for a range of exposure times (one day, one week, one month) to determine how long a real detector must count before the void rises above statistical fluctuations.",
+      "Explore how the answer varies with chamber size, chamber depth, and detector placement; discuss findings with the mentor and compare them with published muography results, including the 2017 discovery of a void inside the Great Pyramid of Khufu.",
+      "Finalize figures, write a short scientific report, and prepare presentation slides.",
+      "Working individually, the student will complete the full pipeline — physics inputs, simulation code, analysis, and write-up — with weekly mentor meetings and a provided code skeleton for the ray-tracing step. Optional extensions, if time allows: comparing two reconstruction methods or applying the simulation to a real Malaysian limestone target.",
+    ],
+    deliverables: [
+      "A working Python simulation of muon imaging, documented and reproducible, that traces cosmic-ray muons through a user-defined density map and returns a realistic, noisy muon count.",
+      'A "before-and-after" image pair — the true target with its hidden chamber, alongside the reconstructed image recovered from simulated detector data — demonstrating that the void can be detected.',
+      "A signal-significance curve showing how the detectability of the hidden chamber improves with exposure time, and a quantitative answer to the project's central question: how many days a real detector would need to observe before the void becomes statistically convincing.",
+      "A brief set of comparison figures showing how the required exposure time varies with chamber size, chamber depth, and detector placement.",
+      "A short written report (LaTeX) in scientific format — introduction, methods, results, discussion — situating the findings against published muography work, such as the 2017 Khufu pyramid measurement.",
+      "A slide presentation suitable for demo day, including a live or recorded demonstration of the simulation generating an image from scratch.",
+      "Optional stretch outcome: an application of the simulation to a candidate real-world target, such as a Malaysian limestone hill or cave system, with an estimate of the exposure time the survey would require.",
+    ],
+    preferences:
+      "Strong programming skills, highly interested in interdisciplinary projects (not limited to physics or any single field in science).",
+    status: "confirmed",
+  },
 ]
 
 export const tracks: Array<Track | "All"> = ["All", ...trackOrder]
@@ -545,82 +593,87 @@ export const timeline: TimelinePhase[] = [
   {
     date: "21 August 2026",
     title: "Applications Open",
-    description:
-      "Announced via social media and partnered institutions. The portal opens for all eligible students.",
+    description: "Announced via social media and partnered institutions.",
     start: "2026-08-21",
     end: "2026-08-21",
   },
   {
-    date: "10 September 2026",
+    date: "11 September 2026",
     title: "Application Deadline",
     description:
-      "All student submissions due. The Board of Executive Directors shortlists applicants on a rolling basis, so applying early helps.",
-    start: "2026-09-10",
-    end: "2026-09-10",
+      "All student submissions due. Board of Executive Directors shortlist applicants on a rolling basis, so applying early may help to simplify your application procedure.",
+    start: "2026-09-11",
+    end: "2026-09-11",
   },
   {
-    date: "11-12 September 2026",
+    date: "12 September 2026",
     title: "Final Review",
     description:
-      "The Lead Researcher reviews the final selection. Up to three students are placed on each project.",
-    start: "2026-09-11",
+      "Lead researchers of projects announce final selection to directors (max 3 per project).",
+    start: "2026-09-12",
     end: "2026-09-12",
   },
   {
-    date: "13 September 2026",
-    title: "Participants Announced",
-    description:
-      "Students are matched with a mentor and a research project, and team leaders are assigned for bi-weekly progress checks.",
-    start: "2026-09-13",
-    end: "2026-09-13",
-  },
-  {
     date: "15 September 2026",
-    title: "Opening Ceremony",
+    title: "Selection Announcement",
     description:
-      "The programme opens with introductions to the mentor panel and the cohort.",
+      "Students are matched with mentors and research projects, where team leaders are assigned for MYSSP's bi-weekly progress check meetings.",
     start: "2026-09-15",
     end: "2026-09-15",
   },
   {
-    date: "15-20 September 2026",
-    title: "Onboarding Period",
+    date: "19 September 2026",
+    title: "Opening Ceremony",
     description:
-      "Orientation, team formation, and preparatory tasks assigned by your mentor.",
-    start: "2026-09-15",
-    end: "2026-09-20",
+      "Programme welcome to all participants, key details and relevant information shared with the cohort.",
+    start: "2026-09-19",
+    end: "2026-09-19",
   },
   {
-    date: "20 Sept - 12 Nov 2026",
-    title: "Main Research Period",
+    date: "20-25 September 2026",
+    title: "Onboarding & Burn-in",
     description:
-      "Core research and project work, roughly eight weeks, with regular mentor contact throughout.",
+      "Orientation, introductions, and preparatory tasks assigned by mentor.",
     start: "2026-09-20",
-    end: "2026-11-12",
+    end: "2026-09-25",
   },
   {
-    date: "15 October 2026",
+    date: "25 September - 20 November 2026",
+    title: "Main Research Period",
+    description: "Core research and project work.",
+    start: "2026-09-25",
+    end: "2026-11-20",
+  },
+  {
+    date: "18 October 2026",
     title: "Mid-Programme Check-in",
     description:
-      "Progress updates across all teams, plus optional talks from mentors.",
-    start: "2026-10-15",
-    end: "2026-10-15",
+      "Progress updates; optional talks by mentors and partnered organisations.",
+    start: "2026-10-18",
+    end: "2026-10-18",
   },
   {
-    date: "12 November 2026",
+    date: "18 November 2026",
     title: "Project Submission Deadline",
     description:
-      "Students finalise and submit their completed research papers or reports.",
-    start: "2026-11-12",
-    end: "2026-11-12",
+      "All project works must be submitted via the given submission templates by this date, as participants prepare for their showcase presentation on Demo Day.",
+    start: "2026-11-18",
+    end: "2026-11-18",
   },
   {
-    date: "Mid-November 2026",
-    title: "Malaysia Science Scholars' Demo Day",
+    date: "20 November 2026",
+    title: "Programme Ends",
     description:
-      "Virtual showcase of every research work, closing out the programme.",
-    start: "2026-11-13",
+      "Official conclusion of MYSSP 2026. All programme activities, mentor engagements, and participant responsibilities conclude.",
+    start: "2026-11-20",
     end: "2026-11-20",
+  },
+  {
+    date: "28 November 2026",
+    title: "Malaysia Science Scholars' Demo Day",
+    description: "Virtual showcase of all research works.",
+    start: "2026-11-28",
+    end: "2026-11-28",
   },
 ]
 
@@ -628,19 +681,20 @@ export const eligibility = {
   requirements: [
     {
       title: "Age Requirement",
-      description: "14-22 years old as of January 1, 2026",
+      description:
+        "14-20 years old as of January 1, 2026. Participants under 18 need parent/guardian consent",
       icon: "calendar",
     },
     {
       title: "Education Level",
       description:
-        "Currently enrolled in secondary school, pre-university, or undergraduate",
+        "Currently enrolled in  secondary school and pre-university",
       icon: "graduation",
     },
     {
-      title: "Geographic Location",
+      title: "Location & Access",
       description:
-        "All projects (online & campus-based) are only available to students based in Malaysia",
+        "All projects (online & campus-based) are only available to students based in Malaysia. Reliable internet access is required for virtual meetings",
       icon: "map",
     },
     {
@@ -652,21 +706,15 @@ export const eligibility = {
     {
       title: "Time Commitment",
       description:
-        "Minimum 4-5 hours a week. Commitment varies according to listed projects",
+        "Commitment varies according to listed projects",
       icon: "clock",
     },
     {
       title: "Prerequisites",
       description:
-        "Basic research skills, curiosity, and commitment (project-specific requirements vary)",
+        "No previous research experience required — just curiosity and commitment. Technical requirements vary by project (check individual project pages)",
       icon: "check",
     },
-  ],
-  notes: [
-    "No previous research experience required",
-    "Projects have varying technical requirements (check individual project pages)",
-    "Students must have reliable internet access for virtual meetings",
-    "Parent/guardian consent required for participants under 18",
   ],
 }
 
@@ -679,15 +727,15 @@ export const applicationSteps = [
   },
   {
     step: 2,
-    title: "Create Account",
-    description:
-      "Register on the application portal with your email and basic information.",
-  },
-  {
-    step: 3,
     title: "Complete Application",
     description:
       "Submit personal information, academic background, project preferences, and statement of interest (500 words).",
+  },
+  {
+    step: 3,
+    title: "Decision Announcements",
+    description:
+      "Decisions will be sent via email after the application period closes.",
   },
 ]
 
@@ -739,7 +787,7 @@ export const faqs = [
   {
     question: "Can I apply if I'm not from Malaysia?",
     answer:
-      "Unfortunately, due to our organisation's scope and limited availability at this time, MYSSP is only open to Malaysian citizens.",
+      "Unfortunately, due to our organisation's scope and limited availability at this time, MYSSP is only open to those based in Malaysia.",
   },
   {
     question: "How are teams formed?",
@@ -798,9 +846,9 @@ export const partners = [
   },
   {
     name: "MABECS Global",
-    logo: "/mabecs-logo.jpg",
+    logo: "/mabecs-logo.png",
     description: "Research Sponsor",
-    url: "#",
+    url: "https://www.mabecs.com/en-gb",
     cap: "max-h-20",
   },
 ]

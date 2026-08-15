@@ -1,13 +1,13 @@
 import * as React from "react"
 
-import { GridBackdrop } from "./grid-backdrop"
+// import { GridBackdrop } from "./grid-backdrop"
 import { NeuronBackdrop } from "./neuron-backdrop"
-import { TextBackdrop } from "./text-backdrop"
-import { WavesBackdrop } from "./waves-backdrop"
+// import { TextBackdrop } from "./text-backdrop"
+// import { WavesBackdrop } from "./waves-backdrop"
 
-import { HeroSeal } from "../hero-seal"
-import { LatticeFigure } from "../figures/lattice-figure"
-import { LazyGlobeFigure } from "../figures/lazy"
+// import { HeroSeal } from "../hero-seal"
+// import { LatticeFigure } from "../figures/lattice-figure"
+// import { LazyGlobeFigure } from "../figures/lazy"
 
 type FigureComponent = React.ComponentType<{ className?: string }>
 
@@ -26,16 +26,16 @@ export const BACKDROPS: ReadonlyArray<{
   Figure?: FigureComponent
 }> = [
   { id: "neuron", label: "Neuron", Component: NeuronBackdrop },
-  { id: "grid", label: "Seal", Component: GridBackdrop, Figure: HeroSeal },
-  { id: "globe", label: "Globe", Component: GridBackdrop, Figure: LazyGlobeFigure },
-  {
-    id: "lattice",
-    label: "Lattice",
-    Component: GridBackdrop,
-    Figure: LatticeFigure,
-  },
-  { id: "waves", label: "Waves", Component: WavesBackdrop },
-  { id: "words", label: "Words", Component: TextBackdrop },
+  // { id: "grid", label: "Seal", Component: GridBackdrop, Figure: HeroSeal },
+  // { id: "globe", label: "Globe", Component: GridBackdrop, Figure: LazyGlobeFigure },
+  // {
+  //   id: "lattice",
+  //   label: "Lattice",
+  //   Component: GridBackdrop,
+  //   Figure: LatticeFigure,
+  // },
+  // { id: "waves", label: "Waves", Component: WavesBackdrop },
+  // { id: "words", label: "Words", Component: TextBackdrop },
 ]
 
 export type BackdropId = (typeof BACKDROPS)[number]["id"]
