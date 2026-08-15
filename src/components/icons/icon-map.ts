@@ -2,6 +2,7 @@ import type * as React from "react"
 
 import type { AnimatedIconHandle, AnimatedIconProps } from "./types"
 
+import AtomIcon from "./atom-icon"
 import BookIcon from "./book-icon"
 import BrainCircuitIcon from "./brain-circuit-icon"
 import ChartLineIcon from "./chart-line-icon"
@@ -49,4 +50,5 @@ export const trackIcons: Record<string, IconComponent> = {
   Chemistry: CpuIcon,
   Mathematics: ChartLineIcon,
   "Interdisciplinary & Social Sciences": LibraryIcon,
+  Physics: AtomIcon,
 }

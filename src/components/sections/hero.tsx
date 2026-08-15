@@ -28,8 +28,14 @@ export function Hero() {
       </div>
 
       <div className="relative container flex flex-1 flex-col items-center justify-center pb-16 text-center">
-        {/* Display headline */}
-        <h1>
+        {/* Display headline. Its own entrance — scale+fade rather than the
+            plain fade() used below — since it's the hero's signature mark,
+            not another line of supporting copy. */}
+        <motion.h1
+          initial={reduced ? false : { opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 1.3, ease: easeOutExpo }}
+        >
           <img
             src={siteConfig.programmeLogoUrl}
             alt="Malaysia Science Scholar's Programme"
@@ -37,7 +43,7 @@ export function Hero() {
             height={431}
             className="h-auto w-full max-w-xl invert dark:invert-0"
           />
-        </h1>
+        </motion.h1>
 
         <motion.p
           className="mt-8 max-w-2xl text-lg leading-relaxed text-muted-foreground md:mt-10"
@@ -67,7 +73,7 @@ export function Hero() {
         </motion.p> */}
 
         <motion.div
-          className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-center"
+          className="mt-10 flex flex-wrap flex-col gap-3 sm:flex-row sm:items-center sm:justify-center"
           {...fade(0.6)}
         >
           <Button asChild size="lg" className="group">
@@ -79,6 +85,16 @@ export function Hero() {
           <Button asChild size="lg" variant="outline" className="group">
             <a href="#projects">
               Browse projects
+              <ArrowRight className="transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-1" />
+            </a>
+          </Button>
+          <Button asChild size="lg" variant="outline" className="group">
+            <a
+              href={siteConfig.infopackUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Infopack
               <ArrowRight className="transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-1" />
             </a>
           </Button>
