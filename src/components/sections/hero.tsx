@@ -36,9 +36,19 @@ export function Hero() {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1.3, ease: easeOutExpo }}
         >
+          {/* The heading is a wordmark image, so the page's most important
+              heading carried no actual text — search engines had only the alt
+              attribute to work from. The real heading now lives in text and the
+              logo is decorative, which also stops screen readers announcing the
+              same name twice. sr-only does not affect layout. */}
+          <span className="sr-only">
+            Malaysia Science Scholar&rsquo;s Programme (MYSSP) 2026 &mdash;
+            science research mentorship for Malaysian pre-university students
+          </span>
           <img
             src={siteConfig.programmeLogoUrl}
-            alt="Malaysia Science Scholar's Programme"
+            alt=""
+            aria-hidden="true"
             width={1728}
             height={431}
             className="h-auto w-full max-w-xl invert dark:invert-0"
