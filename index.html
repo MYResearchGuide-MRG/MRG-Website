@@ -5,17 +5,97 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" href="/mrg-logo-inverted.png" />
     <meta name="theme-color" content="#000000" />
+    <!-- Kept under ~155 chars: Google truncates the snippet past roughly that
+         and the tail is never shown. -->
     <meta
       name="description"
-      content="The Malaysia Science Scholar's Programme (MYSSP) is MYResearchGuide's flagship 8-week research mentorship programme for Malaysian pre-university students: project directory, researcher panel, timeline and how to apply."
+      content="MYSSP is Malaysia's first 8-week science research mentorship programme for pre-university students. See the projects, mentors, timeline and how to apply."
     />
+    <link rel="canonical" href="https://myssp.myresearchguide.org/" />
     <meta property="og:title" content="Malaysia Science Scholar's Programme" />
     <meta
       property="og:description"
       content="Malaysia's first science research programme for pre-university students, by MYResearchGuide."
     />
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://myssp.myresearchguide.org/" />
+    <meta property="og:site_name" content="MYResearchGuide" />
+    <meta property="og:locale" content="en_MY" />
+    <!-- Absolute URL is required: WhatsApp/LinkedIn/Facebook do not resolve
+         relative paths. Dimensions match the real file; a purpose-made 1200x630
+         card would preview better than this 4:1 logo. -->
+    <meta
+      property="og:image"
+      content="https://myssp.myresearchguide.org/myssp-logo.png"
+    />
+    <meta property="og:image:width" content="1728" />
+    <meta property="og:image:height" content="431" />
+    <meta
+      property="og:image:alt"
+      content="Malaysia Science Scholar's Programme"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="Malaysia Science Scholar's Programme — MYSSP 2026"
+    />
+    <meta
+      name="twitter:description"
+      content="Malaysia's first science research programme for pre-university students, by MYResearchGuide."
+    />
+    <meta
+      name="twitter:image"
+      content="https://myssp.myresearchguide.org/myssp-logo.png"
+    />
     <title>Malaysia Science Scholar's Programme — MYSSP 2026</title>
+    <!-- Structured data. The page is client-rendered, so this static block is
+         the only machine-readable description of the programme that reaches
+         crawlers which do not execute JavaScript. Dates mirror the timeline in
+         src/data/competition-data.ts — update both together. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://www.myresearchguide.org/#organization",
+            "name": "MYResearchGuide",
+            "url": "https://www.myresearchguide.org/",
+            "logo": "https://myssp.myresearchguide.org/mrg-wordmark.png",
+            "email": "myresearchguide.org@gmail.com",
+            "sameAs": [
+              "https://www.linkedin.com/company/myresearchguide/",
+              "https://www.instagram.com/myresearchguide"
+            ]
+          },
+          {
+            "@type": "EducationalOccupationalProgram",
+            "@id": "https://myssp.myresearchguide.org/#programme",
+            "name": "Malaysia Science Scholar's Programme",
+            "alternateName": "MYSSP",
+            "url": "https://myssp.myresearchguide.org/",
+            "description": "Malaysia's first science research mentorship programme for pre-university students. Over eight weeks, selected students work on a STEM research project with an experienced researcher.",
+            "programType": "Research mentorship programme",
+            "educationalProgramMode": "online",
+            "timeToComplete": "P8W",
+            "applicationDeadline": "2026-09-11",
+            "startDate": "2026-09-19",
+            "endDate": "2026-11-20",
+            "provider": {
+              "@id": "https://www.myresearchguide.org/#organization"
+            },
+            "offers": {
+              "@type": "Offer",
+              "category": "Free",
+              "price": "0",
+              "priceCurrency": "MYR"
+            },
+            "eligibilityToWorkRequirement": "Open to Malaysian pre-university students",
+            "occupationalCategory": "Science and research"
+          }
+        ]
+      }
+    </script>
     <!-- Stamp the theme class before first paint. The provider reads
          localStorage during render, but without this the page paints once in
          the wrong theme first — very visible now that the default is dark. -->
