@@ -1,7 +1,7 @@
 export const siteConfig = {
   mainSiteUrl: "https://www.myresearchguide.org/",
   mailingListUrl: "https://forms.gle/Sk9JS3kcKe8qw1cU6",
-  applicationFormUrl: "https://forms.gle/MV9XgBVsSfSJ1THe8",
+  applicationFormUrl: "https://forms.gle/fkaLs78uJuGnu7Kw7",
   contactEmail: "myresearchguide.org@gmail.com",
   darkLogoUrl: "/mrg-wordmark.png",
   lightLogoUrl: "/mrg-logo-inverted.png",
@@ -10,7 +10,7 @@ export const siteConfig = {
   infopackUrl:
     "https://docs.google.com/document/d/1C1uiwF5dlF23-1afMXPaueQCmacDuIg-aePrMAQUzMY/edit?usp=sharing",
   codeOfConductUrl:
-    "https://docs.google.com/document/d/1gKMMqH_pu_H3xZAAuOzVJ-VIZde9qhlnc1OBasOP1ho/edit?tab=t.0",
+    "https://docs.google.com/document/d/1gKMMqH_pu_H3xZAAuOzV-JVIZde9qhlnc1OBasOP1ho/edit?tab=t.0",
 } as const
 
 export const contactMailto = `mailto:${siteConfig.contactEmail}?subject=MYSSP%20Question`
