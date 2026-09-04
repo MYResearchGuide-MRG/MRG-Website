@@ -111,9 +111,7 @@ export const projects: Project[] = [
       "This project investigates how well a pretrained object detector can recognise everyday objects when they are partly hidden. Students prepare a controlled test set using common items such as bottles, cups, books and backpacks, photographed from different viewpoints and backgrounds, then covered at several occlusion levels and positions. Using a fixed pretrained model with no retraining, they record detection results and confidence scores, calculate performance at each occlusion level, and identify common failure patterns.",
     skillsDescription: "Python, GitHub, statistics.",
     skills: ["Python", "GitHub", "Statistics"],
-    prepWork: [
-      "Students need their own laptop to work on the analysis.",
-    ],
+    prepWork: ["Students need their own laptop to work on the analysis."],
     tasks: [
       "Photograph everyday objects such as bottles, cups, books and backpacks.",
       "Create a controlled test set in which objects are hidden at different percentages and positions.",
@@ -358,9 +356,7 @@ export const projects: Project[] = [
       "There are a variety of TP53 sequences that correlate to the p53 protein, known as the “Guardian of the Genome”. With multiple sources of these sequences, there is still no concentrated effort to combine and agree on a set number of them. This matters because TP53 sequences and their versions play a multitude of roles in cancer genomics, from promoting cancer growth to restricting it. Identifying specific sequences and the IDs they relate to helps other researchers know which transcript ID to focus on, and so better approach treatment or drug design.",
     skillsDescription: "Basic science education and a keen eye for detail.",
     skills: ["Bioinformatics", "Data Curation", "Attention to Detail"],
-    prepWork: [
-      "Explore NCBI and Ensembl. More will be taught later.",
-    ],
+    prepWork: ["Explore NCBI and Ensembl. More will be taught later."],
     tasks: [
       "Complete a brief tutorial and overview of the websites used for initial analysis.",
       "Clean and scrutinise 50+ TP53 sequences and identify mismatches and edits.",
@@ -380,8 +376,7 @@ export const projects: Project[] = [
     photo: "/mentors/toh-pey-yi.jpg",
     track: "Chemistry",
     type: "Chemical Engineering",
-    title:
-      "Harvesting of microalgae via flocculation and sedimentation method",
+    title: "Harvesting of microalgae via flocculation and sedimentation method",
     mentor: "Assoc. Prof. Ir. Ts. Dr. Toh Pey Yi",
     affiliation: "Universiti Tunku Abdul Rahman (on campus)",
     mentorBio:
@@ -681,8 +676,7 @@ export const eligibility = {
     },
     {
       title: "Education Level",
-      description:
-        "Currently enrolled in  secondary school and pre-university",
+      description: "Currently enrolled in  secondary school and pre-university",
       icon: "graduation",
     },
     {
@@ -699,8 +693,7 @@ export const eligibility = {
     },
     {
       title: "Time Commitment",
-      description:
-        "Commitment varies according to listed projects",
+      description: "Commitment varies according to listed projects",
       icon: "clock",
     },
     {
@@ -844,5 +837,12 @@ export const partners = [
     description: "Research Sponsor",
     url: "https://www.mabecs.com/en-gb",
     cap: "max-h-20",
+  },
+  {
+    name: "MATLAB",
+    logo: "/matlab-logo.png",
+    description: "Technology Sponsor",
+    url: "https://www.mathworks.com/products/matlab.html",
+    cap: "max-h-14",
   },
 ]
