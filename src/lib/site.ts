@@ -13,6 +13,17 @@ export const siteConfig = {
     "https://docs.google.com/document/d/1gKMMqH_pu_H3xZAAuOzV-JVIZde9qhlnc1OBasOP1ho/edit?tab=t.0",
 } as const
 
+/**
+ * Registrations close at midnight at the end of 10 September 2026 (MYT, UTC+8),
+ * i.e. 2026-09-11T00:00:00+08:00. Kept as an explicit offset so the cutoff is
+ * stable regardless of the visitor's timezone.
+ */
+export const registrationCutoff = "2026-09-11T00:00:00+08:00"
+
+export function isRegistrationOpen(now = new Date()): boolean {
+  return now.getTime() < new Date(registrationCutoff).getTime()
+}
+
 export const contactMailto = `mailto:${siteConfig.contactEmail}?subject=MYSSP%20Question`
 
 export const navItems = [

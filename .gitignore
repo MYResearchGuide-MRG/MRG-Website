@@ -17,6 +17,8 @@ dist-ssr
 .annapurna/
 .claude
 .omc
+.omo/
+.serena/
 
 # Editor directories and files
 .vscode/*
