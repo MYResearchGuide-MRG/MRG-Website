@@ -21,7 +21,7 @@ import {
   trackOrder,
   type Project,
 } from "@/data/competition-data"
-import { siteConfig } from "@/lib/site"
+import { isRegistrationOpen, siteConfig } from "@/lib/site"
 import { easeOutExpo } from "@/components/motion/variants"
 import { cn } from "@/lib/utils"
 
@@ -95,6 +95,8 @@ function tagsCoverProse(project: Project) {
 const COMPACT_QUERY = "(max-width: 1023.98px)"
 
 function ProjectDetail({ project }: { project: Project }) {
+  const registrationOpen = isRegistrationOpen()
+
   return (
     <div>
       {/* pr-12 keeps the code clear of the sheet's close button, which is
@@ -222,12 +224,18 @@ function ProjectDetail({ project }: { project: Project }) {
       </Accordion>
 
       <div className="mt-10">
-        <Button asChild size="lg" className="group">
-          <a href={siteConfig.applicationFormUrl}>
-            Apply for this project
-            <ArrowRight className="transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-1" />
-          </a>
-        </Button>
+        {registrationOpen ? (
+          <Button asChild size="lg" className="group">
+            <a href={siteConfig.applicationFormUrl}>
+              Apply for this project
+              <ArrowRight className="transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-1" />
+            </a>
+          </Button>
+        ) : (
+          <Button size="lg" disabled>
+            Applications closed
+          </Button>
+        )}
       </div>
     </div>
   )

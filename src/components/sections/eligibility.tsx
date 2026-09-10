@@ -7,7 +7,7 @@ import { applicationStepIcons, requirementIcons } from "@/components/icons/icon-
 import { SectionHeading } from "./section-heading"
 import { Button } from "@/components/ui/button"
 import { applicationSteps, eligibility } from "@/data/competition-data"
-import { siteConfig } from "@/lib/site"
+import { isRegistrationOpen, siteConfig } from "@/lib/site"
 
 /**
  * Eligibility and the application steps used to be two full-height sections
@@ -18,6 +18,8 @@ import { siteConfig } from "@/lib/site"
 export function Eligibility() {
   const [hoveredReq, setHoveredReq] = React.useState<number | null>(null)
   const [hoveredStep, setHoveredStep] = React.useState<number | null>(null)
+
+  const registrationOpen = isRegistrationOpen()
 
   return (
     <section
@@ -107,14 +109,22 @@ export function Eligibility() {
 
             <Reveal delay={0.1}>
               <div className="mt-8 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-                <Button asChild size="lg" className="group">
-                  <a href={siteConfig.applicationFormUrl}>
-                    Start your application
-                    <ArrowRight className="transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-1" />
-                  </a>
-                </Button>
+                {registrationOpen ? (
+                  <Button asChild size="lg" className="group">
+                    <a href={siteConfig.applicationFormUrl}>
+                      Start your application
+                      <ArrowRight className="transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-1" />
+                    </a>
+                  </Button>
+                ) : (
+                  <Button size="lg" disabled>
+                    Applications closed
+                  </Button>
+                )}
                 <p className="label-micro text-muted-foreground">
-                  Applications close 10 September 2026
+                  {registrationOpen
+                    ? "Applications close 10 September 2026"
+                    : "Applications closed 10 September 2026"}
                 </p>
               </div>
             </Reveal>

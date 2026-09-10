@@ -2,9 +2,11 @@ import { ArrowRight, Mail } from "lucide-react"
 
 import { Reveal } from "@/components/motion/reveal"
 import { Button } from "@/components/ui/button"
-import { siteConfig } from "@/lib/site"
+import { isRegistrationOpen, siteConfig } from "@/lib/site"
 
 export function ClosingCta() {
+  const registrationOpen = isRegistrationOpen()
+
   return (
     <section className="bg-foreground text-background">
       <div className="container py-28 md:py-40">
@@ -21,19 +23,26 @@ export function ClosingCta() {
 
           <Reveal delay={0.14}>
             <p className="mx-auto mt-8 max-w-xl text-lg leading-relaxed text-background/70">
-              Work with expert mentors on a science research project. Applications
-              close September 10, 2026.
+              {registrationOpen
+                ? "Work with expert mentors on a science research project. Applications close September 10, 2026."
+                : "Work with expert mentors on a science research project. Applications for the 2026 cohort are now closed."}
             </p>
           </Reveal>
 
           <Reveal delay={0.2}>
             <div className="mt-11 flex flex-col gap-3 sm:flex-row sm:justify-center">
-              <Button asChild size="xl" variant="inverse" className="group">
-                <a href={siteConfig.applicationFormUrl}>
-                  Apply now
-                  <ArrowRight className="transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-1" />
-                </a>
-              </Button>
+              {registrationOpen ? (
+                <Button asChild size="xl" variant="inverse" className="group">
+                  <a href={siteConfig.applicationFormUrl}>
+                    Apply now
+                    <ArrowRight className="transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-1" />
+                  </a>
+                </Button>
+              ) : (
+                <Button size="xl" variant="inverse" disabled>
+                  Applications closed
+                </Button>
+              )}
               <Button asChild size="xl" variant="inverse-outline">
                 <a href={siteConfig.mailingListUrl}>
                   <Mail />
