@@ -120,8 +120,15 @@ export function Results() {
               : "Applications are closed and under review. The countdown is live — check back at the announcement."
           }
         />
-        {announced ? (
+        {announced && selectedCount > 0 ? (
           <AnnouncedList />
+        ) : announced ? (
+          <Reveal className="mt-16">
+            <p className="max-w-2xl text-lg leading-relaxed text-muted-foreground">
+              The selection is announced and the list is being published —
+              check back shortly.
+            </p>
+          </Reveal>
         ) : (
           <PreAnnouncement remaining={remaining} />
         )}
