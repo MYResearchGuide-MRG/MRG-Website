@@ -2,6 +2,7 @@ import { SiteHeader } from "@/components/layout/site-header"
 import { SiteFooter } from "@/components/layout/site-footer"
 import { DesignSwitch } from "@/components/layout/design-switch"
 import { Hero } from "@/components/sections/hero"
+import { WrappedStats } from "@/components/sections/wrapped-stats"
 import { Partners } from "@/components/sections/partners"
 import { Projects } from "@/components/sections/projects"
 import { Eligibility } from "@/components/sections/eligibility"
@@ -15,6 +16,7 @@ function App() {
 
       <main>
         <Hero />
+        <WrappedStats />
         <Partners />
         {/* Projects leads: it is the reason to apply, and the timeline used to
             spend a full screen before anyone saw one. */}

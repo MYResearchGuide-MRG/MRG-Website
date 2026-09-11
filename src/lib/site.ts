@@ -34,7 +34,7 @@ export const navItems = [
 ] as const
 
 export const heroStats = [
-  { label: "Applications Close", value: "10 Sept" },
+  { label: "Applications", value: "280" },
   { label: "Confirmed Projects", value: "12" },
   { label: "Research Tracks", value: "6" },
 ] as const

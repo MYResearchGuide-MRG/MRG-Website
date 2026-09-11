@@ -1,51 +1,19 @@
-import * as React from "react"
 import { motion, useReducedMotion } from "motion/react"
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, Mail } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { NeuronBackdrop } from "./backdrops/neuron-backdrop"
 import { easeOutExpo } from "@/components/motion/variants"
-import {
-  heroStats,
-  isRegistrationOpen,
-  registrationCutoff,
-  siteConfig,
-} from "@/lib/site"
+import { siteConfig } from "@/lib/site"
 
-/** Remaining time to the cutoff as days + HH:MM:SS, floored so it never shows 60. */
-function formatCountdown(now: Date) {
-  const total = Math.max(
-    0,
-    Math.floor((new Date(registrationCutoff).getTime() - now.getTime()) / 1000)
-  )
-  const d = Math.floor(total / 86400)
-  const hh = String(Math.floor((total % 86400) / 3600)).padStart(2, "0")
-  const mm = String(Math.floor((total % 3600) / 60)).padStart(2, "0")
-  const ss = String(total % 60).padStart(2, "0")
-  return `${d}d ${hh}:${mm}:${ss}`
-}
+const stats = [
+  { label: "Applications", value: "280" },
+  { label: "Confirmed Projects", value: "12" },
+  { label: "Research Tracks", value: "6" },
+] as const
 
 export function Hero() {
   const reduced = useReducedMotion()
-
-  // Ticks every second while registrations are open, so the countdown stays
-  // live and the CTA flips to closed the moment the window ends — no refresh.
-  const [now, setNow] = React.useState(() => new Date())
-  const registrationOpen = isRegistrationOpen(now)
-
-  React.useEffect(() => {
-    if (!registrationOpen) return
-    const id = setInterval(() => setNow(new Date()), 1000)
-    return () => clearInterval(id)
-  }, [registrationOpen])
-
-  const stats = registrationOpen
-    ? heroStats
-    : heroStats.map((stat) =>
-        stat.label === "Applications Close"
-          ? { label: "Applications", value: "Closed" }
-          : stat
-      )
 
   const fade = (delay: number) =>
     reduced
@@ -120,34 +88,18 @@ export function Hero() {
           below. Applications close September 10th.
         </motion.p> */}
 
-        {registrationOpen && (
-          <motion.p
-            className="label-micro mt-8 text-muted-foreground tabular-nums"
-            {...fade(0.55)}
-          >
-            Applications close in{" "}
-            <span className="text-foreground">
-              {formatCountdown(now)}
-            </span>
-          </motion.p>
-        )}
 
         <motion.div
           className="mt-10 flex flex-wrap flex-col gap-3 sm:flex-row sm:items-center sm:justify-center"
           {...fade(0.6)}
         >
-          {registrationOpen ? (
-            <Button asChild size="lg" className="group">
-              <a href={siteConfig.applicationFormUrl}>
-                Apply now
-                <ArrowRight className="transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-1" />
-              </a>
-            </Button>
-          ) : (
-            <Button size="lg" disabled>
-              Applications closed
-            </Button>
-          )}
+          <Button asChild size="lg" className="group">
+            <a href={siteConfig.mailingListUrl}>
+              <Mail />
+              Get updates
+              <ArrowRight className="transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-1" />
+            </a>
+          </Button>
           <Button asChild size="lg" variant="outline" className="group">
             <a href="#projects">
               Browse projects

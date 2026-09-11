@@ -10,7 +10,7 @@ import { Menu, Moon, Sun, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { useTheme } from "@/components/theme-provider"
-import { navItems, siteConfig, isRegistrationOpen } from "@/lib/site"
+import { navItems, siteConfig } from "@/lib/site"
 import { cn } from "@/lib/utils"
 
 export function SiteHeader() {
@@ -18,8 +18,6 @@ export function SiteHeader() {
   const [scrolled, setScrolled] = React.useState(false)
   const [menuOpen, setMenuOpen] = React.useState(false)
   const reduced = useReducedMotion()
-
-  const registrationOpen = isRegistrationOpen()
 
   const { scrollYProgress } = useScroll()
   const progress = useSpring(scrollYProgress, {
@@ -123,19 +121,9 @@ export function SiteHeader() {
               <Moon className="absolute size-4 scale-0 rotate-90 transition-transform duration-500 dark:scale-100 dark:rotate-0" />
             </button>
 
-            {registrationOpen ? (
-              <Button asChild size="sm" className="hidden rounded-full sm:inline-flex">
-                <a href={siteConfig.applicationFormUrl}>Apply</a>
-              </Button>
-            ) : (
-              <Button
-                size="sm"
-                disabled
-                className="hidden rounded-full sm:inline-flex"
-              >
-                Closed
-              </Button>
-            )}
+            <Button asChild size="sm" className="hidden rounded-full sm:inline-flex">
+              <a href={siteConfig.mailingListUrl}>Get updates</a>
+            </Button>
 
             <button
               type="button"
@@ -215,15 +203,9 @@ export function SiteHeader() {
             </nav>
 
             <div className="container mt-8">
-              {registrationOpen ? (
-                <Button asChild size="lg" className="w-full">
-                  <a href={siteConfig.applicationFormUrl}>Apply now</a>
-                </Button>
-              ) : (
-                <Button size="lg" className="w-full" disabled>
-                  Applications closed
-                </Button>
-              )}
+              <Button asChild size="lg" className="w-full">
+                <a href={siteConfig.mailingListUrl}>Get updates</a>
+              </Button>
             </div>
           </motion.div>
         )}
