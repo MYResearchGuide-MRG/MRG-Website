@@ -29,12 +29,7 @@ export const contactMailto = `mailto:${siteConfig.contactEmail}?subject=MYSSP%20
 export const navItems = [
   { label: "Projects", href: "#projects" },
   { label: "Eligibility", href: "#eligibility" },
+  { label: "Results", href: "#/results" },
   { label: "Timeline", href: "#timeline" },
   { label: "FAQ", href: "#faq" },
-] as const
-
-export const heroStats = [
-  { label: "Applications", value: "280" },
-  { label: "Confirmed Projects", value: "12" },
-  { label: "Research Tracks", value: "6" },
 ] as const
