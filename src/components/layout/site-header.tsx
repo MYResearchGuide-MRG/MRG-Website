@@ -10,7 +10,7 @@ import { ArrowLeft, Menu, Moon, Sun, X } from "lucide-react"
 
 import { CountdownPill } from "@/components/results-countdown"
 import { Button } from "@/components/ui/button"
-import { homeRouteHash, useRoute } from "@/lib/results"
+import { homeRouteHash, resultsRouteHash, useAnnounced, useRoute } from "@/lib/results"
 import { useTheme } from "@/components/theme-provider"
 import { navItems, siteConfig } from "@/lib/site"
 import { cn } from "@/lib/utils"
@@ -21,6 +21,7 @@ export function SiteHeader() {
   const [menuOpen, setMenuOpen] = React.useState(false)
   const route = useRoute()
   const onResults = route === "results"
+  const announced = useAnnounced()
   const reduced = useReducedMotion()
 
   const { scrollYProgress } = useScroll()
@@ -115,15 +116,17 @@ export function SiteHeader() {
                 Back to main page
               </a>
             ) : (
-              navItems.map((item) => (
-                <a
-                  key={item.href}
-                  href={item.href}
-                  className="link-wipe text-sm text-muted-foreground hover:text-foreground"
-                >
-                  {item.label}
-                </a>
-              ))
+              navItems
+                .filter((item) => announced || item.href !== resultsRouteHash)
+                .map((item) => (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    className="link-wipe text-sm text-muted-foreground hover:text-foreground"
+                  >
+                    {item.label}
+                  </a>
+                ))
             )}
           </nav>
 
@@ -215,7 +218,9 @@ export function SiteHeader() {
                   Main page
                 </motion.a>
               ) : (
-                navItems.map((item, i) => (
+                navItems
+                  .filter((item) => announced || item.href !== resultsRouteHash)
+                  .map((item, i) => (
                   <motion.a
                     key={item.href}
                     href={item.href}

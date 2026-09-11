@@ -1,12 +1,12 @@
 import * as React from "react"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
-import { ArrowRight, ChevronDown, Search, Timer } from "lucide-react"
+import { ChevronDown, Search } from "lucide-react"
 
 import { Reveal } from "@/components/motion/reveal"
 import { AnimatedIcon } from "@/components/icons"
 import { trackIcons } from "@/components/icons/icon-map"
 import { SectionHeading } from "./section-heading"
-import { Button } from "@/components/ui/button"
+import { CountdownPill } from "@/components/results-countdown"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import {
   Accordion,
@@ -221,13 +221,7 @@ function ProjectDetail({ project }: { project: Project }) {
       </Accordion>
 
       <div className="mt-10">
-        <Button asChild size="lg" className="group">
-          <a href="#/results">
-            <Timer />
-            Selection announcement
-            <ArrowRight className="transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-1" />
-          </a>
-        </Button>
+        <CountdownPill />
       </div>
     </div>
   )

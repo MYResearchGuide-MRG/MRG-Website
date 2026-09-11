@@ -38,3 +38,6 @@ public/old/
 .vercel
 .env*
 .agents/
+
+# applicant data exports (PII — never commit)
+*.xlsx
