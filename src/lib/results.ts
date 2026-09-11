@@ -62,3 +62,16 @@ export function useRoute(): "results" | "home" {
   }, [])
   return hash === resultsRouteHash ? "results" : "home"
 }
+
+/**
+ * Live announcement flag, re-rendering every second so gates flip at the
+ * moment without a refresh. Pair with useCountdown's readout.
+ */
+export function useAnnounced(): boolean {
+  const [now, setNow] = React.useState(() => new Date())
+  React.useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 1000)
+    return () => window.clearInterval(id)
+  }, [])
+  return isSelectionAnnounced(now)
+}
