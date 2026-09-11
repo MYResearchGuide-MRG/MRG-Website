@@ -1,7 +1,7 @@
 import type { SVGProps } from "react"
 import { Mail } from "lucide-react"
 
-import { contactMailto, isRegistrationOpen, navItems, siteConfig } from "@/lib/site"
+import { contactMailto, navItems, siteConfig } from "@/lib/site"
 
 function LinkedinIcon(props: SVGProps<SVGSVGElement>) {
   return (
@@ -69,9 +69,6 @@ const socialLinks = [
 const resourceLinks = [
   { label: "Main website", href: siteConfig.mainSiteUrl, external: true },
   { label: "Mailing list", href: siteConfig.mailingListUrl, external: true },
-  ...(isRegistrationOpen()
-    ? [{ label: "Apply", href: siteConfig.applicationFormUrl, external: true }]
-    : [{ label: "Applications closed", href: undefined, external: false }]),
   { label: "Contact", href: contactMailto, external: false },
   {
     label: "Code of Conduct",

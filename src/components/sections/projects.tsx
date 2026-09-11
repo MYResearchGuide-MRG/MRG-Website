@@ -1,6 +1,6 @@
 import * as React from "react"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
-import { ArrowRight, ChevronDown, Search } from "lucide-react"
+import { ArrowRight, ChevronDown, Mail, Search } from "lucide-react"
 
 import { Reveal } from "@/components/motion/reveal"
 import { AnimatedIcon } from "@/components/icons"
@@ -21,7 +21,7 @@ import {
   trackOrder,
   type Project,
 } from "@/data/competition-data"
-import { isRegistrationOpen, siteConfig } from "@/lib/site"
+import { siteConfig } from "@/lib/site"
 import { easeOutExpo } from "@/components/motion/variants"
 import { cn } from "@/lib/utils"
 
@@ -95,8 +95,6 @@ function tagsCoverProse(project: Project) {
 const COMPACT_QUERY = "(max-width: 1023.98px)"
 
 function ProjectDetail({ project }: { project: Project }) {
-  const registrationOpen = isRegistrationOpen()
-
   return (
     <div>
       {/* pr-12 keeps the code clear of the sheet's close button, which is
@@ -224,18 +222,13 @@ function ProjectDetail({ project }: { project: Project }) {
       </Accordion>
 
       <div className="mt-10">
-        {registrationOpen ? (
-          <Button asChild size="lg" className="group">
-            <a href={siteConfig.applicationFormUrl}>
-              Apply for this project
-              <ArrowRight className="transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-1" />
-            </a>
-          </Button>
-        ) : (
-          <Button size="lg" disabled>
-            Applications closed
-          </Button>
-        )}
+        <Button asChild size="lg" className="group">
+          <a href={siteConfig.mailingListUrl}>
+            <Mail />
+            Get updates
+            <ArrowRight className="transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-1" />
+          </a>
+        </Button>
       </div>
     </div>
   )
