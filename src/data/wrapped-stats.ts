@@ -6,8 +6,6 @@
 
 export const wrappedTotal = 280
 
-export const wrappedOlympiad = { yes: 73, no: 207 } as const
-
 export type FirstChoiceStat = { code: string; count: number }
 
 /** First-choice project codes, descending by count. */
