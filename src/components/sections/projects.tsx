@@ -1,6 +1,6 @@
 import * as React from "react"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
-import { ArrowRight, ChevronDown, Mail, Search } from "lucide-react"
+import { ArrowRight, ChevronDown, Search, Timer } from "lucide-react"
 
 import { Reveal } from "@/components/motion/reveal"
 import { AnimatedIcon } from "@/components/icons"
@@ -21,7 +21,6 @@ import {
   trackOrder,
   type Project,
 } from "@/data/competition-data"
-import { siteConfig } from "@/lib/site"
 import { easeOutExpo } from "@/components/motion/variants"
 import { cn } from "@/lib/utils"
 
@@ -223,9 +222,9 @@ function ProjectDetail({ project }: { project: Project }) {
 
       <div className="mt-10">
         <Button asChild size="lg" className="group">
-          <a href={siteConfig.mailingListUrl}>
-            <Mail />
-            Get updates
+          <a href="#/results">
+            <Timer />
+            Selection announcement
             <ArrowRight className="transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-1" />
           </a>
         </Button>

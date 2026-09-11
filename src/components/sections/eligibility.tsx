@@ -1,5 +1,5 @@
 import * as React from "react"
-import { ArrowRight, Mail } from "lucide-react"
+import { ArrowRight, Timer } from "lucide-react"
 
 import { Reveal, RevealGroup, RevealItem } from "@/components/motion/reveal"
 import { AnimatedIcon } from "@/components/icons"
@@ -7,7 +7,6 @@ import { applicationStepIcons, requirementIcons } from "@/components/icons/icon-
 import { SectionHeading } from "./section-heading"
 import { Button } from "@/components/ui/button"
 import { applicationSteps, eligibility } from "@/data/competition-data"
-import { siteConfig } from "@/lib/site"
 
 /**
  * Eligibility and the application steps used to be two full-height sections
@@ -108,9 +107,9 @@ export function Eligibility() {
             <Reveal delay={0.1}>
               <div className="mt-8 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
                 <Button asChild size="lg" className="group">
-                  <a href={siteConfig.mailingListUrl}>
-                    <Mail />
-                    Get updates
+                  <a href="#/results">
+                    <Timer />
+                    Selection announcement
                     <ArrowRight className="transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-1" />
                   </a>
                 </Button>

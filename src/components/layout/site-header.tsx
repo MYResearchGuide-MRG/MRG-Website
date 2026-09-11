@@ -6,9 +6,11 @@ import {
   useScroll,
   useSpring,
 } from "motion/react"
-import { Menu, Moon, Sun, X } from "lucide-react"
+import { ArrowLeft, Menu, Moon, Sun, X } from "lucide-react"
 
+import { CountdownPill } from "@/components/results-countdown"
 import { Button } from "@/components/ui/button"
+import { homeRouteHash, useRoute } from "@/lib/results"
 import { useTheme } from "@/components/theme-provider"
 import { navItems, siteConfig } from "@/lib/site"
 import { cn } from "@/lib/utils"
@@ -17,6 +19,8 @@ export function SiteHeader() {
   const { resolvedTheme, setTheme } = useTheme()
   const [scrolled, setScrolled] = React.useState(false)
   const [menuOpen, setMenuOpen] = React.useState(false)
+  const route = useRoute()
+  const onResults = route === "results"
   const reduced = useReducedMotion()
 
   const { scrollYProgress } = useScroll()
@@ -71,7 +75,11 @@ export function SiteHeader() {
       >
         <div className="container flex h-16 items-center gap-4 md:h-20">
           <div className="flex flex-1 shrink-0 items-center gap-3">
-            <a href="#" aria-label="Back to top" className="flex items-center">
+            <a
+              href={onResults ? homeRouteHash : "#"}
+              aria-label={onResults ? "Back to main page" : "Back to top"}
+              className="flex items-center"
+            >
               <img
                 src={siteConfig.programmeLogoUrl}
                 alt="Malaysia Science Scholar's Programme"
@@ -99,15 +107,24 @@ export function SiteHeader() {
           </div>
 
           <nav className="hidden shrink-0 items-center gap-8 md:flex">
-            {navItems.map((item) => (
+            {onResults ? (
               <a
-                key={item.href}
-                href={item.href}
+                href={homeRouteHash}
                 className="link-wipe text-sm text-muted-foreground hover:text-foreground"
               >
-                {item.label}
+                Back to main page
               </a>
-            ))}
+            ) : (
+              navItems.map((item) => (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  className="link-wipe text-sm text-muted-foreground hover:text-foreground"
+                >
+                  {item.label}
+                </a>
+              ))
+            )}
           </nav>
 
           <div className="flex flex-1 shrink-0 items-center justify-end gap-2">
@@ -121,9 +138,16 @@ export function SiteHeader() {
               <Moon className="absolute size-4 scale-0 rotate-90 transition-transform duration-500 dark:scale-100 dark:rotate-0" />
             </button>
 
-            <Button asChild size="sm" className="hidden rounded-full sm:inline-flex">
-              <a href={siteConfig.mailingListUrl}>Get updates</a>
-            </Button>
+            {onResults ? (
+              <Button asChild size="sm" className="hidden rounded-full sm:inline-flex">
+                <a href={homeRouteHash}>
+                  <ArrowLeft aria-hidden />
+                  Main page
+                </a>
+              </Button>
+            ) : (
+              <CountdownPill className="hidden sm:inline-flex" />
+            )}
 
             <button
               type="button"
@@ -179,33 +203,53 @@ export function SiteHeader() {
             </div>
 
             <nav className="container mt-6 flex flex-col">
-              {navItems.map((item, i) => (
+              {onResults ? (
                 <motion.a
-                  key={item.href}
-                  href={item.href}
+                  href={homeRouteHash}
                   onClick={() => setMenuOpen(false)}
                   className="font-display border-b border-border py-5 text-3xl"
                   initial={reduced ? false : { opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={
-                    reduced
-                      ? { duration: 0 }
-                      : {
-                          delay: 0.06 + i * 0.045,
-                          duration: 0.45,
-                          ease: [0.16, 1, 0.3, 1],
-                        }
-                  }
+                  transition={reduced ? { duration: 0 } : { delay: 0.06, duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
                 >
-                  {item.label}
+                  Main page
                 </motion.a>
-              ))}
+              ) : (
+                navItems.map((item, i) => (
+                  <motion.a
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMenuOpen(false)}
+                    className="font-display border-b border-border py-5 text-3xl"
+                    initial={reduced ? false : { opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={
+                      reduced
+                        ? { duration: 0 }
+                        : {
+                            delay: 0.06 + i * 0.045,
+                            duration: 0.45,
+                            ease: [0.16, 1, 0.3, 1],
+                          }
+                    }
+                  >
+                    {item.label}
+                  </motion.a>
+                ))
+              )}
             </nav>
 
-            <div className="container mt-8">
-              <Button asChild size="lg" className="w-full">
-                <a href={siteConfig.mailingListUrl}>Get updates</a>
-              </Button>
+            <div className="container mt-8" onClick={() => setMenuOpen(false)}>
+              {onResults ? (
+                <Button asChild size="lg" className="w-full">
+                  <a href={homeRouteHash}>
+                    <ArrowLeft aria-hidden />
+                    Main page
+                  </a>
+                </Button>
+              ) : (
+                <CountdownPill className="w-full" />
+              )}
             </div>
           </motion.div>
         )}

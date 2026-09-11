@@ -1,13 +1,13 @@
 import { motion, useReducedMotion } from "motion/react"
-import { ArrowRight, Mail } from "lucide-react"
+import { ArrowRight } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { CountdownPill } from "@/components/results-countdown"
 import { NeuronBackdrop } from "./backdrops/neuron-backdrop"
 import { easeOutExpo } from "@/components/motion/variants"
 import { siteConfig } from "@/lib/site"
 
 const stats = [
-  { label: "Applications", value: "280" },
   { label: "Confirmed Projects", value: "12" },
   { label: "Research Tracks", value: "6" },
 ] as const
@@ -90,32 +90,28 @@ export function Hero() {
 
 
         <motion.div
-          className="mt-10 flex flex-wrap flex-col gap-3 sm:flex-row sm:items-center sm:justify-center"
+          className="mt-10 flex flex-col items-center gap-3"
           {...fade(0.6)}
         >
-          <Button asChild size="lg" className="group">
-            <a href={siteConfig.mailingListUrl}>
-              <Mail />
-              Get updates
-              <ArrowRight className="transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-1" />
-            </a>
-          </Button>
-          <Button asChild size="lg" variant="outline" className="group">
-            <a href="#projects">
-              Browse projects
-              <ArrowRight className="transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-1" />
-            </a>
-          </Button>
-          <Button asChild size="lg" variant="outline" className="group">
-            <a
-              href={siteConfig.infopackUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Infopack
-              <ArrowRight className="transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-1" />
-            </a>
-          </Button>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Button asChild size="lg" variant="outline" className="group">
+              <a href="#projects">
+                Browse projects
+                <ArrowRight className="transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-1" />
+              </a>
+            </Button>
+            <Button asChild size="lg" variant="outline" className="group">
+              <a
+                href={siteConfig.infopackUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Infopack
+                <ArrowRight className="transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-1" />
+              </a>
+            </Button>
+          </div>
+          <CountdownPill className="w-full justify-center sm:w-auto" />
         </motion.div>
       </div>
 
@@ -125,7 +121,7 @@ export function Hero() {
         {...fade(0.75)}
       >
         <div className="container">
-          <dl className="grid grid-cols-1 divide-y divide-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+            <dl className="grid grid-cols-1 divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0">
             {stats.map((stat) => (
               <div key={stat.label} className="py-6 text-center md:py-8">
                 <dd className="font-display text-2xl leading-none md:text-3xl">
