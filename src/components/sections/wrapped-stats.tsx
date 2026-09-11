@@ -1,12 +1,10 @@
 import * as React from "react"
-import { animate, motion, useInView, useReducedMotion } from "motion/react"
+import { motion, useReducedMotion } from "motion/react"
 import {
   BarChart3,
   GraduationCap,
   ListOrdered,
-  Medal,
   Megaphone,
-  Users,
   type LucideIcon,
 } from "lucide-react"
 
@@ -19,7 +17,6 @@ import {
   wrappedEducation,
   wrappedFirstChoice,
   wrappedHearAbout,
-  wrappedOlympiad,
   wrappedTotal,
 } from "@/data/wrapped-stats"
 import { cn } from "@/lib/utils"
@@ -46,36 +43,11 @@ const FIRST_CHOICE_MAX = Math.max(
 const EDU_MAX = Math.max(...wrappedEducation.map((s) => s.count))
 const HEAR_MAX = Math.max(...wrappedHearAbout.map((s) => s.count))
 
-/**
- * Number that ticks up when scrolled into view. Reduced motion gets the
- * final value immediately, so content is never stranded mid-count.
- */
-function CountUp({ to, className }: { to: number; className?: string }) {
-  const reduced = useReducedMotion()
-  const ref = React.useRef<HTMLSpanElement>(null)
-  const inView = useInView(ref, { once: true, amount: 0.6 })
-  const [value, setValue] = React.useState(reduced ? to : 0)
-
-  React.useEffect(() => {
-    if (reduced) {
-      setValue(to)
-      return
-    }
-    if (!inView) return
-    const controls = animate(0, to, {
-      duration: 1.6,
-      ease: easeOutExpo,
-      onUpdate: (v) => setValue(Math.round(v)),
-    })
-    return () => controls.stop()
-  }, [inView, reduced, to])
-
-  return (
-    <span ref={ref} className={cn("tabular-nums", className)}>
-      {value}
-    </span>
-  )
+/** Share of the eligible pool as a one-decimal percent string. */
+function share(count: number): string {
+  return `${((count / wrappedTotal) * 100).toFixed(1)}%`
 }
+
 
 /** Horizontal bar that grows from the left; static width on reduced motion. */
 function HBar({ pct, className }: { pct: number; className?: string }) {
@@ -169,7 +141,7 @@ function RankedRows({
           <div className="flex items-baseline justify-between gap-3 text-sm">
             <span className="min-w-0 truncate">{label}</span>
             <span className="shrink-0 tabular-nums text-muted-foreground">
-              {count}
+              {share(count)}
             </span>
           </div>
           <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
@@ -187,8 +159,6 @@ function RankedRows({
  * is untouched.
  */
 export function WrappedStats() {
-  const olympiadYesPct = (wrappedOlympiad.yes / wrappedTotal) * 100
-  const olympiadNoPct = (wrappedOlympiad.no / wrappedTotal) * 100
 
   return (
     <section
@@ -199,41 +169,10 @@ export function WrappedStats() {
         <SectionHeading
           kicker="Applications wrapped"
           title="The pool, before results"
-          lede="Applications are closed and results are still in review — here is the pool they came from: 280 eligible applications, frozen before decisions."
+          lede="Applications are closed and results are still in review — here is the pool they came from, frozen before decisions."
         />
 
-        <RevealGroup className="mt-16 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Card icon={Users} title="Eligible applications">
-            <CountUp
-              to={wrappedTotal}
-              className="text-6xl font-semibold tracking-tight md:text-7xl"
-            />
-            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-              Complete, eligible applications in the pre-results snapshot.
-            </p>
-          </Card>
-
-          <Card icon={Medal} title="Olympiad background">
-            <div className="flex items-baseline gap-6">
-              <p className="text-4xl font-semibold tracking-tight tabular-nums">
-                {wrappedOlympiad.yes}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                <span className="font-medium text-foreground tabular-nums">
-                  {wrappedOlympiad.no}
-                </span>{" "}
-                without
-              </p>
-            </div>
-            <div className="mt-5 flex h-3 gap-1">
-              <HBar pct={olympiadYesPct} className="bg-primary" />
-              <HBar pct={olympiadNoPct} className="bg-muted-foreground/40" />
-            </div>
-            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-              Applicants mentioning olympiad experience in extracurriculars.
-            </p>
-          </Card>
-
+        <RevealGroup className="mt-16 grid gap-4 md:grid-cols-2">
           <Card icon={BarChart3} title="Age at application">
             <div className="flex flex-1 items-end gap-2">
               {wrappedAge.map(({ age, count }) => (
@@ -242,7 +181,7 @@ export function WrappedStats() {
                   className="flex min-w-0 flex-1 flex-col items-center gap-2 self-stretch"
                 >
                   <span className="text-[11px] tabular-nums text-muted-foreground">
-                    {count}
+                    {share(count)}
                   </span>
                   <div className="flex w-full flex-1 items-end">
                     <VBar pct={count} className="bg-primary" />
@@ -254,7 +193,7 @@ export function WrappedStats() {
               ))}
             </div>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-              Eighteen is the modal age, at a flat 100 applicants.
+              Eighteen is the modal age, at {share(100)} of applicants.
             </p>
           </Card>
 
@@ -276,7 +215,7 @@ export function WrappedStats() {
                         )}
                       </p>
                       <span className="shrink-0 tabular-nums text-muted-foreground">
-                        {count}
+                        {share(count)}
                       </span>
                     </div>
                     <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
@@ -302,9 +241,8 @@ export function WrappedStats() {
 
         <Reveal className="mt-10">
           <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
-            Olympiad background counts mentions in extracurricular answers (77
-            of 280 mention one in any field). Education and source labels were
-            normalised from roughly 90 and 17 raw wordings.
+            Values are shares of the eligible applicant pool. Education and
+            source labels were normalised from roughly 90 and 17 raw wordings.
           </p>
         </Reveal>
       </div>
