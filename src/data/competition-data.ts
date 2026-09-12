@@ -482,10 +482,10 @@ export const projects: Project[] = [
     track: "Interdisciplinary & Social Sciences",
     type: "Control Engineering",
     title: "Identifying the Nonlinearities in an Active Suspension System",
-    mentor: "Dr. Mathias Foo",
+    mentor: "Prof. Mathias Foo",
     affiliation: "School of Engineering, University of Warwick",
     mentorBio:
-      "Dr Mathias Foo is an Associate Professor in Control and Engineering Biology at the University of Warwick. He specialises in leveraging control engineering methodologies across agriculture, automotive systems and synthetic biology, including improving crop resilience and enhancing vehicle ride comfort. He is passionate about guiding early-career researchers in control engineering fundamentals and their application to real-world problems.",
+      "Prof. Mathias Foo is an Associate Professor in Control and Engineering Biology at the University of Warwick. He specialises in leveraging control engineering methodologies across agriculture, automotive systems and synthetic biology, including improving crop resilience and enhancing vehicle ride comfort. He is passionate about guiding early-career researchers in control engineering fundamentals and their application to real-world problems.",
     institution: "External",
     participants: "2",
     timeInvestment: "6 hours/week",
@@ -521,10 +521,10 @@ export const projects: Project[] = [
     type: "Physics, Engineering, Computer Science",
     title:
       "Seeing Through Solid Rock: Finding a Hidden Chamber with Cosmic-Ray Muons",
-    mentor: "Dr. Khaw Kim Siang",
+    mentor: "Prof. Khaw Kim Siang",
     affiliation: "Tsung-Dao Lee Institute, Shanghai Jiao Tong University",
     mentorBio:
-      "Dr. Khaw Kim Siang is a Penang-born particle physicist and Associate Professor at the Tsung-Dao Lee Institute, Shanghai Jiao Tong University, where he leads research on muons — from one of the most precise measurements in all of physics to imaging the inside of tunnels and mountains. His own path ran from a Chung Ling classroom in Penang to Kyoto, Tokyo, Zurich, Seattle, and now Shanghai. He has mentored students from high school to PhD level on building detectors and analyzing real experimental data, and believes the best way in is to start small: build your own detector, get your hands on messy data, and let curiosity do the rest.",
+      "Prof. Khaw Kim Siang is a Penang-born particle physicist and Associate Professor at the Tsung-Dao Lee Institute, Shanghai Jiao Tong University, where he leads research on muons — from one of the most precise measurements in all of physics to imaging the inside of tunnels and mountains. His own path ran from a Chung Ling classroom in Penang to Kyoto, Tokyo, Zurich, Seattle, and now Shanghai. He has mentored students from high school to PhD level on building detectors and analyzing real experimental data, and believes the best way in is to start small: build your own detector, get your hands on messy data, and let curiosity do the rest.",
     institution: "External",
     participants: "Up to 3",
     timeInvestment: "8 hours/week",
