@@ -142,19 +142,19 @@ export const SELECTED: SelectedRow[] = [
   {
     code: "C-1",
     name: "Deva Loshhani A/P Kumaran",
-    school: "",
+    school: "SMK Sentosa",
     programme: "",
   },
   {
     code: "C-1",
     name: "Harshyetha Varsha Murali",
-    school: "",
+    school: "Sekolah Tenby Ipoh",
     programme: "",
   },
   {
     code: "C-1",
     name: "Stephanie Teh En Yue",
-    school: "",
+    school: "Kolej Matrikulasi Perak",
     programme: "",
   },
   {
