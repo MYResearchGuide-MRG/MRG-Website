@@ -18,8 +18,8 @@ export function ClosingCta() {
 
           <Reveal delay={0.14}>
             <p className="mx-auto mt-8 max-w-xl text-lg leading-relaxed text-background/70">
-              Selection announcement opens 15 September 2026 — the countdown
-              leads to the selected-applicants reveal.
+              Selection announcement opens 12 September 2026 at 10:00 PM — the
+              countdown leads to the selected-applicants reveal.
             </p>
           </Reveal>
 

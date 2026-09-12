@@ -1,8 +1,12 @@
 import * as React from "react"
 import { useReducedMotion } from "motion/react"
 
-/** Selection announcement moment, Malaysia time with an explicit offset. */
-export const selectionAnnouncementDate = "2026-09-15T00:00:00+08:00"
+/**
+ * Selection announcement moment, MYT (UTC+8): the register goes public at
+ * 22:00 on 12 September 2026, when this release reaches production. Kept as an
+ * explicit offset so the moment is stable regardless of the visitor's timezone.
+ */
+export const selectionAnnouncementDate = "2026-09-12T22:00:00+08:00"
 
 /** True once the announcement moment has passed. */
 export function isSelectionAnnounced(now: Date = new Date()): boolean {
@@ -47,20 +51,58 @@ export const resultsRouteHash = "#/results"
 export const homeRouteHash = "#/"
 
 /**
- * Current view, re-rendering on hash navigation. Scrolls to top on every
- * route change so the results page always opens at its head.
+ * A scene anchor inside the results route: `#/results/age`. Anything after the
+ * route hash names an element on that page.
+ */
+function sceneFromHash(hash: string): string | null {
+  const prefix = `${resultsRouteHash}/`
+  return hash.startsWith(prefix) ? hash.slice(prefix.length) : null
+}
+
+/**
+ * Current view, re-rendering on hash navigation.
+ *
+ * In-page anchors must not navigate. The announcement is built out of them —
+ * every scene carries one and the opening's skip control is a native anchor —
+ * and treating any unrecognised hash as "home" would unmount the page the
+ * anchor points into. A plain hash therefore keeps the current view, and only
+ * falls back to home when its target element is absent, which is how the back
+ * button returns from `#/results` to a section on the home page.
  */
 export function useRoute(): "results" | "home" {
-  const [hash, setHash] = React.useState(() => window.location.hash)
+  const [route, setRoute] = React.useState<"results" | "home">(() =>
+    window.location.hash === resultsRouteHash || sceneFromHash(window.location.hash) !== null
+      ? "results"
+      : "home",
+  )
+
   React.useEffect(() => {
     const onChange = () => {
-      setHash(window.location.hash)
+      const hash = window.location.hash
+      const scene = sceneFromHash(hash)
+      if (hash === resultsRouteHash || scene !== null) {
+        setRoute("results")
+      } else if (hash === homeRouteHash || hash === "" || hash === "#") {
+        setRoute("home")
+      } else if (document.getElementById(hash.slice(1)) === null) {
+        setRoute("home")
+      } else {
+        return
+      }
       window.scrollTo(0, 0)
     }
     window.addEventListener("hashchange", onChange)
     return () => window.removeEventListener("hashchange", onChange)
   }, [])
-  return hash === resultsRouteHash ? "results" : "home"
+
+  // A shared scene link can only resolve once the scene it names has mounted.
+  React.useEffect(() => {
+    if (route !== "results") return
+    const scene = sceneFromHash(window.location.hash)
+    if (scene) document.getElementById(scene)?.scrollIntoView()
+  }, [route])
+
+  return route
 }
 
 /**
