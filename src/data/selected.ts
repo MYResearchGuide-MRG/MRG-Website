@@ -195,6 +195,12 @@ export const SELECTED: SelectedRow[] = [
   },
   {
     code: "I-2",
+    name: "NG WEN JUN",
+    school: "Sunway College",
+    programme: "A-Levels",
+  },
+  {
+    code: "I-2",
     name: "Zahra Adam",
     school: "Garden International School",
     programme: "IGCSE",
