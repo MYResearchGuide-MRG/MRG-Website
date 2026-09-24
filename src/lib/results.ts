@@ -48,6 +48,7 @@ export function useCountdown(): string {
 
 /** Hash route for the standalone selection-announcement page. */
 export const resultsRouteHash = "#/results"
+export const resourcesRouteHash = "#/resources"
 export const homeRouteHash = "#/"
 
 /**
@@ -69,10 +70,12 @@ function sceneFromHash(hash: string): string | null {
  * falls back to home when its target element is absent, which is how the back
  * button returns from `#/results` to a section on the home page.
  */
-export function useRoute(): "results" | "home" {
-  const [route, setRoute] = React.useState<"results" | "home">(() =>
+export function useRoute(): "results" | "resources" | "home" {
+  const [route, setRoute] = React.useState<"results" | "resources" | "home">(() =>
     window.location.hash === resultsRouteHash || sceneFromHash(window.location.hash) !== null
       ? "results"
+      : window.location.hash === resourcesRouteHash
+        ? "resources"
       : "home",
   )
 
@@ -82,6 +85,8 @@ export function useRoute(): "results" | "home" {
       const scene = sceneFromHash(hash)
       if (hash === resultsRouteHash || scene !== null) {
         setRoute("results")
+      } else if (hash === resourcesRouteHash) {
+        setRoute("resources")
       } else if (hash === homeRouteHash || hash === "" || hash === "#") {
         setRoute("home")
       } else if (document.getElementById(hash.slice(1)) === null) {

@@ -10,6 +10,7 @@ import { Projects } from "@/components/sections/projects"
 import { Eligibility } from "@/components/sections/eligibility"
 import { Faq } from "@/components/sections/faq"
 import { ClosingCta } from "@/components/sections/closing-cta"
+import { Resources } from "@/components/sections/resources"
 import { useRoute } from "@/lib/results"
 
 function App() {
@@ -22,6 +23,8 @@ function App() {
     document.title =
       route === "results"
         ? `Selection announcement | ${defaultTitle.current}`
+        : route === "resources"
+          ? `Resources | ${defaultTitle.current}`
         : defaultTitle.current
   }, [route])
 
@@ -32,6 +35,8 @@ function App() {
       <main>
         {route === "results" ? (
           <Results />
+        ) : route === "resources" ? (
+          <Resources />
         ) : (
           <>
             <Hero />

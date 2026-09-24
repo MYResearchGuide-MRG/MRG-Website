@@ -20,7 +20,7 @@ export function SiteHeader() {
   const [scrolled, setScrolled] = React.useState(false)
   const [menuOpen, setMenuOpen] = React.useState(false)
   const route = useRoute()
-  const onResults = route === "results"
+  const onStandalonePage = route !== "home"
   const announced = useAnnounced()
   const reduced = useReducedMotion()
 
@@ -77,8 +77,8 @@ export function SiteHeader() {
         <div className="container flex h-16 items-center gap-4 md:h-20">
           <div className="flex flex-1 shrink-0 items-center gap-3">
             <a
-              href={onResults ? homeRouteHash : "#"}
-              aria-label={onResults ? "Back to main page" : "Back to top"}
+              href={onStandalonePage ? homeRouteHash : "#"}
+              aria-label={onStandalonePage ? "Back to main page" : "Back to top"}
               className="flex items-center"
             >
               <img
@@ -87,28 +87,10 @@ export function SiteHeader() {
                 className="h-8 invert md:h-9 dark:invert-0"
               />
             </a>
-            <span
-              aria-hidden
-              className="hidden h-7 w-px bg-muted-foreground/50 sm:block"
-            />
-            <a
-              href={siteConfig.mainSiteUrl}
-              aria-label="MYResearchGuide home"
-              className="hidden items-end gap-1.5 sm:flex"
-            >
-              <span className="label-micro normal-case text-muted-foreground">
-                BY
-              </span>
-              <img
-                src={siteConfig.organiserLogoUrl}
-                alt="MYResearchGuide"
-                className="h-4 invert md:h-[1.1rem] dark:invert-0"
-              />
-            </a>
           </div>
 
           <nav className="hidden shrink-0 items-center gap-8 md:flex">
-            {onResults ? (
+            {onStandalonePage ? (
               <a
                 href={homeRouteHash}
                 className="link-wipe text-sm text-muted-foreground hover:text-foreground"
@@ -141,7 +123,7 @@ export function SiteHeader() {
               <Moon className="absolute size-4 scale-0 rotate-90 transition-transform duration-500 dark:scale-100 dark:rotate-0" />
             </button>
 
-            {onResults ? (
+            {onStandalonePage ? (
               <Button asChild size="sm" className="hidden rounded-full sm:inline-flex">
                 <a href={homeRouteHash}>
                   <ArrowLeft aria-hidden />
@@ -206,7 +188,7 @@ export function SiteHeader() {
             </div>
 
             <nav className="container mt-6 flex flex-col">
-              {onResults ? (
+              {onStandalonePage ? (
                 <motion.a
                   href={homeRouteHash}
                   onClick={() => setMenuOpen(false)}
@@ -245,7 +227,7 @@ export function SiteHeader() {
             </nav>
 
             <div className="container mt-8" onClick={() => setMenuOpen(false)}>
-              {onResults ? (
+              {onStandalonePage ? (
                 <Button asChild size="lg" className="w-full">
                   <a href={homeRouteHash}>
                     <ArrowLeft aria-hidden />

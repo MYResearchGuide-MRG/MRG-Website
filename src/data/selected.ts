@@ -63,8 +63,8 @@ export const SELECTED: SelectedRow[] = [
   },
   {
     code: "A-3",
-    name: "Uiyun Lee",
-    school: "Garden International School Malaysia",
+    name: "Ananya Prasad",
+    school: "Garden International School",
     programme: "IGCSE",
   },
   {
@@ -138,12 +138,6 @@ export const SELECTED: SelectedRow[] = [
     name: "Xin Yuan LEOW",
     school: "Garden International School",
     programme: "A-Levels",
-  },
-  {
-    code: "C-1",
-    name: "Deva Loshhani A/P Kumaran",
-    school: "SMK Sentosa",
-    programme: "",
   },
   {
     code: "C-1",
