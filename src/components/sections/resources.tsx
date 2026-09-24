@@ -7,39 +7,36 @@ type ResourceLink = {
 
 type ResourceGroup = {
   title: string
-  detail?: string
   links: ResourceLink[]
 }
 
 const resourceGroups: ResourceGroup[] = [
   {
-    title: "MYSSP Demo Day Presentation",
-    detail: "Submission components 1 and 2",
+    title: "MYSSP Demo Day Presentation Materials",
     links: [
       {
-        label: "Presentation guidelines",
+        label: "Demo Day Presentation Guidelines",
         href: "https://docs.google.com/document/d/1LkH0IUbS3c6RUpmnt_d95C1QCiYTAh88mH1R7GMbzLk/edit?usp=sharing",
       },
       {
-        label: "Slides content guide",
+        label: "Demo Day Slides Content Guidelines",
         href: "https://canva.link/contentguidelinemyssp2026",
       },
       {
-        label: "MYSSP 2026 Demo Day official presentation template",
+        label: "Demo Day Slides Template",
         href: "https://canva.link/8rrag9g0rffl73v",
       },
     ],
   },
   {
-    title: "LaTeX Write-ups",
-    detail: "Submission component 3",
+    title: "Research Write-ups Materials",
     links: [
       {
-        label: "LaTeX paper guidelines",
+        label: "Research Write-ups Guidelines",
         href: "https://docs.google.com/document/d/1WHRzQ3t9Xy1Jkkp0DL20q70b6_437pXqs1vohcWY0rI/edit?usp=sharing",
       },
       {
-        label: "MYSSP LaTeX report official template",
+        label: "Research Write-ups Template (Overleaf)",
         href: "https://www.overleaf.com/read/mzbpvwfjszry#6fd3b0",
       },
     ],
@@ -48,7 +45,7 @@ const resourceGroups: ResourceGroup[] = [
     title: "Judging rubric",
     links: [
       {
-        label: "Official judging rubric for MYSSP 2026",
+        label: "Demo Day Judging Rubrics",
         href: "https://docs.google.com/document/d/1n3VA7un4CZ7THHeRjW_6qN6YSI0C3-lmlL3f3mR8Tz4/edit?usp=sharing",
       },
     ],
@@ -73,9 +70,6 @@ export function Resources() {
                 <h2 className="font-display text-3xl tracking-tight md:text-4xl">
                   {group.title}
                 </h2>
-                {group.detail ? (
-                  <p className="mt-2 text-sm text-muted-foreground">{group.detail}</p>
-                ) : null}
               </div>
               <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {group.links.map((link) => (
