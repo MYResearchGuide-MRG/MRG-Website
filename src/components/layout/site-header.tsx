@@ -1,15 +1,6 @@
 import * as React from "react"
-import {
-  AnimatePresence,
-  motion,
-  useReducedMotion,
-  useScroll,
-  useSpring,
-} from "motion/react"
-import { ArrowLeft, Menu, Moon, Sun, X } from "lucide-react"
+import { Menu, Moon, Sun, X } from "lucide-react"
 
-import { CountdownPill } from "@/components/results-countdown"
-import { Button } from "@/components/ui/button"
 import { homeRouteHash, resultsRouteHash, useAnnounced, useRoute } from "@/lib/results"
 import { useTheme } from "@/components/theme-provider"
 import { navItems, siteConfig } from "@/lib/site"
@@ -20,80 +11,116 @@ export function SiteHeader() {
   const [scrolled, setScrolled] = React.useState(false)
   const [menuOpen, setMenuOpen] = React.useState(false)
   const route = useRoute()
-  const onStandalonePage = route !== "home"
   const announced = useAnnounced()
-  const reduced = useReducedMotion()
+  const shellRef = React.useRef<HTMLDivElement>(null)
+  const toggleRef = React.useRef<HTMLButtonElement>(null)
+  const panelRef = React.useRef<HTMLElement>(null)
 
-  const { scrollYProgress } = useScroll()
-  const progress = useSpring(scrollYProgress, {
-    stiffness: 240,
-    damping: 40,
-    restDelta: 0.001,
-  })
+  const items = navItems.filter((item) => announced || item.href !== resultsRouteHash)
+  const isActive = (href: string) => href === `#/${route}`
+  const closeMenu = () => setMenuOpen(false)
 
   React.useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24)
+    const onScroll = () => setScrolled(window.scrollY > 30)
     onScroll()
     window.addEventListener("scroll", onScroll, { passive: true })
     return () => window.removeEventListener("scroll", onScroll)
   }, [])
 
-  // Lock body scroll while the mobile panel is open.
   React.useEffect(() => {
     if (!menuOpen) return
-    const prev = document.body.style.overflow
+
+    const previousOverflow = document.body.style.overflow
     document.body.style.overflow = "hidden"
+    panelRef.current?.querySelector("a")?.focus({ preventScroll: true })
+
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (!shellRef.current?.contains(event.target as Node)) setMenuOpen(false)
+    }
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMenuOpen(false)
+        toggleRef.current?.focus()
+      }
+      if (event.key !== "Tab" || !shellRef.current) return
+      // Keep keyboard focus in the header while background scrolling is locked.
+      const focusable = Array.from(
+        shellRef.current.querySelectorAll<HTMLElement>("a[href], button")
+      ).filter((element) => element.getClientRects().length > 0)
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last?.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first?.focus()
+      }
+    }
+    const desktop = window.matchMedia("(min-width: 1024px)")
+    const closeOnDesktop = (event: MediaQueryListEvent) => {
+      if (event.matches) setMenuOpen(false)
+    }
+    document.addEventListener("pointerdown", closeOnOutsideClick)
+    document.addEventListener("keydown", onKey)
+    desktop.addEventListener("change", closeOnDesktop)
     return () => {
-      document.body.style.overflow = prev
+      document.body.style.overflow = previousOverflow
+      document.removeEventListener("pointerdown", closeOnOutsideClick)
+      document.removeEventListener("keydown", onKey)
+      desktop.removeEventListener("change", closeOnDesktop)
     }
   }, [menuOpen])
 
-  // Close the panel on Escape.
-  React.useEffect(() => {
-    if (!menuOpen) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMenuOpen(false)
-    }
-    window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
-  }, [menuOpen])
+  const floating = scrolled || menuOpen
 
   return (
-    <>
-      <header
+    <header className="pointer-events-none fixed inset-x-0 top-0 z-40 flex justify-center px-3 sm:px-6">
+      <div
+        ref={shellRef}
         className={cn(
-          // backdrop-blur-xl stays permanently applied (never toggled) —
-          // Safari rebuilds the compositing layer every time backdrop-filter
-          // is added or removed from an element's class list, and doing that
-          // on a fixed header during scroll is what caused page content
-          // beneath it to lose its background paint mid-scroll on iOS. Only
-          // the tint's own opacity animates now, a cheap, stable transition.
-          "fixed inset-x-0 top-0 z-40 border-b backdrop-blur-xl transition-[background-color,border-color] duration-500",
-          scrolled
-            ? "border-border bg-background/80"
-            : "border-transparent bg-transparent"
+          // Opaque at all times: only width, offset and border animate, so
+          // nothing on the fixed header changes compositing path mid-scroll.
+          "pointer-events-auto relative w-full rounded-xl border bg-background text-foreground transition-[max-width,margin-top,border-color,box-shadow] duration-500 ease-out motion-reduce:transition-none",
+          floating
+            ? "mt-3 max-w-[75rem] border-border shadow-[0_12px_36px_rgb(0_0_0/0.24)]"
+            : "mt-0 max-w-[90rem] border-transparent"
         )}
       >
-        <div className="container flex h-16 items-center gap-4">
-          <div className="flex flex-1 shrink-0 items-center gap-3">
-            <a
-              href={onStandalonePage ? homeRouteHash : "#"}
-              aria-label={onStandalonePage ? "Back to main page" : "Back to top"}
-              className="flex items-center"
-            >
-              <img
-                src={siteConfig.programmeLogoUrl}
-                alt="Malaysia Science Scholar's Programme"
-                className="h-8 invert dark:invert-0"
-              />
-            </a>
-          </div>
+        <div className="flex h-[62px] items-center justify-between gap-3 px-3 sm:h-[70px] sm:gap-6 sm:px-6">
+          <a
+            href={homeRouteHash}
+            onClick={closeMenu}
+            aria-label="MYSSP home"
+            className="flex shrink-0 items-center"
+          >
+            <img
+              src={siteConfig.headerLogoUrl}
+              alt="Malaysia Science Scholar's Programme"
+              width={1200}
+              height={298}
+              className="h-9 w-auto invert sm:h-10 dark:invert-0"
+            />
+          </a>
 
-          <div className="flex flex-1 shrink-0 items-center justify-end gap-2">
+          <nav aria-label="Main navigation" className="hidden items-center gap-6 lg:flex">
+            {items.map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                aria-current={isActive(item.href) ? "page" : undefined}
+                className="text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground aria-[current=page]:text-foreground"
+              >
+                {item.label}
+              </a>
+            ))}
+          </nav>
+
+          <div className="flex shrink-0 items-center gap-2.5">
             <button
               type="button"
               onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-              className="relative flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
+              className="relative flex size-10 items-center justify-center rounded-[7px] text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground"
               aria-label="Toggle theme"
             >
               <Sun className="size-4 scale-100 rotate-0 transition-transform duration-500 dark:scale-0 dark:-rotate-90" />
@@ -101,112 +128,42 @@ export function SiteHeader() {
             </button>
 
             <button
+              ref={toggleRef}
               type="button"
-              onClick={() => setMenuOpen(true)}
-              className="flex size-9 items-center justify-center rounded-full text-foreground"
-              aria-label="Open menu"
+              onClick={() => setMenuOpen((open) => !open)}
+              className="flex size-11 items-center justify-center rounded-[7px] hover:bg-foreground/[0.06] lg:hidden"
+              aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
               aria-expanded={menuOpen}
+              aria-controls="mobile-navigation-menu"
             >
-              <Menu className="size-5" />
+              {menuOpen ? <X className="size-[22px]" aria-hidden /> : <Menu className="size-[22px]" aria-hidden />}
             </button>
           </div>
         </div>
 
-        {/* Scroll progress hairline */}
-        <motion.div
-          aria-hidden
-          className="h-px origin-left bg-foreground"
-          style={{ scaleX: progress, opacity: scrolled ? 1 : 0 }}
-        />
-      </header>
-
-      {/* Mobile panel. Rendered as a sibling of <header>, not a descendant —
-          the header carries a permanent backdrop-filter, and per spec any
-          element with backdrop-filter becomes a new containing block for its
-          position:fixed descendants. Nested here, this panel's `inset-0`
-          would resolve against the header's own (tiny) box instead of the
-          viewport, clipping it to a thin strip instead of covering the
-          screen. */}
-      <AnimatePresence>
         {menuOpen && (
-          <motion.div
-            className="fixed inset-0 z-50 bg-background"
-            initial={reduced ? false : { opacity: 0, y: -12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={reduced ? undefined : { opacity: 0, y: -12 }}
-            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          <nav
+            ref={panelRef}
+            id="mobile-navigation-menu"
+            aria-label="Mobile navigation"
+            className="absolute inset-x-0 top-[calc(100%+8px)] max-h-[calc(100dvh-114px)] animate-in overflow-y-auto overscroll-contain rounded-xl border border-border bg-popover p-3 shadow-[0_16px_40px_rgb(0_0_0/0.35)] duration-200 fade-in slide-in-from-top-1.5 lg:hidden"
           >
-            <div className="container flex h-16 items-center justify-between">
-              <img
-                src={siteConfig.programmeLogoUrl}
-                alt="Malaysia Science Scholar's Programme"
-                className="h-8 invert dark:invert-0"
-              />
-              <button
-                type="button"
-                onClick={() => setMenuOpen(false)}
-                className="flex size-9 items-center justify-center rounded-full text-foreground"
-                aria-label="Close menu"
-                autoFocus
-              >
-                <X className="size-5" />
-              </button>
-            </div>
-
-            <nav className="container mt-6 flex flex-col">
-              {onStandalonePage ? (
-                <motion.a
-                  href={homeRouteHash}
-                  onClick={() => setMenuOpen(false)}
-                  className="font-display border-b border-border py-5 text-3xl"
-                  initial={reduced ? false : { opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={reduced ? { duration: 0 } : { delay: 0.06, duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+            <div className="grid">
+              {items.map((item) => (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  onClick={closeMenu}
+                  aria-current={isActive(item.href) ? "page" : undefined}
+                  className="rounded-md px-4 py-3.5 text-[15px] text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground aria-[current=page]:bg-foreground/[0.06] aria-[current=page]:text-foreground"
                 >
-                  Main page
-                </motion.a>
-              ) : (
-                navItems
-                  .filter((item) => announced || item.href !== resultsRouteHash)
-                  .map((item, i) => (
-                  <motion.a
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setMenuOpen(false)}
-                    className="font-display border-b border-border py-5 text-3xl"
-                    initial={reduced ? false : { opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={
-                      reduced
-                        ? { duration: 0 }
-                        : {
-                            delay: 0.06 + i * 0.045,
-                            duration: 0.45,
-                            ease: [0.16, 1, 0.3, 1],
-                          }
-                    }
-                  >
-                    {item.label}
-                  </motion.a>
-                ))
-              )}
-            </nav>
-
-            <div className="container mt-8" onClick={() => setMenuOpen(false)}>
-              {onStandalonePage ? (
-                <Button asChild size="lg" className="w-full">
-                  <a href={homeRouteHash}>
-                    <ArrowLeft aria-hidden />
-                    Main page
-                  </a>
-                </Button>
-              ) : (
-                <CountdownPill className="w-full" />
-              )}
+                  {item.label}
+                </a>
+              ))}
             </div>
-          </motion.div>
+          </nav>
         )}
-      </AnimatePresence>
-    </>
+      </div>
+    </header>
   )
 }
