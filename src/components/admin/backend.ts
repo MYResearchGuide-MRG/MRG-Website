@@ -8,13 +8,14 @@ import type { ProjectSplit } from "./project-registry-model"
 
 // Device-only preparation stays available on localhost. Production never uses it.
 export const useLiveBackend = !isLocalPreview || import.meta.env.VITE_ACCESS_MODE === "supabase"
-type ProjectRecord = { id: string; code: string; payload: Board; published: boolean; editing_enabled: boolean; retired: boolean }
+export type ProjectRecord = { id: string; code: string; payload: Board; published: boolean; editing_enabled: boolean; retired: boolean; deleted_at: string | null }
 type State = {
   ready: boolean; error: string; isAdmin: boolean; userId: string | null;
   people: Assignment[]; projects: ProjectRecord[]; drafts: Record<string, Draft>; revisions: Record<string, number>;
   visibility: Record<string, boolean>; editing: Record<string, boolean>; boards: Board[];
+  deletedPeople: Assignment[]; deletedProjects: ProjectRecord[];
 }
-const empty: State = { ready: false, error: "", isAdmin: false, userId: null, people: [], projects: [], drafts: {}, revisions: {}, visibility: {}, editing: {}, boards: [] }
+const empty: State = { ready: false, error: "", isAdmin: false, userId: null, people: [], projects: [], drafts: {}, revisions: {}, visibility: {}, editing: {}, boards: [], deletedPeople: [], deletedProjects: [] }
 let state = empty
 const listeners = new Set<() => void>()
 let epoch = 0
@@ -37,7 +38,9 @@ export async function refreshBackend() {
     ])
     if (projects.error || people.error || drafts.error || role.error) throw new Error("Database setup is incomplete or access was denied.")
     if (ticket !== epoch) return
-    const records = projects.data as ProjectRecord[]
+    const allProjects = projects.data as ProjectRecord[]
+    const records = allProjects.filter(p => !p.deleted_at)
+    const allPeople = (people.data || []).map(p => ({id:p.id, name:p.name, email:p.email, projectId:p.project_id, revision:1, revoked:p.revoked, code:null, expiresAt:0, usedAt:null, invitedAt:p.invited_at ? Date.parse(p.invited_at) : null, attempts:0, lockedUntil:0, deletedAt:p.deleted_at}))
     publish({
       ready: true, error: "", isAdmin: role.data === true, userId,
       projects: records, boards: records.map(p => ({...p.payload, id: p.id, code: p.code})),
@@ -48,7 +51,9 @@ export async function refreshBackend() {
         return project && isDraft(d.content, {...project.payload, id: project.id, code: project.code})
       }).map(d => [d.project_id,d.content])),
       revisions: Object.fromEntries((drafts.data || []).map(d => [d.project_id,d.revision])),
-      people: (people.data || []).map(p => ({id:p.id, name:p.name, email:p.email, projectId:p.project_id, revision:1, revoked:p.revoked, code:null, expiresAt:0, usedAt:null, invitedAt:p.invited_at ? Date.parse(p.invited_at) : null, attempts:0, lockedUntil:0})),
+      people: allPeople.filter(p => !p.deletedAt),
+      deletedPeople: allPeople.filter(p => p.deletedAt),
+      deletedProjects: allProjects.filter(p => p.deleted_at),
     })
   } catch (error) {
     if (ticket === epoch) publish({...empty, error: error instanceof Error ? error.message : "Could not connect to the database."})
@@ -84,7 +89,13 @@ export async function signOutLive() {
   await supabase?.auth.signOut()
   await refreshBackend()
 }
-export function liveProject() { return state.ready && !state.isAdmin ? state.people.find(p => !p.revoked)?.projectId || null : null }
+export function liveProject() { return state.ready && !state.isAdmin ? state.people.find(p => !p.revoked && state.boards.some(b => b.id === p.projectId))?.projectId || null : null }
+export async function setDeletedLive(kind: "participant" | "project", id: string, remove: boolean, destination?: string) {
+  if (!supabase || !state.isAdmin) throw new Error("Committee sign-in required.")
+  const { error } = await supabase.rpc("myssp_set_deleted", {kind, record_id:id, remove, destination:destination ?? null})
+  if (error) throw new Error(remove ? "Could not delete this record. Refresh and try again." : "Could not restore this record. Check the destination project and try again.")
+  await refreshBackend()
+}
 export async function importLiveParticipants(rows: ImportRow[]) {
   if (!supabase || !state.isAdmin) return false
   const {error} = await supabase.rpc("myssp_import_participants", {rows:rows.map(r => ({name:r.name,email:r.email,project_id:r.projectId}))})

@@ -11,6 +11,7 @@ test('database enforces publication, assignment, editing locks, admin access and
     grant usage on schema public,auth to anon,authenticated,service_role;
     grant execute on function auth.uid() to anon,authenticated,service_role;`)
   await db.exec(readFileSync(new URL('../migrations/202611040001_myssp_access.sql',import.meta.url),'utf8'))
+  await db.exec(readFileSync(new URL('../migrations/202611040003_roster_and_trash.sql',import.meta.url),'utf8'))
   const admin='00000000-0000-0000-0000-000000000001',alice='00000000-0000-0000-0000-000000000002',bob='00000000-0000-0000-0000-000000000003'
   await db.exec(`insert into auth.users values('${admin}'),('${alice}'),('${bob}');
     insert into public.myssp_admins values('${admin}');
@@ -18,7 +19,8 @@ test('database enforces publication, assignment, editing locks, admin access and
     insert into public.myssp_participants(user_id,name,email,project_id) values('${alice}','Alice','alice@example.com','one'),('${bob}','Bob','bob@example.com','two');`)
   async function as(role,id='') {await db.exec(`reset role; select set_config('request.jwt.claim.sub','${id}',false); set role ${role};`)}
   const count=async table=>(await db.query(`select count(*)::int as n from ${table}`)).rows[0].n
-  const body=id=>({projectId:id,version:1,overviewFormat:'markdown',title:'Title',summary:'Abstract',question:'',method:'',findings:'',slides:'',paper:'',video:''})
+  const roster=(await db.query('select id,name,project_id from myssp_participants')).rows
+  const body=id=>({projectId:id,version:1,overviewFormat:'markdown',title:'Title',summary:'Abstract',question:'',method:'',findings:'',slides:'',paper:'',video:'',teamMembers:roster.filter(p=>p.project_id===id).map(p=>({id:p.id,name:p.name,school:'',bio:'',photo:''}))})
   const save=(id,revision=0,content=body(id))=>db.query('select public.myssp_save_submission($1,$2,$3)',[id,content,revision])
   await as('anon'); assert.equal(await count('myssp_projects'),0)
   await assert.rejects(()=>count('myssp_participants'))

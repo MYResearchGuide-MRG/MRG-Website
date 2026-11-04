@@ -21,6 +21,7 @@ The schema, seed, roster, admin role, Auth settings, and Edge Function are alrea
 1. Open project szyafrbnzfxbephkwubg. Run these files in SQL Editor, once, in order:
    - supabase/migrations/202611040001_myssp_access.sql
    - supabase/migrations/202611040002_project_seed.sql
+   - supabase/migrations/202611040003_roster_and_trash.sql
    The 12 project pages start hidden and locked. The seed contains no participant emails.
 2. Authentication settings: disable **Allow new users to sign up**, keep email/password authentication enabled, and retain Auth rate limits. The six-character permanent access code is a password, not an email OTP.
 3. Create the committee account under Authentication → Users. Enter a new strong password yourself. Do not reuse the password previously posted in chat. Copy its UUID and run in SQL Editor:
@@ -55,6 +56,8 @@ The schema, seed, roster, admin role, Auth settings, and Edge Function are alrea
 - **Library visibility:** show/hide public listing and direct public access.
 - **Team editing:** independently allow/lock team changes. Both switches start off.
 - **Participant access:** reassign or revoke. Permissions take effect on the next request, even for existing sessions. Content remains.
+- **Student lists:** adding or moving a participant updates the Research Library team in the same database transaction. Names, photos and biographies follow a stable participant ID. Account emails stay private. Revoking sign-in access does not remove the student's name; use Delete to remove them from the team.
+- **Delete / Trash:** delete participants or projects with confirmation. Project deletion keeps submissions and assignments but denies public and participant access. Restore projects hidden and locked; restore participants to an active project. Existing access codes are retained and previous revocation status is respected. Deleted emails remain reserved, so restore accounts instead of importing them twice. The mentor catalogue and static finalist page are unaffected.
 - **Split project:** create I-2A/I-2B, assign students and accounts, then create pages transactionally. Children start hidden/locked. Parent content is retained and the parent submission page retired. The mentor catalogue remains unchanged. Previous submissions are not copied into child pages.
 
 ## Implementation and limits
@@ -65,6 +68,6 @@ Publishing exposes project/team presentation, not account email records. Externa
 
 Images currently use size-limited JPEG data in submission JSON. Videos, slides and PDF files remain external links.
 
-Tests in supabase/tests/access.test.mjs execute the migration in isolated PGlite PostgreSQL. They test permissions and validation, not hosted Auth/SMTP delivery. Run TypeScript, Vite build and the admin/projectboard tests before deployment.
+Tests in supabase/tests execute the migrations in isolated PGlite PostgreSQL. They test permissions, team synchronization, recovery and validation, not hosted Auth/SMTP delivery. Run TypeScript, Vite build and the admin/projectboard tests before deployment.
 
 References: [password auth](https://supabase.com/docs/guides/auth/passwords), [email templates](https://supabase.com/docs/guides/auth/auth-email-templates), [SMTP](https://supabase.com/docs/guides/auth/auth-smtp), [RLS](https://supabase.com/docs/guides/database/postgres/row-level-security).

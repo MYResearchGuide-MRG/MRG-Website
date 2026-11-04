@@ -26,6 +26,7 @@ export const awardCategories = [
 ] as const
 export type AwardCategory = (typeof awardCategories)[number]["id"]
 export type BoardAward = { category: AwardCategory; name: string }
+type BoardStudent = (typeof SELECTED)[number] & { memberId?: string; bio?: string; photo?: string }
 
 export const boards = projects
   .filter((p) => p.status === "confirmed")
@@ -35,7 +36,7 @@ export const boards = projects
     year: 2026,
     // Populate only after the committee confirms award results.
     awards: [] as BoardAward[],
-    team: SELECTED.filter((student) => student.code === codes.get(project.id)),
+    team: SELECTED.filter((student) => student.code === codes.get(project.id)) as BoardStudent[],
   }))
 export type Board = (typeof boards)[number]
 export const programmeYears = [
@@ -55,11 +56,11 @@ export type TeamMemberProfile = {
 // These are display records, not authentication/team-membership records.
 export function teamProfiles(board: Board): TeamMemberProfile[] {
   return board.team.map((person, index) => ({
-    id: `${board.id}:member-${index + 1}`,
+    id: person.memberId ?? `${board.id}:member-${index + 1}`,
     name: person.name,
     school: person.school,
-    bio: "",
-    photo: "",
+    bio: person.bio ?? "",
+    photo: person.photo ?? "",
   }))
 }
 

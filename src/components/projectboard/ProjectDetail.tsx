@@ -106,6 +106,8 @@ export function ProjectDetail({
   const content = editing ? draft : savedDraft
   const title = content?.title ?? board.title
   const members = content?.teamMembers ?? teamProfiles(board)
+  const staleTeam = editing && (editRevision !== revision ||
+    JSON.stringify((draft.teamMembers ?? []).map(member => member.id)) !== JSON.stringify(teamProfiles(board).map(member => member.id)))
 
   useEffect(() => {
     if (!dirty && !uploading) return
@@ -241,6 +243,7 @@ export function ProjectDetail({
             <span role="status">
               {uploading
                 ? "Preparing image…"
+                : staleTeam ? "The project or team has changed. Copy any unsaved work, then cancel and edit again to load the latest version."
                 : status || (dirty ? "Unsaved changes" : editable ? board.code : "Editing is closed by the committee.")}
             </span>
           </div>
@@ -252,14 +255,14 @@ export function ProjectDetail({
                   disabled={uploading}
                   onClick={() => {
                     if (dirty && !window.confirm("Discard your unsaved changes?")) return
-                    setDraft(savedDraft!)
+                    setDraft(savedDraft ?? newDraft(board))
                     setEditing(false)
                     setStatus("")
                   }}
                 >
                   Cancel
                 </button>
-                <button className="pb-button pb-primary" disabled={uploading} onClick={save}>
+                <button className="pb-button pb-primary" disabled={uploading || staleTeam} onClick={save}>
                   Save changes
                 </button>
               </>
@@ -272,7 +275,7 @@ export function ProjectDetail({
                   className="pb-button pb-primary"
                   disabled={!editable}
                   onClick={() => {
-                    setDraft(savedDraft!)
+                    setDraft(savedDraft ?? newDraft(board))
                     setStatus("")
                     setEditRevision(revision)
                     setEditing(true)
@@ -509,7 +512,7 @@ export function ProjectDetail({
                       <button
                         className="pb-button"
                         onClick={() => {
-                          setDraft(savedDraft!)
+                          setDraft(savedDraft ?? newDraft(board))
                           setStatus("")
                           setEditRevision(revision)
                           setEditing(true)

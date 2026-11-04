@@ -10,10 +10,12 @@ import {
   FolderOpen,
   GitFork,
   Mail,
+  Pencil,
   Plus,
   Search,
   Settings2,
   ShieldCheck,
+  Trash2,
   Users,
 } from "lucide-react"
 import {
@@ -43,12 +45,13 @@ import { AdminSignIn } from "./AdminSignIn"
 import { useProjectEditing, setProjectEditing } from "./project-editing"
 import { useBackend, useLiveBackend, signOutLive, inviteLiveParticipants } from "./backend"
 import { supabase } from "@/lib/supabase"
+import { Trash, RecordActionDialog, type RecordAction } from "./Trash"
 import {
   setLibraryVisibility,
   useLibraryVisibility,
 } from "./library-visibility"
 
-type View = "participants" | "projects" | "setup"
+type View = "participants" | "projects" | "trash" | "setup"
 export default function AdminPanel() {
   const boards = useProjectBoards()
   const [splitting, setSplitting] = useState<Board | null>(null)
@@ -68,6 +71,7 @@ export default function AdminPanel() {
   const [editing, setEditing] = useState<string | null>(null)
   const [invitation, setInvitation] = useState<string | null>(null)
   const [notice, setNotice] = useState("")
+  const [recordAction, setRecordAction] = useState<RecordAction | null>(null)
   const [now, setNow] = useState(Date.now)
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 1000)
@@ -80,7 +84,7 @@ export default function AdminPanel() {
       (!project || p.projectId === project) &&
       (!status || accessStatus(p, now) === status)
   )
-  const chosen = people.filter((p) => selected.includes(p.id) && !p.revoked)
+  const chosen = people.filter((p) => selected.includes(p.id) && !p.revoked && boards.some(b => b.id === p.projectId))
   const invitedPerson = people.find((p) => p.id === invitation)
   const editedPerson = people.find((p) => p.id === editing)
   async function prepare(ids: string[]) {
@@ -156,6 +160,7 @@ export default function AdminPanel() {
               [
                 { id: "participants", label: "Participants", Icon: Users },
                 { id: "projects", label: "Projects", Icon: FolderOpen },
+                ...(useLiveBackend ? [{ id: "trash", label: "Trash", Icon: Trash2 } as const] : []),
                 { id: "setup", label: "Setup", Icon: Settings2 },
               ] as const
             ).map(({ id, label, Icon }) => (
@@ -186,14 +191,14 @@ export default function AdminPanel() {
                   ? "Participants"
                   : view === "projects"
                     ? "Projects"
-                    : "Setup"}
+                    : view === "trash" ? "Trash" : "Setup"}
               </h1>
               <p>
                 {view === "participants"
                   ? "Manage accounts, project assignments and invitations."
                   : view === "projects"
                     ? "Control library visibility and team editing separately."
-                    : "Database, sign-in and email delivery."}
+                    : view === "trash" ? "Restore deleted participants and projects." : "Database, sign-in and email delivery."}
               </p>
             </div>
             {view === "participants" && (
@@ -309,7 +314,7 @@ export default function AdminPanel() {
                   <table>
                     <thead>
                       <tr>
-                        <th className="ad-check-cell">
+                        <th scope="col" className="ad-check-cell">
                           <input
                             type="checkbox"
                             aria-label="Select all visible participants"
@@ -327,20 +332,18 @@ export default function AdminPanel() {
                             }
                           />
                         </th>
-                        <th>Participant</th>
-                        <th>Project</th>
-                        <th>Access</th>
-                        <th>
-                          <span className="sr-only">Actions</span>
-                        </th>
+                        <th scope="col">Participant</th>
+                        <th scope="col" className="ad-project-column">Project</th>
+                        <th scope="col" className="ad-status-column">Access</th>
+                        <th scope="col" className="ad-actions-column">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filtered.map((p) => {
                         const state = accessStatus(p, now)
                         return (
-                          <tr key={p.id}>
-                            <td>
+                          <tr key={p.id} data-selected={selected.includes(p.id)}>
+                            <td className="ad-check-cell">
                               <input
                                 type="checkbox"
                                 aria-label={`Select ${p.email}`}
@@ -354,9 +357,9 @@ export default function AdminPanel() {
                                 }
                               />
                             </td>
-                            <td>
+                            <td className="ad-person-cell">
                               <div className="ad-person">
-                                <span className="ad-avatar">
+                                <span className="ad-avatar" aria-hidden="true">
                                   {(p.name || p.email)
                                     .slice(0, 2)
                                     .toUpperCase()}
@@ -365,27 +368,28 @@ export default function AdminPanel() {
                                   <strong>
                                     {p.name || p.email.split("@")[0]}
                                   </strong>
-                                  <small>{p.email}</small>
+                                  <small title={p.email}>{p.email}</small>
                                 </div>
                               </div>
                             </td>
-                            <td>
+                            <td className="ad-project-cell" data-label="Project">
                               <span className="ad-project-code">
-                                {boards.find((b) => b.id === p.projectId)?.code}
+                                {boards.find((b) => b.id === p.projectId)?.code ?? `${backend.deletedProjects.find(b => b.id === p.projectId)?.code ?? "Project"} (deleted)`}
                               </span>
                             </td>
-                            <td>
+                            <td className="ad-access-cell" data-label="Access">
                               <span
-                                className={`ad-status ${state === "Signed in" ? "ad-status-active" : ""}`}
+                                className={`ad-status ${state === "Signed in" || state === "Invited" ? "ad-status-active" : state === "Revoked" ? "ad-status-revoked" : ""}`}
                               >
                                 <i />
                                 {state}
                               </span>
                             </td>
                             <td className="ad-row-actions">
-                              <button onClick={() => setEditing(p.id)}>
-                                Manage
-                              </button>
+                              <div className="ad-action-group">
+                                <button className="ad-manage-button" aria-label={`Manage ${p.name || p.email}`} onClick={() => setEditing(p.id)}>
+                                  <Pencil size={14} /> Edit
+                                </button>
                               {p.code && !p.revoked ? (
                                 <button
                                   aria-label={`Preview invitation for ${p.email}`}
@@ -394,6 +398,8 @@ export default function AdminPanel() {
                                   <Mail size={16} />
                                 </button>
                               ) : null}
+                                {useLiveBackend && <button className="ad-delete-link" aria-label={`Delete ${p.name || p.email}`} title="Delete participant" onClick={() => setRecordAction({kind:"participant",id:p.id,label:p.name,remove:true})}><Trash2 size={15} /></button>}
+                              </div>
                             </td>
                           </tr>
                         )
@@ -516,13 +522,15 @@ export default function AdminPanel() {
                       </button>
                       <span className="ad-control-label">Team editing</span><button className="ad-visibility-switch" role="switch" aria-checked={editingPermissions[b.id] === true} aria-label={`Allow editing for ${b.code}`} onClick={() => changeEditing([b.id], editingPermissions[b.id] !== true)}>
                         <span>{editingPermissions[b.id] === true ? "Allowed" : "Locked"}</span><span className="ad-switch-track" aria-hidden="true"><span/></span>
-                      </button></div>
+                      </button>
+                      {useLiveBackend && <button className="ad-delete-link ad-assignment-link" onClick={() => setRecordAction({kind:"project",id:b.id,label:b.code,remove:true})}><Trash2 size={14} /> Delete project</button>}
+                      </div>
                     </article>
                   )
                 })}
               </div>
             </section>
-          ) : (
+          ) : view === "trash" ? <Trash onAction={setRecordAction} /> : (
             <div className="ad-setup">
               <p className="ad-notice">{useLiveBackend ? backend.error || "Using Supabase. Access is checked by the database." : "Workspace data is saved on this device. Live accounts and email delivery remain off until Supabase setup is complete."}</p>
               <article>
@@ -579,6 +587,11 @@ export default function AdminPanel() {
           )}
         </main>
       </div>
+      {recordAction && <RecordActionDialog key={`${recordAction.kind}-${recordAction.id}`} action={recordAction} onClose={() => setRecordAction(null)} onComplete={() => {
+        setSelected(ids => ids.filter(id => id !== recordAction.id))
+        setNotice(`${recordAction.label} ${recordAction.remove ? "moved to Trash" : "restored"}.`)
+        setRecordAction(null)
+      }} />}
       <BulkAdd
         open={adding}
         onClose={() => setAdding(false)}
@@ -613,7 +626,7 @@ export default function AdminPanel() {
           onChanged={() => {
             setEditing(null)
             setNotice(
-              "Assignment updated. Project permissions take effect immediately."
+              "Assignment updated. The student list and project access are now in sync."
             )
           }}
         />
@@ -640,13 +653,14 @@ function BulkAdd({
 }) {
   const boards = useProjectBoards()
   const { people } = useDemoAccess()
+  const { deletedPeople } = useBackend()
   const [text, setText] = useState("")
   const [project, setProject] = useState(boards[0]?.id || "")
   const [importing, setImporting] = useState(false)
   const [error, setError] = useState("")
   const rows = useMemo(
-    () => parseParticipants(text, project, boards, people),
-    [text, project, boards, people]
+    () => parseParticipants(text, project, boards, [...people, ...deletedPeople]),
+    [text, project, boards, people, deletedPeople]
   )
   const invalid = rows.some((r) => r.error) || rows.length > 200
   return (
@@ -660,6 +674,7 @@ function BulkAdd({
         <DialogTitle>Add participants</DialogTitle>
         <DialogDescription>
           Upload a CSV or paste spreadsheet rows. Review assignments before adding.
+          Deleted accounts can be restored from Trash instead of imported again.
         </DialogDescription>
         <label>
           Default project
@@ -795,6 +810,7 @@ function ManagePerson({
         <label>
           Assigned project
           <select value={project} onChange={(e) => setProject(e.target.value)}>
+            {!boards.some(b => b.id === project) && <option value={project} disabled>Project unavailable. Choose another project.</option>}
             {boards.map((b) => (
               <option key={b.id} value={b.id}>
                 {b.code} · {b.title}
@@ -818,6 +834,7 @@ function ManagePerson({
             className="ad-button"
             disabled={
               person.revoked ||
+              !boards.some(b => b.id === person.projectId) ||
               project !== person.projectId ||
               revoked !== person.revoked
             }
@@ -828,7 +845,7 @@ function ManagePerson({
           <button
             className="ad-button ad-primary"
             disabled={
-              saving || (project === person.projectId && revoked === person.revoked)
+              saving || !boards.some(b => b.id === project) || (project === person.projectId && revoked === person.revoked)
             }
             onClick={async () => {
               setSaving(true); setSaveError("")
