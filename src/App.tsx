@@ -13,6 +13,8 @@ import { ClosingCta } from "@/components/sections/closing-cta"
 import { Resources } from "@/components/sections/resources"
 import { useRoute } from "@/lib/results"
 
+const Projectboard = React.lazy(() => import("@/components/projectboard/Projectboard"))
+
 function App() {
   const route = useRoute()
 
@@ -21,12 +23,19 @@ function App() {
   const defaultTitle = React.useRef(document.title)
   React.useEffect(() => {
     document.title =
-      route === "results"
+      route === "projectboard"
+        ? `Projectboard | ${defaultTitle.current}`
+        : route === "results"
         ? `Selection announcement | ${defaultTitle.current}`
         : route === "resources"
           ? `Resources | ${defaultTitle.current}`
         : defaultTitle.current
   }, [route])
+
+  // Isolated preview surface. Header/footer integration can be merged later.
+  if (route === "projectboard") {
+    return <React.Suspense fallback={<main className="container py-24">Loading Projectboard…</main>}><Projectboard /></React.Suspense>
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">

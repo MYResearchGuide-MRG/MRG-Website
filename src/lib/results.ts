@@ -50,6 +50,11 @@ export function useCountdown(): string {
 export const resultsRouteHash = "#/results"
 export const resourcesRouteHash = "#/resources"
 export const homeRouteHash = "#/"
+export const projectboardRouteHash = "#/projectboard"
+
+function isProjectboardRoute(hash: string): boolean {
+  return hash === projectboardRouteHash || hash.startsWith(`${projectboardRouteHash}/`)
+}
 
 /**
  * A scene anchor inside the results route: `#/results/age`. Anything after the
@@ -70,9 +75,11 @@ function sceneFromHash(hash: string): string | null {
  * falls back to home when its target element is absent, which is how the back
  * button returns from `#/results` to a section on the home page.
  */
-export function useRoute(): "results" | "resources" | "home" {
-  const [route, setRoute] = React.useState<"results" | "resources" | "home">(() =>
-    window.location.hash === resultsRouteHash || sceneFromHash(window.location.hash) !== null
+export function useRoute(): "results" | "resources" | "projectboard" | "home" {
+  const [route, setRoute] = React.useState<"results" | "resources" | "projectboard" | "home">(() =>
+    isProjectboardRoute(window.location.hash)
+      ? "projectboard"
+      : window.location.hash === resultsRouteHash || sceneFromHash(window.location.hash) !== null
       ? "results"
       : window.location.hash === resourcesRouteHash
         ? "resources"
@@ -83,7 +90,9 @@ export function useRoute(): "results" | "resources" | "home" {
     const onChange = () => {
       const hash = window.location.hash
       const scene = sceneFromHash(hash)
-      if (hash === resultsRouteHash || scene !== null) {
+      if (isProjectboardRoute(hash)) {
+        setRoute("projectboard")
+      } else if (hash === resultsRouteHash || scene !== null) {
         setRoute("results")
       } else if (hash === resourcesRouteHash) {
         setRoute("resources")
