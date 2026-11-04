@@ -5,6 +5,8 @@ import type { Assignment, ImportRow } from "./access-model"
 import type { Board, Draft } from "../projectboard/data"
 import { isDraft } from "../projectboard/data"
 import type { ProjectSplit } from "./project-registry-model"
+import type { ParticipantDetails } from "./participant-tools"
+import type { Cohort, ProjectInput } from "./cohort-model"
 
 // Device-only preparation stays available on localhost. Production never uses it.
 export const useLiveBackend = !isLocalPreview || import.meta.env.VITE_ACCESS_MODE === "supabase"
@@ -14,8 +16,9 @@ type State = {
   people: Assignment[]; projects: ProjectRecord[]; drafts: Record<string, Draft>; revisions: Record<string, number>;
   visibility: Record<string, boolean>; editing: Record<string, boolean>; boards: Board[];
   deletedPeople: Assignment[]; deletedProjects: ProjectRecord[];
+  cohorts: Cohort[]; cohortError: string;
 }
-const empty: State = { ready: false, error: "", isAdmin: false, userId: null, people: [], projects: [], drafts: {}, revisions: {}, visibility: {}, editing: {}, boards: [], deletedPeople: [], deletedProjects: [] }
+const empty: State = { ready: false, error: "", isAdmin: false, userId: null, people: [], projects: [], drafts: {}, revisions: {}, visibility: {}, editing: {}, boards: [], deletedPeople: [], deletedProjects: [], cohorts: [], cohortError: "" }
 let state = empty
 const listeners = new Set<() => void>()
 let epoch = 0
@@ -37,10 +40,14 @@ export async function refreshBackend() {
       userId ? supabase.rpc("myssp_is_admin") : Promise.resolve({data: false, error: null}),
     ])
     if (projects.error || people.error || drafts.error || role.error) throw new Error("Database setup is incomplete or access was denied.")
+    // Older deployments remain usable while the cohort migration is being applied.
+    const cohorts = role.data === true
+      ? await supabase.from("myssp_cohorts").select("year,name").order("year", { ascending: false })
+      : { data: [], error: null }
     if (ticket !== epoch) return
     const allProjects = projects.data as ProjectRecord[]
     const records = allProjects.filter(p => !p.deleted_at)
-    const allPeople = (people.data || []).map(p => ({id:p.id, name:p.name, email:p.email, projectId:p.project_id, revision:1, revoked:p.revoked, code:null, expiresAt:0, usedAt:null, invitedAt:p.invited_at ? Date.parse(p.invited_at) : null, attempts:0, lockedUntil:0, deletedAt:p.deleted_at}))
+    const allPeople = (people.data || []).map(p => ({id:p.id, name:p.name, email:p.email, projectId:p.project_id, revision:1, revoked:p.revoked, code:null, expiresAt:0, usedAt:null, invitedAt:p.invited_at ? Date.parse(p.invited_at) : null, attempts:0, lockedUntil:0, deletedAt:p.deleted_at, displayProfile:p.display_profile || {}}))
     publish({
       ready: true, error: "", isAdmin: role.data === true, userId,
       projects: records, boards: records.map(p => ({...p.payload, id: p.id, code: p.code})),
@@ -54,6 +61,8 @@ export async function refreshBackend() {
       people: allPeople.filter(p => !p.deletedAt),
       deletedPeople: allPeople.filter(p => p.deletedAt),
       deletedProjects: allProjects.filter(p => p.deleted_at),
+      cohorts: cohorts.data || [],
+      cohortError: cohorts.error ? "New cohorts and projects need the cohort database migration. Existing projects are still available." : "",
     })
   } catch (error) {
     if (ticket === epoch) publish({...empty, error: error instanceof Error ? error.message : "Could not connect to the database."})
@@ -113,6 +122,22 @@ export async function changeLiveAssignment(id:string, projectId:string, revoked:
   const {data,error} = await supabase.from("myssp_participants").update({project_id:projectId,revoked}).eq("id",id).select("id")
   await refreshBackend(); return !error && data?.length === 1
 }
+export async function saveLiveParticipant(person: Assignment, details: ParticipantDetails) {
+  if (!supabase || !state.isAdmin) throw new Error("Committee sign-in required.")
+  const { error } = await supabase.rpc("myssp_update_participant", {
+    participant: person.id, full_name: details.name, school: details.school,
+    project: details.projectId, access_revoked: details.revoked,
+    expected_name: person.name, expected_school: person.displayProfile?.school || "",
+    expected_profile_name: person.displayProfile?.name || "",
+    expected_project: person.projectId, expected_revoked: person.revoked,
+  })
+  await refreshBackend()
+  if (error) {
+    if (error.code === "PGRST202") throw new Error("Profile editing needs the latest database migration. Ask the site maintainer to apply it.")
+    throw new Error("Could not save participant details. The record may have changed. Close and reopen it before trying again.")
+  }
+  return true
+}
 export async function inviteLiveParticipants(ids:string[]) {
   if (!supabase || !state.isAdmin) throw new Error("Committee sign-in required.")
   if (ids.length > 50) throw new Error("Send invitations to up to 50 participants at a time.")
@@ -132,6 +157,22 @@ export async function splitLiveProject(split:ProjectSplit, boards:Board[], assig
   const {error} = await supabase.rpc("myssp_split_project", {parent:split.parentId, children:boards.map(b=>({id:b.id,code:b.code,payload:b})), assignments})
   if (error) return "Could not split this project. Check every participant has a new assignment."
   await refreshBackend(); return null
+}
+export async function createLiveCohort(year: number, name: string) {
+  if (!supabase || !state.isAdmin) throw new Error("Committee sign-in required.")
+  const { error } = await supabase.rpc("myssp_create_cohort", { cohort_year: year, cohort_name: name.trim() })
+  if (error) throw new Error(error.code === "23505" ? "This cohort already exists. Refresh and select it." : state.cohortError || "Could not create the cohort. Refresh and try again.")
+  await refreshBackend()
+}
+export async function saveLiveProject(input: ProjectInput, previous?: Board) {
+  if (!supabase || !state.isAdmin) throw new Error("Committee sign-in required.")
+  const { data, error } = await supabase.rpc("myssp_save_project_brief", {
+    details: input, project: previous?.id || null,
+    expected: previous ? Object.fromEntries(["title", "track", "mentor", "affiliation", "description"].map(key => [key, previous[key as keyof Board]])) : null,
+  })
+  if (error) throw new Error(error.code === "23505" ? `${input.code} is already used in ${input.year}, including archived projects.` : state.cohortError || "Could not save this project. It may have changed; close and reopen the form.")
+  await refreshBackend()
+  return data as string
 }
 if (useLiveBackend && supabase) {
   supabase.auth.onAuthStateChange((event, session) => {

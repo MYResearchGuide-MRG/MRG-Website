@@ -1,5 +1,5 @@
 import { useRef, useState, type FormEvent } from "react"
-import { ArrowRight, KeyRound, Mail } from "lucide-react"
+import { ArrowRight, KeyRound, Mail, LoaderCircle } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -11,6 +11,7 @@ import { AdminSignIn } from "../admin/AdminSignIn"
 import { useLiveBackend } from "../admin/backend"
 import "../admin/admin.css"
 import "./projectboard.css"
+import "../admin/auth.css"
 
 export default function AccessDialog({
   open,
@@ -50,7 +51,7 @@ export default function AccessDialog({
       }}
     >
       <DialogContent
-        className="pb-modal"
+        className="pb-modal auth-dialog"
         overlayClassName="pb-auth-overlay"
         onOpenAutoFocus={(event) => {
           event.preventDefault()
@@ -82,64 +83,100 @@ export default function AccessDialog({
               {admin ? "Committee sign in" : "Sign in to MYSSP"}
             </DialogTitle>
             <DialogDescription className="pb-auth-description">
-              {admin ? "Use your committee account." : "Use the email and access code from your invitation."}
+              {admin
+                ? "Use your committee account."
+                : "Use the email and access code from your invitation."}
             </DialogDescription>
           </div>
-          <div className="pb-auth-tabs" role="group" aria-label="Sign-in type"><button aria-pressed={!admin} onClick={()=>setAdmin(false)}>Participant</button><button aria-pressed={admin} onClick={()=>{setAdmin(true); setError("")}}>Admin sign in</button></div>
-          {admin ? <AdminSignIn onSuccess={()=>{window.location.hash="#/admin"; onClose()}} onDevice={()=>{window.location.hash="#/admin"; onClose()}}/> : <form onSubmit={submit}>
-            <label className="pb-field">
-              Email address
-              <span className="pb-auth-input">
-                <Mail size={17} aria-hidden="true" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  autoComplete="email"
-                  autoCapitalize="none"
-                  spellCheck={false}
-                  required
-                />
-              </span>
-            </label>
-            <label className="pb-field">
-              Access code
-              <span className="pb-auth-input">
-                <KeyRound size={17} aria-hidden="true" />
-                <input
-                  value={code}
-                  onChange={(e) => setCode(e.target.value.toUpperCase())}
-                  placeholder="6-character code"
-                  autoComplete="current-password"
-                  autoCapitalize="characters"
-                  spellCheck={false}
-                  minLength={6}
-                  maxLength={6}
-                  pattern="[A-Za-z0-9]{6}"
-                  required
-                  aria-describedby={error ? "pb-code-error" : undefined}
-                />
-              </span>
-            </label>
-            {error && (
-              <p
-                id="pb-code-error"
-                role="alert"
-                style={{ color: "#e7a5a5", fontSize: 12, marginBottom: 16 }}
-              >
-                {error}
-              </p>
-            )}
-            <button
-              type="submit"
-              className="pb-button pb-primary pb-full"
-              disabled={busy || (!useLiveBackend && !isLocalPreview)}
-            >
-              {busy ? "Signing in…" : "Sign in"} <ArrowRight size={16} />
+          <div className="pb-auth-tabs" role="group" aria-label="Sign-in type">
+            <button aria-pressed={!admin} onClick={() => setAdmin(false)}>
+              Participant
             </button>
-          </form>}
-          <p className="pb-auth-help">Need access or a replacement code? <a href="mailto:myresearchguide.org@gmail.com">Contact us</a></p>
+            <button
+              aria-pressed={admin}
+              onClick={() => {
+                setAdmin(true)
+                setError("")
+              }}
+            >
+              Admin sign in
+            </button>
+          </div>
+          {admin ? (
+            <AdminSignIn
+              onSuccess={() => {
+                window.location.hash = "#/admin"
+                onClose()
+              }}
+              onDevice={() => {
+                window.location.hash = "#/admin"
+                onClose()
+              }}
+            />
+          ) : (
+            <form onSubmit={submit} className="auth-form">
+              <label className="auth-field">
+                Email address
+                <span className="auth-input">
+                  <Mail size={17} aria-hidden="true" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    autoComplete="email"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    required
+                  />
+                </span>
+              </label>
+              <label className="auth-field">
+                Access code
+                <span className="auth-input">
+                  <KeyRound size={17} aria-hidden="true" />
+                  <input
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.toUpperCase())}
+                    placeholder="6-character code"
+                    autoComplete="current-password"
+                    autoCapitalize="characters"
+                    spellCheck={false}
+                    minLength={6}
+                    maxLength={6}
+                    pattern="[A-Za-z0-9]{6}"
+                    required
+                    aria-describedby={error ? "pb-code-error" : undefined}
+                  />
+                </span>
+              </label>
+              {error && (
+                <p
+                  id="pb-code-error"
+                  role="alert"
+                  style={{ color: "#e7a5a5", fontSize: 12, marginBottom: 16 }}
+                >
+                  {error}
+                </p>
+              )}
+              <button
+                type="submit"
+                className="auth-submit"
+                disabled={busy || (!useLiveBackend && !isLocalPreview)}
+              >
+                {busy ? "Signing in…" : "Sign in"}{" "}
+                {busy ? (
+                  <LoaderCircle size={16} className="auth-spinner" />
+                ) : (
+                  <ArrowRight size={16} />
+                )}
+              </button>
+            </form>
+          )}
+          <p className="pb-auth-help">
+            Need access or a replacement code?{" "}
+            <a href="mailto:myresearchguide.org@gmail.com">Contact us</a>
+          </p>
         </div>
       </DialogContent>
     </Dialog>

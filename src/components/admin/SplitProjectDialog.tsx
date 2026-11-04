@@ -11,6 +11,7 @@ import { splitProject, useDemoAccess } from "./demo-access"
 import { splitError, type ProjectSplit } from "./project-registry-model"
 import { getProjectSplits, useProjectBoards } from "./project-registry"
 import { useLiveBackend } from "./backend"
+import { AdminSelect } from "./AdminSelect"
 
 export function SplitProjectDialog({
   board,
@@ -34,6 +35,7 @@ export function SplitProjectDialog({
   const [students, setStudents] = useState<Record<number, string>>({})
   const [assignments, setAssignments] = useState<Record<string, string>>({})
   const [error, setError] = useState("")
+  const [busy, setBusy] = useState(false)
   const split: ProjectSplit = {
     parentId: board.id,
     teams: teams.map((team) => ({
@@ -50,15 +52,22 @@ export function SplitProjectDialog({
     accounts.every((person) =>
       teams.some((team) => team.id === assignments[person.id])
     )
-  const validation = splitError(split, originalBoards, useLiveBackend ? [] : getProjectSplits())
+  const validation = splitError(
+    split,
+    originalBoards,
+    useLiveBackend ? [] : getProjectSplits()
+  )
   return (
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open) onClose()
+        if (!open && !busy) onClose()
       }}
     >
-      <DialogContent className="ad-modal ad-split-modal">
+      <DialogContent
+        className="ad-modal ad-split-modal"
+        onInteractOutside={(event) => event.preventDefault()}
+      >
         <DialogTitle>Split {board.code} into teams</DialogTitle>
         <DialogDescription>
           Each team gets its own project page, materials and editing access.
@@ -72,6 +81,7 @@ export function SplitProjectDialog({
                 {index > 1 && (
                   <button
                     aria-label={`Remove team ${team.code}`}
+                    disabled={busy}
                     onClick={() =>
                       setTeams((current) =>
                         current.filter((item) => item.id !== team.id)
@@ -84,7 +94,9 @@ export function SplitProjectDialog({
               </div>
               <label>
                 Project title{" "}
-                <input
+                <textarea
+                  rows={3}
+                  disabled={busy}
                   maxLength={240}
                   value={team.title}
                   onChange={(event) =>
@@ -105,6 +117,7 @@ export function SplitProjectDialog({
         {teams.length < Math.min(6, board.team.length) && (
           <button
             className="ad-add-split"
+            disabled={busy}
             onClick={() => {
               const suffix = "ABCDEF"
                 .split("")
@@ -139,23 +152,24 @@ export function SplitProjectDialog({
                 <strong>{student.name}</strong>
                 <small>{student.school}</small>
               </span>
-              <select
-                aria-label={`Team for ${student.name}`}
+              <AdminSelect
+                label={`Team for ${student.name}`}
                 value={students[index] || ""}
-                onChange={(event) =>
+                disabled={busy}
+                onChange={(value) =>
                   setStudents((current) => ({
                     ...current,
-                    [index]: event.target.value,
+                    [index]: value,
                   }))
                 }
-              >
-                <option value="">Choose team</option>
-                {teams.map((team) => (
-                  <option key={team.id} value={team.id}>
-                    {team.code}
-                  </option>
-                ))}
-              </select>
+                options={[
+                  { value: "", label: "Choose team" },
+                  ...teams.map((team) => ({
+                    value: team.id,
+                    label: team.code,
+                  })),
+                ]}
+              />
             </label>
           ))}
         </section>
@@ -176,23 +190,24 @@ export function SplitProjectDialog({
                       {person.revoked ? " · Access revoked" : ""}
                     </small>
                   </span>
-                  <select
-                    aria-label={`Project access for ${person.email}`}
+                  <AdminSelect
+                    label={`Project access for ${person.email}`}
                     value={assignments[person.id] || ""}
-                    onChange={(event) =>
+                    disabled={busy}
+                    onChange={(value) =>
                       setAssignments((current) => ({
                         ...current,
-                        [person.id]: event.target.value,
+                        [person.id]: value,
                       }))
                     }
-                  >
-                    <option value="">Choose team</option>
-                    {teams.map((team) => (
-                      <option key={team.id} value={team.id}>
-                        {team.code}
-                      </option>
-                    ))}
-                  </select>
+                    options={[
+                      { value: "", label: "Choose team" },
+                      ...teams.map((team) => ({
+                        value: team.id,
+                        label: team.code,
+                      })),
+                    ]}
+                  />
                 </label>
               ))}
             </>
@@ -219,19 +234,28 @@ export function SplitProjectDialog({
         )}
         {allAssigned && validation && <p className="ad-error">{validation}</p>}
         <div className="ad-modal-actions">
-          <button className="ad-button" onClick={onClose}>
+          <button className="ad-button" disabled={busy} onClick={onClose}>
             Cancel
           </button>
           <button
             className="ad-button ad-primary"
-            disabled={!allAssigned || Boolean(validation)}
+            disabled={busy || !allAssigned || Boolean(validation)}
             onClick={async () => {
-              const problem = await splitProject(split, assignments)
-              if (problem) setError(problem)
-              else onCreated(teams.map((team) => team.code))
+              setBusy(true)
+              setError("")
+              try {
+                const problem = await splitProject(split, assignments)
+                if (problem) setError(problem)
+                else onCreated(teams.map((team) => team.code))
+              } catch {
+                setError("Could not split the project. Please try again.")
+              } finally {
+                setBusy(false)
+              }
             }}
           >
-            Create {teams.length} team pages <GitFork size={15} />
+            {busy ? "Creating…" : `Create ${teams.length} team pages`}{" "}
+            <GitFork size={15} />
           </button>
         </div>
       </DialogContent>

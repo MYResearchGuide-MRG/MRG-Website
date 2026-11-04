@@ -4,6 +4,8 @@ import type { ProjectSplit } from "./project-registry-model"
 import { isLocalPreview } from "./local-preview"
 import { useBackend, getBackend, useLiveBackend, importLiveParticipants, changeLiveAssignment, participantSignIn, liveProject, signOutLive, splitLiveProject } from "./backend"
 import { applyProjectSplits } from "./project-registry-model"
+import { saveLiveParticipant } from "./backend"
+import { validateParticipantDetails, type ParticipantDetails } from "./participant-tools"
 export { isLocalPreview } from "./local-preview"
 import {
   canEdit,
@@ -24,6 +26,7 @@ function readPeople(): Assignment[] {
     if (!Array.isArray(data)) return []
     return data.filter(p => typeof p.id === "string" && typeof p.name === "string" && typeof p.email === "string" && typeof p.projectId === "string").map(p => ({
       id: p.id, name: p.name, email: p.email, projectId: p.projectId,
+      displayProfile: p.displayProfile,
       revision: Number.isInteger(p.revision) ? p.revision : 1, revoked: p.revoked === true,
       code: null, expiresAt: 0, usedAt: null, attempts: 0, lockedUntil: 0,
     }))
@@ -32,7 +35,7 @@ function readPeople(): Assignment[] {
 let state: State = { people: readPeople(), session: null }
 const listeners = new Set<() => void>()
 function publish(next: State) {
-  if (isLocalPreview) localStorage.setItem(rosterKey, JSON.stringify(next.people.map(({id,name,email,projectId,revision,revoked}) => ({id,name,email,projectId,revision,revoked}))))
+  if (isLocalPreview) localStorage.setItem(rosterKey, JSON.stringify(next.people.map(({id,name,email,projectId,revision,revoked,displayProfile}) => ({id,name,email,projectId,revision,revoked,displayProfile}))))
   state = next
   listeners.forEach((fn) => fn())
 }
@@ -112,6 +115,17 @@ export async function updateAssignment(
       p.id === id ? changeAssignment(p, projectId, revoked) : p
     ),
   })
+  return true
+}
+export async function updateParticipantDetails(person: Assignment, details: ParticipantDetails) {
+  const error = validateParticipantDetails(details, getProjectBoards())
+  if (error) throw new Error(error)
+  if (useLiveBackend) return saveLiveParticipant(person, details)
+  if (!isLocalPreview) return false
+  publish({ ...state, people: state.people.map(p => p.id === person.id ? {
+    ...(details.projectId !== p.projectId || details.revoked !== p.revoked ? changeAssignment(p, details.projectId, details.revoked) : p),
+    name: details.name.trim(), displayProfile: { ...p.displayProfile, name: details.name.trim(), school: details.school.trim() },
+  } : p) })
   return true
 }
 export async function authenticate(email: string, code: string): Promise<boolean> {

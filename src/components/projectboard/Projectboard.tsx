@@ -33,7 +33,6 @@ import {
   loadDraft,
   newDraft,
   isDraft,
-  programmeYears,
   trackLabels,
   trackOrder,
   type AwardCategory,
@@ -179,6 +178,7 @@ function ProjectLibrary({
   draft?: Draft
   libraryBoards: Board[]
 }) {
+  const programmeYears = [...new Set(libraryBoards.map(board => board.year))].sort((a, b) => b - a)
   const backend = useBackend()
   const reduceMotion = useReducedMotion()
   const [query, setQuery] = useState("")

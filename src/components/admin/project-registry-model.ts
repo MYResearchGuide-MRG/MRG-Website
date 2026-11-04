@@ -7,6 +7,7 @@ export type SplitTeam = {
 }
 export type ProjectSplit = { parentId: string; teams: SplitTeam[] }
 type ProjectShape = {
+  year?: number
   id: string
   code: string
   title: string
@@ -29,8 +30,13 @@ export function splitError(
     ...existing.flatMap((item) => item.teams.map((team) => team.id)),
   ])
   const takenCodes = new Set([
-    ...projects.map((p) => p.code),
-    ...existing.flatMap((item) => item.teams.map((team) => team.code)),
+    ...projects.filter((p) => p.year === parent.year).map((p) => p.code),
+    ...existing
+      .filter(
+        (item) =>
+          projects.find((p) => p.id === item.parentId)?.year === parent.year
+      )
+      .flatMap((item) => item.teams.map((team) => team.code)),
   ])
   const indices: number[] = []
   for (const team of split.teams) {

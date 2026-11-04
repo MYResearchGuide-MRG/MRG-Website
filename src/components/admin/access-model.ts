@@ -12,6 +12,7 @@ export type Assignment = {
   invitedAt?: number | null
   attempts: number
   lockedUntil: number
+  displayProfile?: { name?: string; school?: string; bio?: string; photo?: string }
 }
 export type ParticipantSession = {
   participantId: string
