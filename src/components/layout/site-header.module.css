@@ -1,0 +1,12 @@
+.shell {
+  transition:
+    max-width 500ms ease-out,
+    margin-top 500ms ease-out,
+    border-color 300ms ease,
+    box-shadow 300ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .shell {
+    transition: none;
+  }
+}

@@ -1,0 +1,23 @@
+{{ if .Data.myssp_access_code }}
+<p>Hey,</p>
+
+<p>Your MYSSP project page login credentials are:</p>
+
+<p>Email: {{ .Email }}<br>
+Access code: <strong>{{ .Data.myssp_access_code }}</strong></p>
+
+<p>Sign in at <a href="https://myssp.myresearchguide.org/#/projectboard">myssp.myresearchguide.org</a>.</p>
+
+<p>Please do not share your access code with anyone.</p>
+
+<p>Best wishes,<br>
+<strong>Board of Committee, MYResearchGuide</strong><br>
+<a href="https://myresearchguide.org/">Website</a> |
+<a href="https://www.linkedin.com/company/myresearchguide">LinkedIn</a> |
+<a href="https://www.instagram.com/myresearchguide/">Instagram</a></p>
+{{ else }}
+<p>Hey,</p>
+<p>Use <a href="{{ .ConfirmationURL }}">this link</a> to reset your MYSSP account password.</p>
+<p>If you did not request this, you can ignore this email.</p>
+<p>Best wishes,<br><strong>Board of Committee, MYResearchGuide</strong></p>
+{{ end }}

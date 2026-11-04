@@ -18,8 +18,12 @@ export function isSelectionAnnounced(now: Date = new Date()): boolean {
  * has passed the countdown rests on zero instead of going negative, and
  * flooring (never rounding) means seconds never display as 60.
  */
-export function formatCountdown(target: Date | string, now: Date | string): string {
-  const targetMs = target instanceof Date ? target.getTime() : new Date(target).getTime()
+export function formatCountdown(
+  target: Date | string,
+  now: Date | string
+): string {
+  const targetMs =
+    target instanceof Date ? target.getTime() : new Date(target).getTime()
   const nowMs = now instanceof Date ? now.getTime() : new Date(now).getTime()
   const remaining = Math.max(0, targetMs - nowMs)
   const totalSeconds = Math.floor(remaining / 1000)
@@ -52,9 +56,17 @@ export const resourcesRouteHash = "#/resources"
 export const awardsRouteHash = "#/awards"
 export const homeRouteHash = "#/"
 export const projectboardRouteHash = "#/projectboard"
+export const projectsRouteHash = "#/projects/2026"
+
+function isProjectsRoute(hash: string): boolean {
+  return hash === "#/projects" || hash === projectsRouteHash
+}
 
 function isProjectboardRoute(hash: string): boolean {
-  return hash === projectboardRouteHash || hash.startsWith(`${projectboardRouteHash}/`)
+  return (
+    hash === projectboardRouteHash ||
+    hash.startsWith(`${projectboardRouteHash}/`)
+  )
 }
 
 /**
@@ -76,26 +88,42 @@ function sceneFromHash(hash: string): string | null {
  * falls back to home when its target element is absent, which is how the back
  * button returns from `#/results` to a section on the home page.
  */
-export type Route = "results" | "resources" | "awards" | "projectboard" | "home"
+export type Route =
+  | "results"
+  | "resources"
+  | "awards"
+  | "projectboard"
+  | "projects"
+  | "home"
+  | "admin"
 
 export function useRoute(): Route {
   const [route, setRoute] = React.useState<Route>(() =>
-    isProjectboardRoute(window.location.hash)
-      ? "projectboard"
-      : window.location.hash === resultsRouteHash || sceneFromHash(window.location.hash) !== null
-      ? "results"
-      : window.location.hash === resourcesRouteHash
-        ? "resources"
-        : window.location.hash === awardsRouteHash
-          ? "awards"
-          : "home",
+    window.location.hash === "#/admin"
+      ? "admin"
+      : isProjectsRoute(window.location.hash)
+        ? "projects"
+        : isProjectboardRoute(window.location.hash)
+          ? "projectboard"
+          : window.location.hash === resultsRouteHash ||
+              sceneFromHash(window.location.hash) !== null
+            ? "results"
+            : window.location.hash === resourcesRouteHash
+              ? "resources"
+              : window.location.hash === awardsRouteHash
+                ? "awards"
+                : "home"
   )
 
   React.useEffect(() => {
     const onChange = () => {
       const hash = window.location.hash
       const scene = sceneFromHash(hash)
-      if (isProjectboardRoute(hash)) {
+      if (hash === "#/admin") {
+        setRoute("admin")
+      } else if (isProjectsRoute(hash)) {
+        setRoute("projects")
+      } else if (isProjectboardRoute(hash)) {
         setRoute("projectboard")
       } else if (hash === resultsRouteHash || scene !== null) {
         setRoute("results")
@@ -109,7 +137,9 @@ export function useRoute(): Route {
         setRoute("home")
         // A home section linked from a standalone page (the header's Project
         // Library) only exists once home has mounted, so jump there after.
-        window.setTimeout(() => document.getElementById(hash.slice(1))?.scrollIntoView())
+        window.setTimeout(() =>
+          document.getElementById(hash.slice(1))?.scrollIntoView()
+        )
       } else {
         return
       }

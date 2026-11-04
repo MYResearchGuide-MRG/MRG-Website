@@ -1,25 +1,14 @@
 import { lazy, Suspense, useId, useRef, useState } from "react"
 import { Bold, Italic, Heading2, List, Sigma } from "lucide-react"
-import type { OverviewFormat } from "./data"
 
 const MarkdownContent = lazy(() => import("./MarkdownContent"))
 
-export function OverviewContent({
-  text,
-  format = "plain",
-}: {
-  text: string
-  format?: OverviewFormat
-}) {
+export function OverviewContent({ text }: { text: string }) {
   return (
-    <div className={`pb-rich-text ${format === "plain" ? "pb-plain-text" : ""}`}>
-      {format === "markdown" ? (
-        <Suspense fallback={<p className="pb-plain-text">{text}</p>}>
-          <MarkdownContent text={text} />
-        </Suspense>
-      ) : (
-        text
-      )}
+    <div className="pb-rich-text">
+      <Suspense fallback={<p className="pb-plain-text">{text}</p>}>
+        <MarkdownContent text={text} />
+      </Suspense>
     </div>
   )
 }
@@ -53,14 +42,12 @@ const symbols = [
 export function OverviewEditor({
   label,
   value,
-  format,
   onChange,
   maxLength,
   rows = 7,
 }: {
   label: string
   value: string
-  format: OverviewFormat
   onChange: (value: string) => void
   maxLength: number
   rows?: number
@@ -69,6 +56,7 @@ export function OverviewEditor({
   const input = useRef<HTMLTextAreaElement>(null)
   const [preview, setPreview] = useState(false)
   const [notice, setNotice] = useState("")
+  const overLimit = value.length > maxLength
 
   function insert(before: string, after = "", placeholder = "") {
     const area = input.current
@@ -99,54 +87,50 @@ export function OverviewEditor({
           aria-pressed={preview}
           onClick={() => setPreview(!preview)}
         >
-          {preview ? "Edit text" : "Preview"}
+          {preview ? "Edit Markdown" : "Preview"}
         </button>
       </div>
       <div className="pb-writing-box">
         {!preview && (
           <div className="pb-writing-tools" role="group" aria-label={`${label} formatting`}>
-            {format === "markdown" && (
-              <>
-                <button
-                  type="button"
-                  aria-label="Bold"
-                  title="Bold"
-                  onClick={() => insert("**", "**", "text")}
-                >
-                  <Bold size={15} />
-                </button>
-                <button
-                  type="button"
-                  aria-label="Italic"
-                  title="Italic"
-                  onClick={() => insert("*", "*", "text")}
-                >
-                  <Italic size={15} />
-                </button>
-                <button
-                  type="button"
-                  aria-label="Heading"
-                  title="Heading"
-                  onClick={() => insert("\n\n## ", "\n", "Heading")}
-                >
-                  <Heading2 size={17} />
-                </button>
-                <button
-                  type="button"
-                  aria-label="Bullet list"
-                  title="Bullet list"
-                  onClick={() => insert("\n- ", "", "Item")}
-                >
-                  <List size={17} />
-                </button>
-                <button type="button" onClick={() => insert("$", "$", "E = mc^2")}>
-                  <Sigma size={15} /> Inline maths
-                </button>
-                <button type="button" onClick={() => insert("\n\n$$\n", "\n$$\n", "\\frac{a}{b}")}>
-                  Equation
-                </button>
-              </>
-            )}
+            <button
+              type="button"
+              aria-label="Bold"
+              title="Bold"
+              onClick={() => insert("**", "**", "text")}
+            >
+              <Bold size={15} />
+            </button>
+            <button
+              type="button"
+              aria-label="Italic"
+              title="Italic"
+              onClick={() => insert("*", "*", "text")}
+            >
+              <Italic size={15} />
+            </button>
+            <button
+              type="button"
+              aria-label="Heading"
+              title="Heading"
+              onClick={() => insert("\n\n## ", "\n", "Heading")}
+            >
+              <Heading2 size={17} />
+            </button>
+            <button
+              type="button"
+              aria-label="Bullet list"
+              title="Bullet list"
+              onClick={() => insert("\n- ", "", "Item")}
+            >
+              <List size={17} />
+            </button>
+            <button type="button" onClick={() => insert("$", "$", "E = mc^2")}>
+              <Sigma size={15} /> Inline maths
+            </button>
+            <button type="button" onClick={() => insert("\n\n$$\n", "\n$$\n", "\\frac{a}{b}")}>
+              Equation
+            </button>
             <select
               aria-label={`Insert symbol in ${label.toLowerCase()}`}
               value=""
@@ -166,7 +150,7 @@ export function OverviewEditor({
         {preview ? (
           <div className="pb-writing-preview" role="region" aria-label={`${label} preview`}>
             {value.trim() ? (
-              <OverviewContent text={value} format={format} />
+              <OverviewContent text={value} />
             ) : (
               <p className="pb-muted">Nothing to preview yet.</p>
             )}
@@ -175,17 +159,25 @@ export function OverviewEditor({
           <textarea
             ref={input}
             id={id}
-            aria-describedby={`${id}-help`}
+            aria-describedby={`${id}-help${overLimit ? ` ${id}-error` : ""}`}
+            aria-invalid={overLimit}
             value={value}
             rows={rows}
             maxLength={maxLength}
-            className={format === "markdown" ? "is-markdown" : ""}
+            className="is-markdown"
             onChange={(e) => {
-              onChange(e.target.value)
+              const next = e.target.value
+              // Also cover paste/input methods that bypass native maxLength.
+              // Older over-limit drafts can still be shortened without data loss.
+              if (next.length > maxLength && next.length >= value.length) {
+                setNotice(`Keep this section within ${maxLength.toLocaleString()} characters.`)
+                return
+              }
+              onChange(next)
               setNotice("")
             }}
             onKeyDown={(e) => {
-              if (format !== "markdown" || !(e.ctrlKey || e.metaKey)) return
+              if (!(e.ctrlKey || e.metaKey)) return
               if (e.key === "b" || e.key === "i") {
                 e.preventDefault()
                 const marker = e.key === "b" ? "**" : "*"
@@ -197,18 +189,18 @@ export function OverviewEditor({
       </div>
       <div className="pb-writing-help" id={`${id}-help`}>
         <span>
-          {format === "markdown" ? (
-            <>
-              Inline maths: <code>$x^2$</code>. Equations: <code>$$...$$</code>.
-            </>
-          ) : (
-            "Plain text. Symbols such as α, π and ≤ are supported."
-          )}
+          Inline maths: <code>$x^2$</code>. Equations: <code>$$...$$</code>.
         </span>
         <span>
-          {value.length.toLocaleString()}/{maxLength.toLocaleString()}
+          {value.length.toLocaleString()}/{maxLength.toLocaleString()} characters
         </span>
       </div>
+      {overLimit && (
+        <p className="pb-small-note" id={`${id}-error`} role="alert">
+          Shorten this section by {(value.length - maxLength).toLocaleString()} characters before
+          saving.
+        </p>
+      )}
       {notice && (
         <p className="pb-small-note" role="status">
           {notice}

@@ -6,68 +6,150 @@ import { DesignSwitch } from "@/components/layout/design-switch"
 import { Hero } from "@/components/sections/hero"
 import { Results } from "@/components/sections/results"
 import { Partners } from "@/components/sections/partners"
-import { Projects } from "@/components/sections/projects"
+import { Projects, ProjectsCatalogue } from "@/components/sections/projects"
 import { Eligibility } from "@/components/sections/eligibility"
 import { Faq } from "@/components/sections/faq"
 import { ClosingCta } from "@/components/sections/closing-cta"
 import { Resources } from "@/components/sections/resources"
 import { Awards } from "@/components/sections/awards"
 import { useRoute } from "@/lib/results"
+import {
+  currentProject,
+  signOutParticipant,
+  useDemoAccess,
+} from "@/components/admin/demo-access"
 
-const Projectboard = React.lazy(() => import("@/components/projectboard/Projectboard"))
+const AdminPanel = React.lazy(() => import("@/components/admin/AdminPanel"))
+
+const Projectboard = React.lazy(
+  () => import("@/components/projectboard/Projectboard")
+)
+const AccessDialog = React.lazy(
+  () => import("@/components/projectboard/AccessDialog")
+)
 
 function App() {
   const route = useRoute()
+  // Demo access is shared with the site header; production auth will replace it.
+  const access = useDemoAccess()
+  const [, refreshSession] = React.useReducer((n) => n + 1, 0)
+  React.useEffect(() => {
+    const id = window.setInterval(refreshSession, 30_000)
+    return () => window.clearInterval(id)
+  }, [])
+  const assignedProjectId = currentProject()
+  const signedIn = Boolean(assignedProjectId)
+  const [accessOpen, setAccessOpen] = React.useState(false)
+  const [accessMounted, setAccessMounted] = React.useState(false)
+  const signIn = () => {
+    setAccessMounted(true)
+    setAccessOpen(true)
+  }
+  const signOut = () => {
+    signOutParticipant()
+    window.location.hash = "#/projectboard"
+  }
 
   // The results reveal lives on its own hash route so the front page stays
   // a pre-announcement surface with only the countdown pill pointing at it.
   const defaultTitle = React.useRef(document.title)
   React.useEffect(() => {
     document.title =
-      route === "projectboard"
-        ? `Projectboard | ${defaultTitle.current}`
-        : route === "results"
-        ? `Selection announcement | ${defaultTitle.current}`
-        : route === "resources"
-          ? `Resources | ${defaultTitle.current}`
-          : route === "awards"
-            ? `Awards | ${defaultTitle.current}`
-            : defaultTitle.current
+      route === "admin"
+        ? `Committee | ${defaultTitle.current}`
+        : route === "projects"
+          ? `2026 Projects | ${defaultTitle.current}`
+          : route === "projectboard"
+            ? `Research Library | ${defaultTitle.current}`
+            : route === "results"
+              ? `Selection announcement | ${defaultTitle.current}`
+              : route === "resources"
+                ? `Resources | ${defaultTitle.current}`
+                : route === "awards"
+                  ? `Awards | ${defaultTitle.current}`
+                  : defaultTitle.current
   }, [route])
 
-  // Isolated preview surface. Header/footer integration can be merged later.
-  if (route === "projectboard") {
-    return <React.Suspense fallback={<main className="container py-24">Loading Projectboard…</main>}><Projectboard /></React.Suspense>
-  }
+  if (route === "admin")
+    return (
+      <React.Suspense
+        fallback={
+          <main className="min-h-screen bg-background p-12" role="status">
+            Loading committee workspace…
+          </main>
+        }
+      >
+        <AdminPanel />
+      </React.Suspense>
+    )
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <SiteHeader />
+      <SiteHeader signedIn={signedIn} onSignIn={signIn} />
 
-      <main>
-        {route === "results" ? (
-          <Results />
-        ) : route === "resources" ? (
-          <Resources />
-        ) : route === "awards" ? (
-          <Awards />
-        ) : (
-          <>
-            <Hero />
-            <Partners />
-            {/* Projects leads: it is the reason to apply, and the timeline used to
+      {route === "projectboard" ? (
+        <React.Suspense
+          fallback={
+            <main className="container min-h-[70svh] pt-32" role="status">
+              Loading Research Library…
+            </main>
+          }
+        >
+          <Projectboard
+            key={`${access.session?.participantId || "public"}-${assignedProjectId}`}
+            assignedProjectId={assignedProjectId}
+            onSignIn={signIn}
+            onSignOut={signOut}
+          />
+        </React.Suspense>
+      ) : (
+        <main>
+          {route === "projects" ? (
+            <ProjectsCatalogue />
+          ) : route === "results" ? (
+            <Results />
+          ) : route === "resources" ? (
+            <Resources />
+          ) : route === "awards" ? (
+            <Awards />
+          ) : (
+            <>
+              <Hero />
+              <Partners />
+              {/* Projects leads: it is the reason to apply, and the timeline used to
                 spend a full screen before anyone saw one. */}
-            <Projects />
-            <Eligibility />
-            {/* Faq renders the programme timeline alongside itself. */}
-            <Faq />
-            <ClosingCta />
-          </>
-        )}
-      </main>
+              <Projects />
+              <Eligibility />
+              {/* Faq renders the programme timeline alongside itself. */}
+              <Faq />
+              <ClosingCta />
+            </>
+          )}
+        </main>
+      )}
 
       <SiteFooter />
       <DesignSwitch />
+      {accessMounted && (
+        <React.Suspense
+          fallback={
+            <p
+              role="status"
+              className="fixed right-4 bottom-4 z-50 rounded border border-border bg-background px-4 py-3 text-sm"
+            >
+              Opening sign in…
+            </p>
+          }
+        >
+          <AccessDialog
+            open={accessOpen}
+            onClose={() => setAccessOpen(false)}
+            onEnter={() => {
+              window.location.hash = "#/projectboard/workspace"
+            }}
+          />
+        </React.Suspense>
+      )}
     </div>
   )
 }
