@@ -1,119 +1,154 @@
 import * as React from "react"
-import { CountdownPill } from "@/components/results-countdown"
 
-import { Reveal, RevealGroup, RevealItem } from "@/components/motion/reveal"
+import { RevealGroup, RevealItem, Reveal } from "@/components/motion/reveal"
 import { AnimatedIcon } from "@/components/icons"
-import { applicationStepIcons, requirementIcons } from "@/components/icons/icon-map"
+import {
+  applicationStepIcons,
+  requirementIcons,
+} from "@/components/icons/icon-map"
+import { SlantLink } from "@/components/ui/slant-link"
 import { SectionHeading } from "./section-heading"
 import { applicationSteps, eligibility } from "@/data/competition-data"
+import { usePhase } from "@/lib/phase"
+import { siteConfig } from "@/lib/site"
 
 /**
- * Eligibility and the application steps used to be two full-height sections
- * that said, between them, about a screen and a half of very little. They are
- * one section now: what you need on the left, what you do about it on the
- * right, and the caveats as a footnote rather than a full-width panel.
+ * Who can apply, then how. Requirements are an open three-column grid, each
+ * under a hairline rule, that the eye can scan in any order; the application
+ * is three steps read left to right, ending in the one thing to do next.
+ *
+ * The lede and the call to action follow the programme phase, so the section
+ * is accurate all year: "Apply now" while applications are open, and an offer
+ * to hear when the next cohort opens the rest of the time.
  */
 export function Eligibility() {
-  const [hoveredReq, setHoveredReq] = React.useState<number | null>(null)
-  const [hoveredStep, setHoveredStep] = React.useState<number | null>(null)
+  const phase = usePhase()
+  const open = phase.id === "applications"
 
   return (
-    <section
-      id="eligibility"
-      className="scroll-mt-24 border-t border-border py-24 md:py-32"
-    >
+    <section id="eligibility" className="scroll-mt-24 py-20 md:py-28">
       <div className="container">
         <SectionHeading
           kicker="Who can apply"
-          index="02"
-          title="Eligibility &amp; how to apply"
-          lede="Check that you qualify, then apply in three steps."
+          title="Eligibility and how to apply"
+          lede={
+            open
+              ? "Applications are open until 10 September. Check that you qualify, then apply in three steps."
+              : "Applications for this cohort have closed. Here is who can apply, and how, when the next cohort opens."
+          }
         />
 
-        <div className="mt-16 grid gap-14 lg:grid-cols-2 lg:gap-20">
-          {/* Requirements */}
-          <div>
-            <h3 className="label-micro text-muted-foreground">Requirements</h3>
-            <RevealGroup as="ul" className="mt-6 border-t border-border">
-              {eligibility.requirements.map((req, i) => {
-                const Icon = requirementIcons[req.icon]
-                return (
-                  <RevealItem
-                    as="li"
-                    key={req.title}
-                    onMouseEnter={() => setHoveredReq(i)}
-                    onMouseLeave={() => setHoveredReq(null)}
-                    className="grid grid-cols-[1.75rem_1fr] gap-x-4 gap-y-1 border-b border-border py-5"
-                  >
-                    <span className="pt-0.5 text-muted-foreground transition-colors duration-300 group-hover:text-foreground">
-                      {Icon && (
-                        <AnimatedIcon icon={Icon} active={hoveredReq === i} />
-                      )}
-                    </span>
-                    <h4 className="font-medium">{req.title}</h4>
-                    <p className="col-start-2 text-sm leading-relaxed text-muted-foreground">
-                      {req.description}
-                    </p>
-                  </RevealItem>
-                )
-              })}
-            </RevealGroup>
+        <h3 className="label-micro mt-14 text-muted-foreground">
+          Requirements
+        </h3>
+        <RevealGroup
+          as="ul"
+          className="mt-5 grid gap-x-10 sm:grid-cols-2 lg:grid-cols-3"
+        >
+          {eligibility.requirements.map((req) => (
+            <RequirementCard key={req.title} {...req} />
+          ))}
+        </RevealGroup>
+
+        <h3
+          id="apply"
+          className="label-micro mt-16 scroll-mt-24 text-muted-foreground"
+        >
+          How to apply
+        </h3>
+        <Reveal delay={0.05}>
+          <div className="mt-5 border-t border-border pt-6">
+            <ol className="grid gap-8 md:grid-cols-3 md:gap-0 md:divide-x md:divide-border">
+              {applicationSteps.map((step) => (
+                <ApplicationStep key={step.step} {...step} />
+              ))}
+            </ol>
+
+            <div className="mt-8 flex flex-col items-start gap-4 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-muted-foreground">
+                {open
+                  ? "Applications close 10 September."
+                  : "Join the mailing list to hear when applications for the next cohort open."}
+              </p>
+              <SlantLink
+                href={
+                  open
+                    ? siteConfig.applicationFormUrl
+                    : siteConfig.mailingListUrl
+                }
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {open ? "Apply now" : "Get notified"}
+              </SlantLink>
+            </div>
           </div>
-
-          {/* Application steps */}
-          <div id="apply" className="scroll-mt-24">
-            <h3 className="label-micro text-muted-foreground">
-              APPLICATION
-            </h3>
-            <RevealGroup as="ol" className="mt-6 border-t border-border">
-              {applicationSteps.map((step) => {
-                const Icon = applicationStepIcons[step.step]
-                return (
-                  <RevealItem
-                    as="li"
-                    key={step.step}
-                    onMouseEnter={() => setHoveredStep(step.step)}
-                    onMouseLeave={() => setHoveredStep(null)}
-                    className="grid grid-cols-[2.5rem_1fr] items-start gap-x-4 border-b border-border py-5 sm:grid-cols-[2.5rem_3rem_1fr] sm:gap-x-5"
-                  >
-                    <span className="label-micro pt-1.5 text-muted-foreground">
-                      {String(step.step).padStart(2, "0")}
-                    </span>
-
-                    <span className="col-start-2 row-start-1 hidden size-11 items-center justify-center border border-border text-muted-foreground sm:flex">
-                      {Icon && (
-                        <AnimatedIcon
-                          icon={Icon}
-                          active={hoveredStep === step.step}
-                          size={20}
-                        />
-                      )}
-                    </span>
-
-                    <div className="col-start-2 min-w-0 sm:col-start-3">
-                      <h4 className="font-display text-lg leading-tight">
-                        {step.title}
-                      </h4>
-                      <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                        {step.description}
-                      </p>
-                    </div>
-                  </RevealItem>
-                )
-              })}
-            </RevealGroup>
-
-            <Reveal delay={0.1}>
-              <div className="mt-8 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-                <CountdownPill />
-                <p className="label-micro text-muted-foreground">
-                  Applications closed 10 September 2026
-                </p>
-              </div>
-            </Reveal>
-          </div>
-        </div>
+        </Reveal>
       </div>
     </section>
+  )
+}
+
+function RequirementCard({
+  title,
+  description,
+  icon,
+}: {
+  title: string
+  description: string
+  icon: string
+}) {
+  const [hovered, setHovered] = React.useState(false)
+  const Icon = requirementIcons[icon]
+  return (
+    <RevealItem
+      as="li"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      className="border-t border-border py-6"
+    >
+      <div className="flex items-center gap-3">
+        <span className="text-muted-foreground transition-colors duration-300 group-hover:text-foreground">
+          {Icon && <AnimatedIcon icon={Icon} active={hovered} size={20} />}
+        </span>
+        <h4 className="font-display text-lg leading-snug">{title}</h4>
+      </div>
+      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+        {description}
+      </p>
+    </RevealItem>
+  )
+}
+
+function ApplicationStep({
+  step,
+  title,
+  description,
+}: {
+  step: number
+  title: string
+  description: string
+}) {
+  const [hovered, setHovered] = React.useState(false)
+  const Icon = applicationStepIcons[step]
+  return (
+    <li
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      className="md:px-8 md:first:pl-0 md:last:pr-0"
+    >
+      <div className="flex items-center gap-3">
+        <span className="flex size-8 items-center justify-center rounded-full bg-foreground text-xs font-semibold text-background">
+          {step}
+        </span>
+        <span className="text-muted-foreground">
+          {Icon && <AnimatedIcon icon={Icon} active={hovered} size={18} />}
+        </span>
+      </div>
+      <h4 className="mt-5 font-display text-lg leading-snug">{title}</h4>
+      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+        {description}
+      </p>
+    </li>
   )
 }

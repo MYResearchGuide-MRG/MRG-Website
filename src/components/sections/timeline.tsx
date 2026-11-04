@@ -1,8 +1,10 @@
 import * as React from "react"
-import { motion, useReducedMotion, useScroll, useSpring } from "motion/react"
+import { motion, useReducedMotion } from "motion/react"
 
 import { RevealGroup, RevealItem } from "@/components/motion/reveal"
-import { timeline } from "@/data/competition-data"
+import { easeOutExpo } from "@/components/motion/variants"
+import { SectionHeading } from "./section-heading"
+import { timeline, timelineStages } from "@/data/competition-data"
 import { cn } from "@/lib/utils"
 
 type Status = "complete" | "active" | "upcoming"
@@ -10,106 +12,206 @@ type Status = "complete" | "active" | "upcoming"
 /**
  * Status is derived rather than authored. The page sits live across every one
  * of these milestones, and a hand-set "active" marker goes stale the moment a
- * date passes.
+ * date passes. Dates compare as ISO strings, which sort chronologically.
  */
-function statusOf(phase: { start: string; end: string }, today: string): Status {
-  if (phase.end < today) return "complete"
-  if (phase.start <= today) return "active"
+function statusOf(
+  range: { start: string; end: string },
+  today: string
+): Status {
+  if (range.end < today) return "complete"
+  if (range.start <= today) return "active"
   return "upcoming"
 }
 
 /**
- * Round, and drawn against --color-muted-foreground rather than --color-border.
- * Border-coloured hairline squares all but vanished on the dark background,
- * which left the rail reading as a bare line with no milestones on it.
+ * Local date, not UTC: the schedule is Malaysian and a UTC midnight would flip
+ * a milestone eight hours early for everyone reading it here.
  */
-function StatusMark({ status }: { status: Status }) {
-  return (
-    <span
-      aria-hidden
-      className={cn(
-        "relative z-10 block size-2.5 shrink-0 translate-y-[0.4rem] rounded-full",
-        status === "complete" && "bg-foreground",
-        status === "active" &&
-          "bg-background ring-2 ring-foreground ring-offset-2 ring-offset-background",
-        status === "upcoming" && "border-[1.5px] border-muted-foreground bg-background"
-      )}
-    />
-  )
-}
-
-/**
- * Compact rail, sized to sit in a narrow column beside the FAQ rather than
- * across a full-width section. The old layout put the date in an 11rem gutter
- * that only existed above `md`; here it stacks above the title instead, so the
- * marker offset is the same at every width and the rail needs a single value.
- */
-export function Timeline() {
-  const railRef = React.useRef<HTMLDivElement>(null)
-  const reduced = useReducedMotion()
-  // Local date, not UTC: the schedule is Malaysian and a UTC midnight would
-  // flip a milestone eight hours early for everyone reading it here.
-  const today = React.useMemo(() => {
+function useToday() {
+  return React.useMemo(() => {
     const d = new Date()
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
   }, [])
+}
 
-  const { scrollYProgress } = useScroll({
-    target: railRef,
-    offset: ["start 75%", "end 60%"],
-  })
-  const scaleY = useSpring(scrollYProgress, {
-    stiffness: 180,
-    damping: 34,
-    restDelta: 0.001,
+const DAY = 86_400_000
+
+/**
+ * The programme as four stages side by side, each listing its milestones,
+ * with a bar on top that fills as the stage passes. The current stage is
+ * raised and tagged "Now", so a visitor can see where things stand without
+ * reading a single date. Stacks to one column on small screens.
+ */
+export function TimelineSection() {
+  const today = useToday()
+  const reduced = useReducedMotion()
+
+  const stages = timelineStages.map((name, index) => {
+    const items = timeline.filter((item) => item.stage === name)
+    const start = items.reduce(
+      (m, i) => (i.start < m ? i.start : m),
+      items[0].start
+    )
+    const end = items.reduce((m, i) => (i.end > m ? i.end : m), items[0].end)
+    const status = statusOf({ start, end }, today)
+    // How far through the stage today is, counting its last day as included.
+    const progress =
+      status === "complete"
+        ? 1
+        : status === "upcoming"
+          ? 0
+          : (Date.parse(today) - Date.parse(start) + DAY) /
+            (Date.parse(end) - Date.parse(start) + DAY)
+    return { name, index, items, status, progress }
   })
 
   return (
-    <div id="timeline" className="scroll-mt-24">
-      <h2 className="display-md">Programme Timeline</h2>
-      <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-        From our application dates to the Malaysia Science Scholars&rsquo; Demo
-        Day. Dates are open to slight shifts according to programme progress.
-      </p>
-
-      <div ref={railRef} className="relative mt-8">
-        {/* Static rail + scroll-drawn progress overlay. The offset lands on the
-            centre of the 0.625rem status mark. The rail is drawn a step above
-            --color-border: at border weight the not-yet-reached stretch below
-            the progress line disappeared entirely against the dark panel. */}
-        <div
-          aria-hidden
-          className="absolute top-2 bottom-2 left-[calc(0.3125rem-0.5px)] w-px bg-muted-foreground/35"
+    <section id="timeline" className="scroll-mt-24 py-20 md:py-28">
+      <div className="container">
+        <SectionHeading
+          kicker="Programme"
+          title="Programme timeline"
+          lede="From applications to Demo Day. Dates may shift slightly as the programme progresses."
         />
-        {!reduced && (
-          <motion.div
-            aria-hidden
-            className="absolute top-2 bottom-2 left-[calc(0.3125rem-0.5px)] w-px origin-top bg-foreground"
-            style={{ scaleY }}
-          />
-        )}
 
-        <RevealGroup as="ol">
-          {timeline.map((item, i) => (
+        <RevealGroup
+          as="ol"
+          className="mt-14 grid gap-4 md:grid-cols-2 lg:grid-cols-4"
+        >
+          {stages.map((stage) => (
             <RevealItem
               as="li"
-              key={i}
-              className="relative flex gap-4 border-b border-border py-4 last:border-b-0"
+              key={stage.name}
+              aria-current={stage.status === "active" ? "step" : undefined}
+              className={cn(
+                "flex flex-col rounded-xl p-5 transition-colors",
+                stage.status === "active" ? "bg-card" : undefined
+              )}
             >
-              <StatusMark status={statusOf(item, today)} />
-
-              <div className="min-w-0 flex-1">
-                <div className="text-xs font-medium text-muted-foreground">
-                  {item.date}
-                </div>
-                <h3 className="mt-1 font-display text-base leading-snug">
-                  {item.title}
-                </h3>
+              <div className="h-1 overflow-hidden rounded-full bg-border">
+                <motion.div
+                  className={cn(
+                    "h-full origin-left rounded-full",
+                    stage.status === "active" ? "bg-[#a3adb8]" : "bg-foreground"
+                  )}
+                  initial={reduced ? false : { scaleX: 0 }}
+                  whileInView={{ scaleX: stage.progress }}
+                  viewport={{ once: true }}
+                  transition={{
+                    duration: 1.1,
+                    delay: 0.15 + stage.index * 0.12,
+                    ease: easeOutExpo,
+                  }}
+                  style={reduced ? { scaleX: stage.progress } : undefined}
+                />
               </div>
+
+              <div className="mt-5 flex items-center justify-between gap-3">
+                <span className="label-micro text-muted-foreground">
+                  Stage {String(stage.index + 1).padStart(2, "0")}
+                </span>
+                {stage.status === "active" && (
+                  <span className="rounded-full bg-[#a3adb8] px-2.5 py-0.5 text-[11px] font-semibold text-neutral-900">
+                    Now
+                  </span>
+                )}
+                {stage.status === "complete" && (
+                  <span className="text-[11px] text-muted-foreground">
+                    Done
+                  </span>
+                )}
+              </div>
+              <h3
+                className={cn(
+                  "mt-2 font-display text-xl leading-snug",
+                  stage.status === "complete" && "text-muted-foreground"
+                )}
+              >
+                {stage.name}
+              </h3>
+
+              <ul className="mt-5 space-y-4">
+                {stage.items.map((item) => {
+                  const status = statusOf(item, today)
+                  return (
+                    <li key={item.title} className="flex gap-3">
+                      <StatusMark status={status} />
+                      <div className="min-w-0">
+                        <div className="text-xs text-muted-foreground">
+                          {item.date}
+                        </div>
+                        <div
+                          className={cn(
+                            "mt-0.5 text-sm leading-snug",
+                            status === "complete"
+                              ? "text-muted-foreground"
+                              : "text-foreground",
+                            status === "active" && "font-semibold"
+                          )}
+                        >
+                          {item.title}
+                        </div>
+                        {status === "active" && (
+                          <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+                            {item.description}
+                          </p>
+                        )}
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
             </RevealItem>
           ))}
         </RevealGroup>
       </div>
-    </div>
+    </section>
+  )
+}
+
+/**
+ * Round, and drawn against --color-muted-foreground rather than --color-border:
+ * border-coloured hairline marks all but vanish on the dark background.
+ */
+function StatusMark({ status }: { status: Status }) {
+  // The milestone underway gets an atom rather than a dot, turning slowly.
+  if (status === "active") {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden
+        className="mt-0.5 size-4 shrink-0 text-[#a3adb8] motion-safe:animate-[spin_14s_linear_infinite]"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+      >
+        <ellipse cx="12" cy="12" rx="4.2" ry="10" />
+        <ellipse
+          cx="12"
+          cy="12"
+          rx="4.2"
+          ry="10"
+          transform="rotate(60 12 12)"
+        />
+        <ellipse
+          cx="12"
+          cy="12"
+          rx="4.2"
+          ry="10"
+          transform="rotate(-60 12 12)"
+        />
+        <circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none" />
+      </svg>
+    )
+  }
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "relative mt-1 block size-2.5 shrink-0 rounded-full",
+        status === "complete" && "bg-muted-foreground",
+        status === "upcoming" && "border-[1.5px] border-muted-foreground"
+      )}
+    />
   )
 }

@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/inter";
+@import "@fontsource-variable/manrope";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -14,10 +15,10 @@
    -------------------------------------------------------------------------- */
 
 @theme {
-  /* One family for the whole page, matching myresearchguide.org. The display
-     token is kept separate from --font-sans so headline weight and tracking
-     can move independently of body copy — see .display-* below. */
-  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  /* Manrope for body copy, Inter for headlines. The display token is kept
+     separate from --font-sans so headline weight and tracking can move
+     independently of body copy — see .display-* below. */
+  --font-sans: "Manrope Variable", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
 
   /* Light — white dominant */
@@ -79,29 +80,30 @@
   --duration-slow: 620ms;
 }
 
-/* Dark — true black */
+/* Dark — soft black (#121212), not true black. Raised surfaces and
+   hairlines sit a step above it so cards still read as lifted. */
 .dark {
-  --color-background: oklch(0 0 0);
+  --color-background: oklch(0.182 0 0);
   --color-foreground: oklch(0.985 0 0);
-  --color-card: oklch(0.13 0 0);
+  --color-card: oklch(0.215 0 0);
   --color-card-foreground: oklch(0.985 0 0);
-  --color-popover: oklch(0.13 0 0);
+  --color-popover: oklch(0.215 0 0);
   --color-popover-foreground: oklch(0.985 0 0);
   --color-primary: oklch(0.985 0 0);
   --color-primary-foreground: oklch(0 0 0);
-  --color-secondary: oklch(0.18 0 0);
+  --color-secondary: oklch(0.235 0 0);
   --color-secondary-foreground: oklch(0.985 0 0);
-  --color-muted: oklch(0.16 0 0);
+  --color-muted: oklch(0.21 0 0);
   --color-muted-foreground: oklch(0.73 0 0);
-  --color-accent: oklch(0.18 0 0);
+  --color-accent: oklch(0.235 0 0);
   --color-accent-foreground: oklch(0.985 0 0);
   --color-destructive: oklch(0.55 0.2 27.325);
   --color-destructive-foreground: oklch(0.985 0 0);
-  --color-border: oklch(0.24 0 0);
-  --color-input: oklch(0.24 0 0);
+  --color-border: oklch(0.285 0 0);
+  --color-input: oklch(0.285 0 0);
   --color-ring: oklch(0.75 0 0);
   --ink-rgb: 250 250 250;
-  --paper-rgb: 0 0 0;
+  --paper-rgb: 18 18 18;
 
   /* Lifted on black so the metals stay legible without going neon. */
   --color-gold: oklch(0.8 0.11 86);
@@ -348,6 +350,22 @@
   /* The left-to-right veil above assumes copy in the left column. The hero's
      figure-less backdrops centre their copy instead, so the field has to open
      out from the middle rather than from one edge. */
+  /* LiquidCursor draws its own pointer; hide the system one while it is
+     mounted, except in text fields, where the I-beam shows where typing goes. */
+  html.liquid-cursor,
+  html.liquid-cursor * {
+    cursor: none !important;
+  }
+  html.liquid-cursor :is(input, textarea, [contenteditable="true"]) {
+    cursor: text !important;
+  }
+
+  /* Fades a horizontal ticker out at both ends instead of cutting it off. */
+  .marquee-mask {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent);
+    mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent);
+  }
+
   .backdrop-veil-center {
     -webkit-mask-image: radial-gradient(
       ellipse 58% 62% at 50% 48%,
@@ -447,5 +465,15 @@
     animation-duration: 1ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 1ms !important;
+  }
+}
+
+/* One copy of a ticker's content scrolls fully out; its twin follows. */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
   }
 }

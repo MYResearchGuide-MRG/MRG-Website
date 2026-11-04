@@ -18,8 +18,12 @@ export function isSelectionAnnounced(now: Date = new Date()): boolean {
  * has passed the countdown rests on zero instead of going negative, and
  * flooring (never rounding) means seconds never display as 60.
  */
-export function formatCountdown(target: Date | string, now: Date | string): string {
-  const targetMs = target instanceof Date ? target.getTime() : new Date(target).getTime()
+export function formatCountdown(
+  target: Date | string,
+  now: Date | string
+): string {
+  const targetMs =
+    target instanceof Date ? target.getTime() : new Date(target).getTime()
   const nowMs = now instanceof Date ? now.getTime() : new Date(now).getTime()
   const remaining = Math.max(0, targetMs - nowMs)
   const totalSeconds = Math.floor(remaining / 1000)
@@ -50,6 +54,24 @@ export function useCountdown(): string {
 export const resultsRouteHash = "#/results"
 export const resourcesRouteHash = "#/resources"
 export const awardsRouteHash = "#/awards"
+export const projectsRouteHash = "#/projects"
+
+/** Library link pre-filtered to one research area: `#/projects?track=Biology`. */
+export function projectsTrackHash(track: string) {
+  return `${projectsRouteHash}?track=${encodeURIComponent(track)}`
+}
+
+/** Track named in a `#/projects?track=…` hash, if any. */
+export function trackFromHash(hash: string): string | null {
+  if (!hash.startsWith(`${projectsRouteHash}?`)) return null
+  return new URLSearchParams(hash.slice(projectsRouteHash.length + 1)).get(
+    "track"
+  )
+}
+
+function isProjectsHash(hash: string) {
+  return hash === projectsRouteHash || hash.startsWith(`${projectsRouteHash}?`)
+}
 export const homeRouteHash = "#/"
 
 /**
@@ -71,17 +93,20 @@ function sceneFromHash(hash: string): string | null {
  * falls back to home when its target element is absent, which is how the back
  * button returns from `#/results` to a section on the home page.
  */
-export type Route = "results" | "resources" | "awards" | "home"
+export type Route = "results" | "resources" | "awards" | "projects" | "home"
 
 export function useRoute(): Route {
   const [route, setRoute] = React.useState<Route>(() =>
-    window.location.hash === resultsRouteHash || sceneFromHash(window.location.hash) !== null
+    window.location.hash === resultsRouteHash ||
+    sceneFromHash(window.location.hash) !== null
       ? "results"
       : window.location.hash === resourcesRouteHash
         ? "resources"
         : window.location.hash === awardsRouteHash
           ? "awards"
-          : "home",
+          : isProjectsHash(window.location.hash)
+            ? "projects"
+            : "home"
   )
 
   React.useEffect(() => {
@@ -94,13 +119,17 @@ export function useRoute(): Route {
         setRoute("resources")
       } else if (hash === awardsRouteHash) {
         setRoute("awards")
+      } else if (isProjectsHash(hash)) {
+        setRoute("projects")
       } else if (hash === homeRouteHash || hash === "" || hash === "#") {
         setRoute("home")
       } else if (document.getElementById(hash.slice(1)) === null) {
         setRoute("home")
-        // A home section linked from a standalone page (the header's Project
-        // Library) only exists once home has mounted, so jump there after.
-        window.setTimeout(() => document.getElementById(hash.slice(1))?.scrollIntoView())
+        // A home section linked from a standalone page only exists once home
+        // has mounted, so jump there after.
+        window.setTimeout(() =>
+          document.getElementById(hash.slice(1))?.scrollIntoView()
+        )
       } else {
         return
       }

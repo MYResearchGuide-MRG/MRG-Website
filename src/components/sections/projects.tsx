@@ -3,8 +3,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { ChevronDown, Search } from "lucide-react"
 
 import { Reveal } from "@/components/motion/reveal"
-import { AnimatedIcon } from "@/components/icons"
-import { trackIcons } from "@/components/icons/icon-map"
+import { TrackGlyph } from "@/components/icons/track-glyphs"
 import { SectionHeading } from "./section-heading"
 import { CountdownPill } from "@/components/results-countdown"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
@@ -23,6 +22,7 @@ import {
 } from "@/data/competition-data"
 import { easeOutExpo } from "@/components/motion/variants"
 import { cn } from "@/lib/utils"
+import { trackFromHash } from "@/lib/results"
 
 const CODES = projectCodes(projects)
 
@@ -228,7 +228,8 @@ function ProjectDetail({ project }: { project: Project }) {
 }
 
 /**
- * Master/detail project browser, following the format the committee pointed at
+ * The project library, on its own page at #/projects. Master/detail project
+ * browser, following the format the committee pointed at
  * (EleutherAI SOAR): a list grouped by track on the left, one project's full
  * brief held open beside it.
  *
@@ -238,11 +239,23 @@ function ProjectDetail({ project }: { project: Project }) {
  * and dismissing each one.
  */
 export function Projects() {
-  const [track, setTrack] = React.useState<string>("All")
+  // A research-area card on the home page links here pre-filtered to its
+  // track (`#/projects?track=Biology`).
+  const [track, setTrack] = React.useState<string>(() => {
+    const fromHash = trackFromHash(window.location.hash)
+    return fromHash && tracks.includes(fromHash as never) ? fromHash : "All"
+  })
+  React.useEffect(() => {
+    const onHash = () => {
+      const fromHash = trackFromHash(window.location.hash)
+      if (fromHash && tracks.includes(fromHash as never)) setTrack(fromHash)
+    }
+    window.addEventListener("hashchange", onHash)
+    return () => window.removeEventListener("hashchange", onHash)
+  }, [])
   const [groupBy, setGroupBy] = React.useState<"track" | "mentor">("track")
   const [query, setQuery] = React.useState("")
   const [activeId, setActiveId] = React.useState(projects[0]?.id ?? "")
-  const [hoveredTrack, setHoveredTrack] = React.useState<string | null>(null)
   // Collapsed rather than expanded track names, so the default is everything
   // open — a first-time visitor should see the whole catalogue, not five
   // closed drawers.
@@ -332,13 +345,12 @@ export function Projects() {
   return (
     <section
       id="projects"
-      className="scroll-mt-24 border-t border-border py-24 md:py-32"
+      className="scroll-mt-24 pt-32 pb-24 md:pt-40 md:pb-32"
     >
       <div className="container">
         <SectionHeading
           kicker="Research Programme"
-          index="01"
-          title="Projects"
+          title="Project library"
           lede="Each project is a real research question owned by a mentor, scoped so a first-time researcher finishes the eight weeks with something to show: a paper, a prototype, a documented method. Open a brief to read the mentor's background and what the work involves."
         />
 
@@ -445,7 +457,6 @@ export function Projects() {
             <div>
               {groups.map((group) => {
                 const open = !collapsed.has(group.key)
-                const Icon = trackIcons[group.key]
                 return (
                   <section key={group.key} className="mb-8 last:mb-0">
                     <h3>
@@ -453,8 +464,6 @@ export function Projects() {
                         type="button"
                         onClick={() => toggleTrack(group.key)}
                         aria-expanded={open}
-                        onMouseEnter={() => setHoveredTrack(group.key)}
-                        onMouseLeave={() => setHoveredTrack(null)}
                         className="label-micro group/track flex w-full items-center gap-2 pb-3 text-left text-muted-foreground transition-colors hover:text-foreground"
                       >
                         {group.photo ? (
@@ -466,13 +475,10 @@ export function Projects() {
                             className="size-5 shrink-0 rounded-full object-cover"
                           />
                         ) : (
-                          Icon && (
-                            <AnimatedIcon
-                              icon={Icon}
-                              active={hoveredTrack === group.key}
-                              size={16}
-                            />
-                          )
+                          <TrackGlyph
+                            track={group.key}
+                            className="size-4 shrink-0"
+                          />
                         )}
                         {/* Track names are labels and read fine in caps; a
                             person's name in letterspaced caps does not. */}
