@@ -11,6 +11,7 @@ import { Eligibility } from "@/components/sections/eligibility"
 import { Faq } from "@/components/sections/faq"
 import { ClosingCta } from "@/components/sections/closing-cta"
 import { Resources } from "@/components/sections/resources"
+import { Awards } from "@/components/sections/awards"
 import { useRoute } from "@/lib/results"
 
 const Projectboard = React.lazy(() => import("@/components/projectboard/Projectboard"))
@@ -29,7 +30,9 @@ function App() {
         ? `Selection announcement | ${defaultTitle.current}`
         : route === "resources"
           ? `Resources | ${defaultTitle.current}`
-        : defaultTitle.current
+          : route === "awards"
+            ? `Awards | ${defaultTitle.current}`
+            : defaultTitle.current
   }, [route])
 
   // Isolated preview surface. Header/footer integration can be merged later.
@@ -46,6 +49,8 @@ function App() {
           <Results />
         ) : route === "resources" ? (
           <Resources />
+        ) : route === "awards" ? (
+          <Awards />
         ) : (
           <>
             <Hero />

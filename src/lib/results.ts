@@ -49,6 +49,7 @@ export function useCountdown(): string {
 /** Hash route for the standalone selection-announcement page. */
 export const resultsRouteHash = "#/results"
 export const resourcesRouteHash = "#/resources"
+export const awardsRouteHash = "#/awards"
 export const homeRouteHash = "#/"
 export const projectboardRouteHash = "#/projectboard"
 
@@ -75,15 +76,19 @@ function sceneFromHash(hash: string): string | null {
  * falls back to home when its target element is absent, which is how the back
  * button returns from `#/results` to a section on the home page.
  */
-export function useRoute(): "results" | "resources" | "projectboard" | "home" {
-  const [route, setRoute] = React.useState<"results" | "resources" | "projectboard" | "home">(() =>
+export type Route = "results" | "resources" | "awards" | "projectboard" | "home"
+
+export function useRoute(): Route {
+  const [route, setRoute] = React.useState<Route>(() =>
     isProjectboardRoute(window.location.hash)
       ? "projectboard"
       : window.location.hash === resultsRouteHash || sceneFromHash(window.location.hash) !== null
       ? "results"
       : window.location.hash === resourcesRouteHash
         ? "resources"
-      : "home",
+        : window.location.hash === awardsRouteHash
+          ? "awards"
+          : "home",
   )
 
   React.useEffect(() => {
@@ -96,10 +101,15 @@ export function useRoute(): "results" | "resources" | "projectboard" | "home" {
         setRoute("results")
       } else if (hash === resourcesRouteHash) {
         setRoute("resources")
+      } else if (hash === awardsRouteHash) {
+        setRoute("awards")
       } else if (hash === homeRouteHash || hash === "" || hash === "#") {
         setRoute("home")
       } else if (document.getElementById(hash.slice(1)) === null) {
         setRoute("home")
+        // A home section linked from a standalone page (the header's Project
+        // Library) only exists once home has mounted, so jump there after.
+        window.setTimeout(() => document.getElementById(hash.slice(1))?.scrollIntoView())
       } else {
         return
       }

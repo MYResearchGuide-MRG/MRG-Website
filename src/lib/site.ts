@@ -1,12 +1,18 @@
 export const siteConfig = {
   mainSiteUrl: "https://www.myresearchguide.org/",
   mailingListUrl: "https://forms.gle/Sk9JS3kcKe8qw1cU6",
+  discordUrl: "https://discord.gg/V5mRRsa2QS",
+  linktreeUrl: "https://linktr.ee/myresearchguide",
+  handbookUrl:
+    "https://myresearchguide.notion.site/MYResearchGuide-2ef8941036278000abe7de2f682a4414",
   applicationFormUrl: "https://forms.gle/fkaLs78uJuGnu7Kw7",
   contactEmail: "myresearchguide.org@gmail.com",
   darkLogoUrl: "/mrg-wordmark.png",
   lightLogoUrl: "/mrg-logo-inverted.png",
-  programmeLogoUrl: "/myssp-logo.png",
   organiserLogoUrl: "/mrg-wordmark.png",
+  // Full MYSSP logo: white for dark mode, black for light mode.
+  mysspLogoUrl: "/myssp-full.png",
+  mysspLogoLightUrl: "/myssp-full-black.png",
   infopackUrl:
     "https://docs.google.com/document/d/1C1uiwF5dlF23-1afMXPaueQCmacDuIg-aePrMAQUzMY/edit?usp=sharing",
   codeOfConductUrl:
@@ -27,10 +33,8 @@ export function isRegistrationOpen(now = new Date()): boolean {
 export const contactMailto = `mailto:${siteConfig.contactEmail}?subject=MYSSP%20Question`
 
 export const navItems = [
-  { label: "Projects", href: "#projects" },
-  { label: "Eligibility", href: "#eligibility" },
-  { label: "Results", href: "#/results" },
-  { label: "Timeline", href: "#timeline" },
-  { label: "FAQ", href: "#faq" },
+  { label: "2026 Finalists", href: "#/results" },
+  { label: "Project Library", href: "#projects" },
   { label: "Resources", href: "#/resources" },
+  { label: "Awards", href: "#/awards" },
 ] as const
