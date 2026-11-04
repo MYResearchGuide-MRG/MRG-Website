@@ -11,8 +11,9 @@ export const siteConfig = {
   lightLogoUrl: "/mrg-logo-inverted.png",
   programmeLogoUrl: "/myssp-logo.png",
   organiserLogoUrl: "/mrg-wordmark.png",
-  // White on transparent; inverted in light mode.
+  // Full MYSSP logo: white for dark mode, black for light mode.
   headerLogoUrl: "/myssp-full.png",
+  headerLogoLightUrl: "/myssp-full-black.png",
   infopackUrl:
     "https://docs.google.com/document/d/1C1uiwF5dlF23-1afMXPaueQCmacDuIg-aePrMAQUzMY/edit?usp=sharing",
   codeOfConductUrl:

@@ -66,11 +66,18 @@ export function SiteFooter() {
           <div className="col-span-full min-w-0 min-[701px]:col-span-1 min-[701px]:row-span-2 min-[1101px]:row-span-1">
             <a href={homeRouteHash} aria-label="MYSSP home" className="inline-block max-w-full">
               <img
+                src={siteConfig.headerLogoLightUrl}
+                alt="Malaysia Science Scholar's Programme"
+                width={1200}
+                height={299}
+                className="block h-auto w-[200px] max-w-full dark:hidden"
+              />
+              <img
                 src={siteConfig.headerLogoUrl}
                 alt="Malaysia Science Scholar's Programme"
                 width={1200}
                 height={298}
-                className="block h-auto w-[200px] max-w-full invert dark:invert-0"
+                className="hidden h-auto w-[200px] max-w-full dark:block"
               />
             </a>
             <a

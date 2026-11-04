@@ -95,11 +95,18 @@ export function SiteHeader() {
             className="flex shrink-0 items-center"
           >
             <img
+              src={siteConfig.headerLogoLightUrl}
+              alt="Malaysia Science Scholar's Programme"
+              width={1200}
+              height={299}
+              className="h-9 w-auto sm:h-10 dark:hidden"
+            />
+            <img
               src={siteConfig.headerLogoUrl}
               alt="Malaysia Science Scholar's Programme"
               width={1200}
               height={298}
-              className="h-9 w-auto invert sm:h-10 dark:invert-0"
+              className="hidden h-9 w-auto sm:h-10 dark:block"
             />
           </a>
 
