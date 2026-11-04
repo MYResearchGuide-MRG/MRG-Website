@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { CountdownPill } from "@/components/results-countdown"
 import { NeuronBackdrop } from "./backdrops/neuron-backdrop"
 import { easeOutExpo } from "@/components/motion/variants"
+import { MysspLogo } from "@/components/layout/myssp-logo"
 import { siteConfig } from "@/lib/site"
 
 const stats = [
@@ -51,14 +52,7 @@ export function Hero() {
             Malaysia Science Scholar&rsquo;s Programme (MYSSP) 2026 &mdash;
             science research mentorship for Malaysian pre-university students
           </span>
-          <img
-            src={siteConfig.programmeLogoUrl}
-            alt=""
-            aria-hidden="true"
-            width={1728}
-            height={431}
-            className="h-auto w-full max-w-xl invert dark:invert-0"
-          />
+          <MysspLogo alt="" className="h-auto w-full max-w-xl" />
         </motion.h1>
 
         <motion.p

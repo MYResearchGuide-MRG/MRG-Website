@@ -6,6 +6,7 @@ import {
   LinkedinIcon,
   TikTokIcon,
 } from "@/components/layout/social-icons"
+import { MysspLogo } from "@/components/layout/myssp-logo"
 import { homeRouteHash } from "@/lib/results"
 import { contactMailto, navItems, siteConfig } from "@/lib/site"
 
@@ -65,20 +66,7 @@ export function SiteFooter() {
         <div className="grid grid-cols-2 gap-x-6 gap-y-9 min-[701px]:grid-cols-[1.6fr_1fr_1fr] min-[701px]:gap-x-8 min-[701px]:gap-y-10 min-[1101px]:grid-cols-[minmax(280px,1.8fr)_repeat(3,minmax(0,1fr))] min-[1101px]:gap-14">
           <div className="col-span-full min-w-0 min-[701px]:col-span-1 min-[701px]:row-span-2 min-[1101px]:row-span-1">
             <a href={homeRouteHash} aria-label="MYSSP home" className="inline-block max-w-full">
-              <img
-                src={siteConfig.headerLogoLightUrl}
-                alt="Malaysia Science Scholar's Programme"
-                width={1200}
-                height={299}
-                className="block h-auto w-[200px] max-w-full dark:hidden"
-              />
-              <img
-                src={siteConfig.headerLogoUrl}
-                alt="Malaysia Science Scholar's Programme"
-                width={1200}
-                height={298}
-                className="hidden h-auto w-[200px] max-w-full dark:block"
-              />
+              <MysspLogo className="h-auto w-[200px] max-w-full" />
             </a>
             <a
               href={siteConfig.mainSiteUrl}

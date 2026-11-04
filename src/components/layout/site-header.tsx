@@ -3,7 +3,8 @@ import { Menu, Moon, Sun, X } from "lucide-react"
 
 import { homeRouteHash, resultsRouteHash, useAnnounced, useRoute } from "@/lib/results"
 import { useTheme } from "@/components/theme-provider"
-import { navItems, siteConfig } from "@/lib/site"
+import { MysspLogo } from "@/components/layout/myssp-logo"
+import { navItems } from "@/lib/site"
 import { cn } from "@/lib/utils"
 
 export function SiteHeader() {
@@ -94,20 +95,7 @@ export function SiteHeader() {
             aria-label="MYSSP home"
             className="flex shrink-0 items-center"
           >
-            <img
-              src={siteConfig.headerLogoLightUrl}
-              alt="Malaysia Science Scholar's Programme"
-              width={1200}
-              height={299}
-              className="h-9 w-auto sm:h-10 dark:hidden"
-            />
-            <img
-              src={siteConfig.headerLogoUrl}
-              alt="Malaysia Science Scholar's Programme"
-              width={1200}
-              height={298}
-              className="hidden h-9 w-auto sm:h-10 dark:block"
-            />
+            <MysspLogo className="h-9 w-auto sm:h-10" />
           </a>
 
           <nav aria-label="Main navigation" className="hidden items-center gap-6 lg:flex">
