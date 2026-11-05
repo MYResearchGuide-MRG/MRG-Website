@@ -156,7 +156,7 @@ export default function AdminPanel() {
       const saved = await setLibraryVisibility(ids, visible)
       setNotice(
         saved
-          ? `${ids.length === boards.length ? "All projects are" : "Project is"} now ${visible ? "visible in" : "hidden from"} the research library.`
+          ? `${ids.length === boards.length ? "All projects are" : "Project is"} now ${visible ? "visible in" : "hidden from"} the project archive.`
           : "Could not save visibility. Refresh and try again."
       )
     } catch {
@@ -209,8 +209,8 @@ export default function AdminPanel() {
         </a>
         <div className="ad-header-actions">
           <a className="ad-back" href="#/projectboard">
-            <span className="ad-library-full">View research library</span>
-            <span className="ad-library-short">Library</span>
+            <span className="ad-library-full">View project archive</span>
+            <span className="ad-library-short">Archive</span>
             <ArrowUpRight size={15} />
           </a>
           <button
@@ -440,7 +440,7 @@ export default function AdminPanel() {
                           )
                         }
                       >
-                        <Eye size={16} aria-hidden="true" /> Show all in library
+                        <Eye size={16} aria-hidden="true" /> Show all in archive
                       </DropdownMenu.Item>
                       <DropdownMenu.Item
                         className="ad-bulk-item"
@@ -453,7 +453,7 @@ export default function AdminPanel() {
                         }
                       >
                         <EyeOff size={16} aria-hidden="true" /> Hide all from
-                        library
+                        archive
                       </DropdownMenu.Item>
                       <DropdownMenu.Separator className="ad-bulk-separator" />
                       <DropdownMenu.Item
@@ -525,14 +525,14 @@ export default function AdminPanel() {
                       </div>
                       <div className="ad-project-controls">
                         <span className="ad-control-label">
-                          Library visibility
+                          Archive visibility
                         </span>
                         <button
                           disabled={busy}
                           className="ad-visibility-switch"
                           role="switch"
                           aria-checked={visibility[b.id] === true}
-                          aria-label={`Show ${b.code} in research library`}
+                          aria-label={`Show ${b.code} in project archive`}
                           onClick={() =>
                             changeVisibility([b.id], visibility[b.id] !== true)
                           }
@@ -719,7 +719,7 @@ export default function AdminPanel() {
           onCreated={(codes) => {
             setSplitting(null)
             setNotice(
-              `${codes.join(" and ")} created and hidden from the library. Add or re-invite participants to their assigned page.`
+              `${codes.join(" and ")} created and hidden from the archive. Add or re-invite participants to their assigned page.`
             )
           }}
         />
@@ -772,7 +772,7 @@ export default function AdminPanel() {
             setProjectStatus("")
             setNotice(
               projectEditor === "new"
-                ? `${code} created in ${year}. Hidden in the library and editing locked. Open Team to add participants.`
+                ? `${code} created in ${year}. Hidden in the archive and editing locked. Open Team to add participants.`
                 : `${code} details saved.`
             )
             setProject(id)

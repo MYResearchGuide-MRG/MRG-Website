@@ -56,7 +56,7 @@ The schema, seed, roster, admin role, Auth settings, and Edge Function are alrea
 - **Library visibility:** show/hide public listing and direct public access.
 - **Team editing:** independently allow/lock team changes. Both switches start off.
 - **Participant access:** reassign or revoke. Permissions take effect on the next request, even for existing sessions. Content remains.
-- **Student lists:** adding or moving a participant updates the Research Library team in the same database transaction. Names, photos and biographies follow a stable participant ID. Account emails stay private. Revoking sign-in access does not remove the student's name; use Delete to remove them from the team.
+- **Student lists:** adding or moving a participant updates the Project Archive team in the same database transaction. Names, photos and biographies follow a stable participant ID. Account emails stay private. Revoking sign-in access does not remove the student's name; use Delete to remove them from the team.
 - **Delete / Trash:** delete participants or projects with confirmation. Project deletion keeps submissions and assignments but denies public and participant access. Restore projects hidden and locked; restore participants to an active project. Existing access codes are retained and previous revocation status is respected. Deleted emails remain reserved, so restore accounts instead of importing them twice. The mentor catalogue and static finalist page are unaffected.
 - **Split project:** create I-2A/I-2B, assign students and accounts, then create pages transactionally. Children start hidden/locked. Parent content is retained and the parent submission page retired. The mentor catalogue remains unchanged. Previous submissions are not copied into child pages.
 

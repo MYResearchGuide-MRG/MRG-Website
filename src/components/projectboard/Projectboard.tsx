@@ -253,7 +253,7 @@ function ProjectLibrary({
     <main className="pb-main">
       <section className="pb-library-intro">
         <h1 id="project-library-heading" tabIndex={-1}>
-          Research Library
+          Project Archive
         </h1>
         <label className="pb-search">
           <Search size={18} />
@@ -599,7 +599,7 @@ export default function Projectboard({
               Participant sign in
               <ArrowRight size={16} />
             </button>
-            <a href={root}>Return to the research library</a>
+            <a href={root}>Return to the project archive</a>
           </main>
         ) : projectId || isWorkspace ? (
           board && canViewProject(visibility, board.id, assignedProjectId) ? (
@@ -619,7 +619,7 @@ export default function Projectboard({
             <main className="pb-main pb-empty">
               <h1>Project not available.</h1>
               <a className="pb-button" href={root}>
-                Back to research library
+                Back to project archive
               </a>
             </main>
           )

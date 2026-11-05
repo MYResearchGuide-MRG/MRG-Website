@@ -34,7 +34,7 @@ export const contactMailto = `mailto:${siteConfig.contactEmail}?subject=MYSSP%20
 
 export const navItems = [
   { label: "Projects", href: "#/projects/2026" },
-  { label: "Research Library", href: "#/projectboard" },
+  { label: "Project Archive", href: "#/projectboard" },
   { label: "Resources", href: "#/resources" },
   { label: "Awards", href: "#/awards" },
 ] as const

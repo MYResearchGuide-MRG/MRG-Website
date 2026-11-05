@@ -268,7 +268,7 @@ export function ProjectEditor({
             <LockKeyhole size={15} />
             {board
               ? "Saved student submissions and assignments are kept."
-              : "Starts hidden in the library, with team editing locked. You can change both later."}
+              : "Starts hidden in the archive, with team editing locked. You can change both later."}
           </p>
           {error && (
             <p className="ad-error" role="alert">

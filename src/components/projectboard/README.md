@@ -1,11 +1,11 @@
-# MYSSP Research Library prototype
+# MYSSP Project Archive prototype
 
 Open `/#/projectboard` while running the MYSSP app. This is a local UI prototype,
 not a live submission or authentication service. Nothing has been deployed.
 
 ## Preview flows
 
-- Browse the research library; filter by year, research field or award, search,
+- Browse the project archive; filter by year, research field or award, search,
   or sort by title. Numbered pages show at most 12 projects. Changing a search,
   filter or sort starts from page 1. Award filters distinguish main and special awards. All award
   arrays are empty until confirmed results are supplied; no winners are simulated.
@@ -83,7 +83,7 @@ Provider documentation: [Canva embedding](https://www.canva.com/help/embed-desig
 ## Integration boundary
 
 `Projectboard.tsx` exports the page content with scoped `pb-` styles. `App.tsx`
-wraps it in the committee's shared header and footer. The Research Library links
+wraps it in the committee's shared header and footer. The Project Archive links
 in both now open Projectboard. The original home-page project section is retained.
 Awards, Resources and the results routes are preserved from the committee merge.
 

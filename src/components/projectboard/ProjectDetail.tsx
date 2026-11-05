@@ -231,7 +231,7 @@ export function ProjectDetail({
     <main className="pb-main pb-detail">
       <div className="pb-breadcrumb">
         <a href={libraryHash}>
-          <ArrowLeft size={15} /> Research Library
+          <ArrowLeft size={15} /> Project Archive
         </a>
         <span>/</span>
         <span>{board.code}</span>

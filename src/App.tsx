@@ -60,7 +60,7 @@ function App() {
         : route === "projects"
           ? `2026 Projects | ${defaultTitle.current}`
           : route === "projectboard"
-            ? `Research Library | ${defaultTitle.current}`
+            ? `Project Archive | ${defaultTitle.current}`
             : route === "results"
               ? `Selection announcement | ${defaultTitle.current}`
               : route === "resources"
@@ -91,7 +91,7 @@ function App() {
         <React.Suspense
           fallback={
             <main className="container min-h-[70svh] pt-32" role="status">
-              Loading Research Library…
+              Loading Project Archive…
             </main>
           }
         >
