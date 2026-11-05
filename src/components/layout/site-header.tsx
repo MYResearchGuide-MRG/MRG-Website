@@ -83,7 +83,12 @@ export function SiteHeader({
   const floating = scrolled || menuOpen
 
   return (
-    <header className="pointer-events-none fixed inset-x-0 top-0 z-40 flex justify-center px-3 sm:px-6">
+    <header
+      className={cn(
+        styles.viewport,
+        "pointer-events-none fixed inset-x-0 top-0 z-40 flex justify-center px-3 sm:px-6"
+      )}
+    >
       <div
         ref={shellRef}
         className={cn(
