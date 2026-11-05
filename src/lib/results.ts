@@ -1,5 +1,6 @@
 import * as React from "react"
 import { useReducedMotion } from "motion/react"
+import { parseDemoDayRoute } from "./demo-day"
 
 /**
  * Selection announcement moment, MYT (UTC+8): the register goes public at
@@ -54,6 +55,7 @@ export function useCountdown(): string {
 export const resultsRouteHash = "#/results"
 export const resourcesRouteHash = "#/resources"
 export const awardsRouteHash = "#/awards"
+export const judgesRouteHash = "#/judges"
 export const homeRouteHash = "#/"
 export const projectboardRouteHash = "#/projectboard"
 export const projectsRouteHash = "#/projects/2026"
@@ -92,6 +94,7 @@ export type Route =
   | "results"
   | "resources"
   | "awards"
+  | "judges"
   | "projectboard"
   | "projects"
   | "home"
@@ -110,15 +113,14 @@ export function useRoute(): Route {
             ? "results"
             : window.location.hash === resourcesRouteHash
               ? "resources"
-              : window.location.hash === awardsRouteHash
-                ? "awards"
-                : "home"
+              : (parseDemoDayRoute(window.location.hash)?.section ?? "home")
   )
 
   React.useEffect(() => {
     const onChange = () => {
       const hash = window.location.hash
       const scene = sceneFromHash(hash)
+      const demoDay = parseDemoDayRoute(hash)
       if (hash === "#/admin") {
         setRoute("admin")
       } else if (isProjectsRoute(hash)) {
@@ -129,8 +131,8 @@ export function useRoute(): Route {
         setRoute("results")
       } else if (hash === resourcesRouteHash) {
         setRoute("resources")
-      } else if (hash === awardsRouteHash) {
-        setRoute("awards")
+      } else if (demoDay) {
+        setRoute(demoDay.section)
       } else if (hash === homeRouteHash || hash === "" || hash === "#") {
         setRoute("home")
       } else if (document.getElementById(hash.slice(1)) === null) {
