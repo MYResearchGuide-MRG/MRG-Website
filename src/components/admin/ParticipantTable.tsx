@@ -73,19 +73,19 @@ export function ParticipantTable({
   const pageCount = Math.max(1, Math.ceil(filtered.length / 12))
   const currentPage = Math.min(page, pageCount)
   const shown = filtered.slice((currentPage - 1) * 12, currentPage * 12)
-  // Filtering never leaves an invisible participant selected for a bulk action.
-  const chosen = filtered.filter((person) => selected.includes(person.id))
+  // Selection covers the filtered roster, not just the current table page.
+  // Only current matches can be included in a bulk action.
+  const selectedIds = new Set(selected)
+  const chosen = filtered.filter((person) => selectedIds.has(person.id))
   const eligible = chosen.filter(
     (person) =>
       !person.revoked && boards.some((board) => board.id === person.projectId)
   )
-  const allSelected =
-    shown.length > 0 && shown.every((person) => selected.includes(person.id))
+  const allSelected = filtered.length > 0 && chosen.length === filtered.length
+  const partlySelected = chosen.length > 0 && !allSelected
   useEffect(() => {
-    if (allCheckbox.current)
-      allCheckbox.current.indeterminate =
-        !allSelected && shown.some((person) => selected.includes(person.id))
-  }, [allSelected, shown, selected])
+    if (allCheckbox.current) allCheckbox.current.indeterminate = partlySelected
+  }, [partlySelected])
   function resetSelection() {
     setPage(1)
     setSelected([])
@@ -217,13 +217,16 @@ export function ParticipantTable({
         )}
         {chosen.length > 0 && (
           <div className="ad-selection">
-            <span>{chosen.length} selected</span>
+            <span role="status">
+              {chosen.length} of {filtered.length} selected
+              {pageCount > 1 ? " across all pages" : ""}
+            </span>
             <button
               disabled={!eligible.length || busy}
               onClick={() => onInvite(eligible.map((person) => person.id))}
             >
               <Mail size={15} />
-              {busy ? "Sending…" : "Send access codes"}
+              {busy ? "Sending…" : `Send access codes (${eligible.length})`}
             </button>
             {eligible.length !== chosen.length && (
               <small>
@@ -238,27 +241,24 @@ export function ParticipantTable({
             <thead>
               <tr>
                 <th scope="col" className="ad-check-cell">
-                  <input
-                    ref={allCheckbox}
-                    type="checkbox"
-                    aria-label="Select this page"
-                    checked={allSelected}
-                    disabled={!shown.length}
-                    onChange={(event) =>
-                      setSelected(
-                        event.target.checked
-                          ? [
-                              ...new Set([
-                                ...selected,
-                                ...shown.map((person) => person.id),
-                              ]),
-                            ]
-                          : selected.filter(
-                              (id) => !shown.some((person) => person.id === id)
-                            )
-                      )
-                    }
-                  />
+                  <label className="ad-select-all">
+                    <input
+                      ref={allCheckbox}
+                      type="checkbox"
+                      aria-label="Select all matching participants"
+                      title={`Select all ${filtered.length} matching participants across all pages`}
+                      checked={allSelected}
+                      disabled={!filtered.length}
+                      onChange={(event) =>
+                        setSelected(
+                          event.target.checked
+                            ? filtered.map((person) => person.id)
+                            : []
+                        )
+                      }
+                    />
+                    <span>Select all {filtered.length} participants</span>
+                  </label>
                 </th>
                 <th
                   scope="col"
@@ -297,20 +297,21 @@ export function ParticipantTable({
                 return (
                   <tr
                     key={person.id}
-                    data-selected={selected.includes(person.id)}
+                    data-selected={selectedIds.has(person.id)}
                   >
                     <td className="ad-check-cell">
                       <input
                         type="checkbox"
                         aria-label={`Select ${person.email}`}
-                        checked={selected.includes(person.id)}
-                        onChange={(event) =>
-                          setSelected(
-                            event.target.checked
-                              ? [...selected, person.id]
-                              : selected.filter((id) => id !== person.id)
+                        checked={selectedIds.has(person.id)}
+                        onChange={(event) => {
+                          const checked = event.target.checked
+                          setSelected((previous) =>
+                            checked
+                              ? [...new Set([...previous, person.id])]
+                              : previous.filter((id) => id !== person.id)
                           )
-                        }
+                        }}
                       />
                     </td>
                     <td className="ad-person-cell">

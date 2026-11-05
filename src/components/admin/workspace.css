@@ -231,6 +231,45 @@
   color: #b6c1ae;
   font-size: 11px;
 }
+.ad-select-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+.ad-select-all span {
+  display: none;
+}
+@media (max-width: 900px) {
+  .ad-table-panel thead {
+    position: static;
+    display: block;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+  }
+  .ad-table-panel thead tr {
+    display: block;
+  }
+  .ad-table-panel thead th:not(.ad-check-cell) {
+    display: none;
+  }
+  .ad-table-panel thead .ad-check-cell {
+    display: block;
+    width: 100%;
+    padding: 0 16px;
+  }
+  .ad-select-all {
+    min-height: 44px;
+  }
+  .ad-select-all span {
+    display: inline;
+    font-size: 12px;
+    font-weight: 400;
+    color: #bbb;
+  }
+}
 .ad-table-panel thead {
   background: #0e0e0e;
 }

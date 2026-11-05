@@ -7,6 +7,7 @@ import { isDraft } from "../projectboard/data"
 import type { ProjectSplit } from "./project-registry-model"
 import type { ParticipantDetails } from "./participant-tools"
 import type { Cohort, ProjectInput } from "./cohort-model"
+import { sendInvitationBatches } from "./invitation-batches"
 
 // Device-only preparation stays available on localhost. Production never uses it.
 export const useLiveBackend = !isLocalPreview || import.meta.env.VITE_ACCESS_MODE === "supabase"
@@ -140,11 +141,16 @@ export async function saveLiveParticipant(person: Assignment, details: Participa
 }
 export async function inviteLiveParticipants(ids:string[]) {
   if (!supabase || !state.isAdmin) throw new Error("Committee sign-in required.")
-  if (ids.length > 50) throw new Error("Send invitations to up to 50 participants at a time.")
-  const {data,error} = await supabase.functions.invoke("invite-participants", {body:{ids}})
-  if (error) throw new Error("Invitation delivery failed. Check the email setup before retrying.")
-  await refreshBackend()
-  return data as {sent:number;failed:number}
+  const client = supabase
+  try {
+    return await sendInvitationBatches(ids, async batch => {
+      const {data,error} = await client.functions.invoke("invite-participants", {body:{ids:batch}})
+      if (error) throw error
+      return data as {sent:number;failed:number}
+    })
+  } finally {
+    await refreshBackend()
+  }
 }
 export async function saveLiveDraft(draft:Draft, expectedRevision:number) {
   if (!supabase || liveProject() !== draft.projectId) return false
