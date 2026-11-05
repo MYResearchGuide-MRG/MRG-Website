@@ -1,0 +1,3 @@
+[functions.invite-participants]
+# The handler verifies the user JWT with Auth and checks the database admin role.
+verify_jwt = false

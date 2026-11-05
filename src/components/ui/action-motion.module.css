@@ -1,0 +1,65 @@
+/* Shared interaction for public-site action buttons. No layout or idle motion. */
+.base {
+  position: relative;
+  isolation: isolate;
+  translate: 0 0;
+  /* Override the older per-section transition lists, including utility classes. */
+  transition: background-color 260ms ease, border-color 260ms ease, color 260ms ease, box-shadow 260ms ease, translate 260ms cubic-bezier(.2,.7,.2,1), scale 160ms ease !important;
+}
+.base::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 35%, var(--action-sheen) 50%, transparent 65%);
+  background-size: 260% 100%;
+  background-position: 100% 50%;
+  opacity: 0;
+  transition: background-position 600ms cubic-bezier(.2,.7,.2,1), opacity 220ms ease;
+}
+.light {
+  composes: base;
+  --action-hover-bg: #e4e4e4;
+  --action-hover-border: #e4e4e4;
+  --action-hover-color: #111;
+  --action-sheen: rgb(0 0 0 / 6%);
+}
+.dark {
+  composes: base;
+  --action-hover-bg: #242424;
+  --action-hover-border: #929292;
+  --action-hover-color: #fff;
+  --action-sheen: rgb(255 255 255 / 10%);
+}
+.base > :global(.lucide-arrow-up-right), .base > :global(.lucide-arrow-right) {
+  transition: translate 260ms cubic-bezier(.2,.7,.2,1) !important;
+}
+.base:focus-visible:not(:disabled):not([aria-disabled="true"]) {
+  background-color: var(--action-hover-bg) !important;
+  border-color: var(--action-hover-border) !important;
+  color: var(--action-hover-color) !important;
+  outline: 2px solid #eee;
+  outline-offset: 4px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .base:hover:not(:disabled):not([aria-disabled="true"]) {
+    background-color: var(--action-hover-bg) !important;
+    border-color: var(--action-hover-border) !important;
+    color: var(--action-hover-color) !important;
+    translate: 0 -2px;
+    box-shadow: 0 6px 16px rgb(0 0 0 / 20%);
+  }
+  .base:hover:not(:disabled):not([aria-disabled="true"])::after { opacity: 1; background-position: 0% 50%; }
+  .base:hover:not(:disabled):not([aria-disabled="true"]) > :global(.lucide-arrow-up-right) { translate: 2px -2px; }
+  .base:hover:not(:disabled):not([aria-disabled="true"]) > :global(.lucide-arrow-right) { translate: 3px 0; }
+}
+.base:active:not(:disabled):not([aria-disabled="true"]) { translate: 0 0; scale: .985; box-shadow: none; }
+@media (prefers-reduced-motion: reduce) {
+  .base, .base::after, .base > :global(.lucide-arrow-up-right), .base > :global(.lucide-arrow-right) {
+    transition: none !important;
+    translate: none !important;
+    scale: none !important;
+  }
+  .base::after { display: none; }
+}

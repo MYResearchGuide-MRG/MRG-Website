@@ -33,8 +33,8 @@ export function isRegistrationOpen(now = new Date()): boolean {
 export const contactMailto = `mailto:${siteConfig.contactEmail}?subject=MYSSP%20Question`
 
 export const navItems = [
-  { label: "2026 Finalists", href: "#/results" },
-  { label: "Project Library", href: "#/projects" },
+  { label: "Projects", href: "#/projects/2026" },
+  { label: "Project Archive", href: "#/projectboard" },
   { label: "Resources", href: "#/resources" },
   { label: "Awards", href: "#/awards" },
 ] as const

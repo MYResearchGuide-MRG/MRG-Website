@@ -41,3 +41,5 @@ public/old/
 
 # applicant data exports (PII — never commit)
 *.xlsx
+.private/
+supabase/.temp/

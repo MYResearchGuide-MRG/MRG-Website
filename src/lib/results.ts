@@ -54,14 +54,16 @@ export function useCountdown(): string {
 export const resultsRouteHash = "#/results"
 export const resourcesRouteHash = "#/resources"
 export const awardsRouteHash = "#/awards"
-export const projectsRouteHash = "#/projects"
+export const homeRouteHash = "#/"
+export const projectboardRouteHash = "#/projectboard"
+export const projectsRouteHash = "#/projects/2026"
 
-/** Library link pre-filtered to one research area: `#/projects?track=Biology`. */
+/** Catalogue link pre-filtered to one research area: `#/projects/2026?track=Biology`. */
 export function projectsTrackHash(track: string) {
   return `${projectsRouteHash}?track=${encodeURIComponent(track)}`
 }
 
-/** Track named in a `#/projects?track=…` hash, if any. */
+/** Track named in a `#/projects/2026?track=…` hash, if any. */
 export function trackFromHash(hash: string): string | null {
   if (!hash.startsWith(`${projectsRouteHash}?`)) return null
   return new URLSearchParams(hash.slice(projectsRouteHash.length + 1)).get(
@@ -69,10 +71,20 @@ export function trackFromHash(hash: string): string | null {
   )
 }
 
-function isProjectsHash(hash: string) {
-  return hash === projectsRouteHash || hash.startsWith(`${projectsRouteHash}?`)
+function isProjectsRoute(hash: string): boolean {
+  return (
+    hash === "#/projects" ||
+    hash === projectsRouteHash ||
+    hash.startsWith(`${projectsRouteHash}?`)
+  )
 }
-export const homeRouteHash = "#/"
+
+function isProjectboardRoute(hash: string): boolean {
+  return (
+    hash === projectboardRouteHash ||
+    hash.startsWith(`${projectboardRouteHash}/`)
+  )
+}
 
 /**
  * A scene anchor inside the results route: `#/results/age`. Anything after the
@@ -93,34 +105,49 @@ function sceneFromHash(hash: string): string | null {
  * falls back to home when its target element is absent, which is how the back
  * button returns from `#/results` to a section on the home page.
  */
-export type Route = "results" | "resources" | "awards" | "projects" | "home"
+export type Route =
+  | "results"
+  | "resources"
+  | "awards"
+  | "projectboard"
+  | "projects"
+  | "home"
+  | "admin"
 
 export function useRoute(): Route {
   const [route, setRoute] = React.useState<Route>(() =>
-    window.location.hash === resultsRouteHash ||
-    sceneFromHash(window.location.hash) !== null
-      ? "results"
-      : window.location.hash === resourcesRouteHash
-        ? "resources"
-        : window.location.hash === awardsRouteHash
-          ? "awards"
-          : isProjectsHash(window.location.hash)
-            ? "projects"
-            : "home"
+    window.location.hash === "#/admin"
+      ? "admin"
+      : isProjectsRoute(window.location.hash)
+        ? "projects"
+        : isProjectboardRoute(window.location.hash)
+          ? "projectboard"
+          : window.location.hash === resultsRouteHash ||
+              sceneFromHash(window.location.hash) !== null
+            ? "results"
+            : window.location.hash === resourcesRouteHash
+              ? "resources"
+              : window.location.hash === awardsRouteHash
+                ? "awards"
+                : "home"
   )
 
   React.useEffect(() => {
     const onChange = () => {
       const hash = window.location.hash
       const scene = sceneFromHash(hash)
-      if (hash === resultsRouteHash || scene !== null) {
+      if (hash === "#/admin") {
+        setRoute("admin")
+      } else if (isProjectsRoute(hash)) {
+        setRoute("projects")
+      } else if (isProjectboardRoute(hash)) {
+        setRoute("projectboard")
+      } else if (hash === resultsRouteHash || scene !== null) {
         setRoute("results")
       } else if (hash === resourcesRouteHash) {
         setRoute("resources")
       } else if (hash === awardsRouteHash) {
         setRoute("awards")
-      } else if (isProjectsHash(hash)) {
-        setRoute("projects")
       } else if (hash === homeRouteHash || hash === "" || hash === "#") {
         setRoute("home")
       } else if (document.getElementById(hash.slice(1)) === null) {

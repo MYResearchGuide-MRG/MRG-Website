@@ -1,24 +1,24 @@
 import * as React from "react"
-import { Menu, Moon, Sun, X } from "lucide-react"
+import { ArrowUpRight, Menu, X } from "lucide-react"
 
-import { homeRouteHash, resultsRouteHash, useAnnounced, useRoute } from "@/lib/results"
-import { useTheme } from "@/components/theme-provider"
+import { homeRouteHash, projectsRouteHash, useRoute } from "@/lib/results"
 import { MysspLogo } from "@/components/layout/myssp-logo"
 import { navItems } from "@/lib/site"
 import { cn } from "@/lib/utils"
+import action from "@/components/ui/nav-action.module.css"
+import styles from "./site-header.module.css"
 
-export function SiteHeader() {
-  const { resolvedTheme, setTheme } = useTheme()
+export function SiteHeader({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: () => void }) {
   const [scrolled, setScrolled] = React.useState(false)
   const [menuOpen, setMenuOpen] = React.useState(false)
   const route = useRoute()
-  const announced = useAnnounced()
   const shellRef = React.useRef<HTMLDivElement>(null)
   const toggleRef = React.useRef<HTMLButtonElement>(null)
   const panelRef = React.useRef<HTMLElement>(null)
 
-  const items = navItems.filter((item) => announced || item.href !== resultsRouteHash)
-  const isActive = (href: string) => href === `#/${route}`
+  const items = navItems
+  const isActive = (href: string) =>
+    route === "projects" ? href === projectsRouteHash : href === `#/${route}`
   const closeMenu = () => setMenuOpen(false)
 
   React.useEffect(() => {
@@ -82,10 +82,12 @@ export function SiteHeader() {
         className={cn(
           // Opaque at all times: only width, offset and border animate, so
           // nothing on the fixed header changes compositing path mid-scroll.
-          "pointer-events-auto relative w-full rounded-xl border bg-background text-foreground transition-[max-width,margin-top,border-color,box-shadow] duration-500 ease-out motion-reduce:transition-none",
+          styles.shell,
+          "pointer-events-auto relative w-full rounded-xl border bg-[#121212] text-foreground",
+          scrolled ? "border-white/[0.12]" : "border-transparent",
           floating
-            ? "mt-3 max-w-[75rem] border-border shadow-[0_12px_36px_rgb(0_0_0/0.24)]"
-            : "mt-0 max-w-[90rem] border-transparent"
+            ? "mt-3 max-w-[75rem] shadow-[0_12px_36px_rgb(0_0_0/0.24)]"
+            : "mt-0 max-w-[90rem]"
         )}
       >
         <div className="flex h-[62px] items-center justify-between gap-3 px-3 sm:h-[70px] sm:gap-6 sm:px-6">
@@ -95,7 +97,14 @@ export function SiteHeader() {
             aria-label="MYSSP home"
             className="flex shrink-0 items-center"
           >
-            <MysspLogo className="h-9 w-auto sm:h-10" />
+            <span className="max-[380px]:hidden">
+              <MysspLogo className="h-9 w-auto sm:h-10" />
+            </span>
+            <img
+              src="/myssp-icon.png"
+              alt="MYSSP"
+              className="hidden size-9 object-contain max-[380px]:block"
+            />
           </a>
 
           <nav aria-label="Main navigation" className="hidden items-center gap-6 lg:flex">
@@ -112,15 +121,23 @@ export function SiteHeader() {
           </nav>
 
           <div className="flex shrink-0 items-center gap-2.5">
-            <button
-              type="button"
-              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-              className="relative flex size-10 items-center justify-center rounded-[7px] text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground"
-              aria-label="Toggle theme"
-            >
-              <Sun className="size-4 scale-100 rotate-0 transition-transform duration-500 dark:scale-0 dark:-rotate-90" />
-              <Moon className="absolute size-4 scale-0 rotate-90 transition-transform duration-500 dark:scale-100 dark:rotate-0" />
-            </button>
+            {signedIn ? (
+              <a href="#/projectboard/workspace" className={action.button} onClick={closeMenu}>
+                My project <ArrowUpRight size={15} aria-hidden />
+              </a>
+            ) : (
+              <button
+                type="button"
+                className={action.button}
+                onClick={() => {
+                  closeMenu()
+                  onSignIn()
+                }}
+                aria-haspopup="dialog"
+              >
+                Sign in <ArrowUpRight size={15} aria-hidden />
+              </button>
+            )}
 
             <button
               ref={toggleRef}
@@ -131,7 +148,11 @@ export function SiteHeader() {
               aria-expanded={menuOpen}
               aria-controls="mobile-navigation-menu"
             >
-              {menuOpen ? <X className="size-[22px]" aria-hidden /> : <Menu className="size-[22px]" aria-hidden />}
+              {menuOpen ? (
+                <X className="size-[22px]" aria-hidden />
+              ) : (
+                <Menu className="size-[22px]" aria-hidden />
+              )}
             </button>
           </div>
         </div>
@@ -141,7 +162,7 @@ export function SiteHeader() {
             ref={panelRef}
             id="mobile-navigation-menu"
             aria-label="Mobile navigation"
-            className="absolute inset-x-0 top-[calc(100%+8px)] max-h-[calc(100dvh-114px)] animate-in overflow-y-auto overscroll-contain rounded-xl border border-border bg-popover p-3 shadow-[0_16px_40px_rgb(0_0_0/0.35)] duration-200 fade-in slide-in-from-top-1.5 lg:hidden"
+            className="animate-in fade-in slide-in-from-top-1.5 absolute inset-x-0 top-[calc(100%+8px)] max-h-[calc(100dvh-114px)] overflow-y-auto overscroll-contain rounded-xl border border-white/[0.12] bg-[#121212] p-3 shadow-[0_16px_40px_rgb(0_0_0/0.35)] duration-200 lg:hidden"
           >
             <div className="grid">
               {items.map((item) => (
