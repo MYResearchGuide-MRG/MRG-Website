@@ -82,7 +82,7 @@ function App() {
       route === "admin"
         ? `Committee | ${defaultTitle.current}`
         : route === "projects"
-          ? `2026 Projects | ${defaultTitle.current}`
+          ? `Projects | ${defaultTitle.current}`
           : route === "projectboard"
             ? `Project Archive | ${defaultTitle.current}`
             : route === "results"

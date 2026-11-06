@@ -34,7 +34,6 @@ import {
   newDraft,
   isDraft,
   trackLabels,
-  trackOrder,
   type AwardCategory,
   type Board,
   type Draft,
@@ -50,6 +49,7 @@ import { isProjectEditable, useProjectEditing } from "../admin/project-editing"
 import { useProjectBoards } from "../admin/project-registry"
 import { useBackend, useLiveBackend, saveLiveDraft } from "../admin/backend"
 import { useLibraryVisibility } from "../admin/library-visibility"
+import { useResearchFields } from "../admin/research-fields"
 import {
   canViewProject,
   visibleProjects,
@@ -181,6 +181,7 @@ function ProjectLibrary({
   assignedProjectId: string | null
 }) {
   const programmeYears = [...new Set(libraryBoards.map(board => board.year))].sort((a, b) => b - a)
+  const researchFields = useResearchFields(libraryBoards.map(b => b.track))
   const backend = useBackend()
   const reduceMotion = useReducedMotion()
   const [query, setQuery] = useState("")
@@ -342,11 +343,11 @@ function ProjectLibrary({
                   checked={!tracks.length}
                   onChange={() => setTracks([])}
                 />
-                {trackOrder.map((track) => (
+                {researchFields.map(({ name: track }) => (
                   <FilterOption
                     key={track}
-                    label={trackLabels[track]}
-                    icon={fieldIcons[track]}
+                    label={trackLabels[track] ?? track}
+                    icon={fieldIcons[track] ?? Grid2X2}
                     count={
                       libraryBoards.filter((board) => board.track === track)
                         .length

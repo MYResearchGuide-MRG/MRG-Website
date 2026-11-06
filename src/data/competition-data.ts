@@ -10,6 +10,8 @@
  */
 export type Project = {
   id: string
+  code?: string
+  year?: number
   track: Track
   /** Sub-area, shown under the title in the list. SOAR calls this "type". */
   type: string
@@ -38,18 +40,9 @@ export type Project = {
   status: "confirmed" | "pending"
 }
 
-/**
- * Tracks are the "Project Field" values the mentor submission form actually
- * collects, not a taxonomy invented here — so a new submission always lands in
- * an existing track.
- */
-export type Track =
-  | "AI & Computer Sciences"
-  | "Biology"
-  | "Chemistry"
-  | "Mathematics"
-  | "Interdisciplinary & Social Sciences"
-  | "Physics"
+// The six original fields are seeded below. Committee-created fields share
+// the same string identity across project briefs, submissions and filters.
+export type Track = string
 
 /** Display order, and the letter each project code is built from (A-1, B-2…). */
 export const trackOrder: Track[] = [

@@ -29,13 +29,13 @@ const codes = projectCodes(projects)
 /** Include the actual briefs so the assistant can compare projects even before the site is deployed. */
 function comparisonPrompt(list: Project[]) {
   return [
-    "Help me explore the Malaysia Science Scholar’s Programme (MYSSP) 2026 projects. Start by asking about my STEM interests, current skills and weekly availability, then help me compare suitable projects from the list below. Explain the work, prerequisites and trade-offs in plain language. Do not invent projects, assume applications are open, or promise admission.",
-    "Programme information: https://myssp.myresearchguide.org/\nProject catalogue: https://myssp.myresearchguide.org/#/projects/2026\nMYResearchGuide: https://myresearchguide.org/",
+    "Help me explore the Malaysia Science Scholar’s Programme (MYSSP) projects. Start by asking about my STEM interests, current skills and weekly availability, then help me compare suitable projects from the list below. Explain the work, prerequisites and trade-offs in plain language. Do not invent projects, assume applications are open, or promise admission.",
+    "Programme information: https://myssp.myresearchguide.org/\nProject catalogue: https://myssp.myresearchguide.org/#/projects\nMYResearchGuide: https://myresearchguide.org/",
     `${list.length === 1 ? "This is the project" : `These are the ${list.length} projects`} currently in my filtered view:`,
     ...list.map((project) =>
       [
-        `${codes.get(project.id)}: ${project.title}`,
-        `Field: ${project.track}. Research area: ${project.type}.`,
+        `${project.code || codes.get(project.id)}: ${project.title}`,
+        `Cohort: ${project.year || 2026}. Field: ${project.track}. Research area: ${project.type}.`,
         `Mentor: ${project.mentor}, ${project.affiliation}.`,
         `Time commitment: ${project.timeInvestment}. Team size: ${project.participants}.`,
         `Project brief: ${project.description}`,

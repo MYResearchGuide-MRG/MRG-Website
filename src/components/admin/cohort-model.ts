@@ -1,4 +1,9 @@
-import { trackOrder, type Board, type Track } from "../projectboard/data"
+import type { Board, Track } from "../projectboard/data"
+import {
+  defaultResearchFields,
+  researchFieldError,
+  type ResearchField,
+} from "./research-fields-model"
 
 export type Cohort = { year: number; name: string }
 export type ProjectInput = {
@@ -39,7 +44,11 @@ export function projectInputError(
     return `${input.code} already exists in ${input.year}. Choose another code.`
   if (!input.title.trim() || input.title.trim().length > 240)
     return "Add a project title of 240 characters or fewer."
-  if (!trackOrder.includes(input.track)) return "Choose a research field."
+  if (
+    typeof input.track !== "string" ||
+    researchFieldError({ name: input.track, prefix: "R" })
+  )
+    return "Choose a research field."
   if (input.mentor.length > 200 || input.affiliation.length > 300)
     return "Shorten the mentor name or institution."
   if (input.description.length > 4000)
@@ -50,16 +59,10 @@ export function projectInputError(
 export function suggestedCode(
   track: Track,
   year: number,
-  boards: Pick<Board, "year" | "code">[]
+  boards: Pick<Board, "year" | "code">[],
+  fields: ResearchField[] = defaultResearchFields
 ) {
-  const prefix = {
-    "AI & Computer Sciences": "A",
-    Biology: "B",
-    Chemistry: "C",
-    Mathematics: "M",
-    "Interdisciplinary & Social Sciences": "I",
-    Physics: "P",
-  }[track]
+  const prefix = fields.find((f) => f.name === track)?.prefix || "R"
   let number = 1
   const taken = new Set(
     boards.filter((b) => b.year === year).map((b) => b.code)

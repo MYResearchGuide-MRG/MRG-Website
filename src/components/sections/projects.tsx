@@ -19,20 +19,20 @@ import {
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { Collapsible } from "radix-ui"
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog"
-import {
-  projectCodes,
-  projects,
-  trackOrder,
-  type Project,
-} from "@/data/competition-data"
+import { type Project } from "@/data/competition-data"
 import { projectsRouteHash } from "@/lib/results"
 import { ProjectBrief } from "./project-brief"
 import { ProjectAdvisor } from "./project-advisor"
 import { ProjectWheel } from "./project-wheel"
 import styles from "./projects.module.css"
+import { useProjectBoards } from "../admin/project-registry"
+import { useLibraryVisibility } from "../admin/library-visibility"
+import { useResearchFields } from "../admin/research-fields"
+import {
+  catalogueProjects,
+  type CatalogueProject,
+} from "./project-catalogue-model"
 
-const codes = projectCodes(projects)
-const fields = ["All fields", ...trackOrder]
 const fieldIcons: Record<string, LucideIcon> = {
   "All fields": Grid2X2,
   "AI & Computer Sciences": Cpu,
@@ -42,43 +42,96 @@ const fieldIcons: Record<string, LucideIcon> = {
   "Interdisciplinary & Social Sciences": Network,
   Physics: Atom,
 }
-const skills = [
-  ...new Set(projects.flatMap((project) => project.skills)),
-].sort()
-const mentors = [...new Set(projects.map((project) => project.mentor))].sort()
-// Keep open-ended estimates (for example, 6+) distinct from fixed commitments.
-const commitments = new Map(
-  projects.map((project) => [
-    project.id,
-    project.timeInvestment.match(/^\d+\+? hours\/week/)?.[0] ??
-      project.timeInvestment,
-  ])
-)
-const availabilityOptions = [...new Set(commitments.values())].sort(
-  (a, b) =>
-    parseInt(a, 10) - parseInt(b, 10) ||
-    Number(a.includes("+")) - Number(b.includes("+"))
-)
-const searchText = new Map(
-  projects.map((p) => [
-    p.id,
-    [
-      codes.get(p.id),
-      p.title,
-      p.mentor,
-      p.affiliation,
-      p.track,
-      p.type,
-      p.description,
-      p.skillsDescription,
-      ...p.skills,
-    ]
-      .join(" ")
-      .toLowerCase(),
-  ])
-)
+function catalogueOptions(projects: CatalogueProject[]) {
+  const skills = [
+    ...new Set(projects.flatMap((project) => project.skills)),
+  ].sort()
+  const mentors = [
+    ...new Set(projects.map((project) => project.mentor).filter(Boolean)),
+  ].sort()
+  // Keep open-ended estimates (for example, 6+) distinct from fixed commitments.
+  const commitments = new Map(
+    projects.map((project) => [
+      project.id,
+      project.timeInvestment.match(/^\d+\+? hours\/week/)?.[0] ??
+        project.timeInvestment,
+    ])
+  )
+  const availabilityOptions = [
+    ...new Set([...commitments.values()].filter(Boolean)),
+  ].sort(
+    (a, b) =>
+      parseInt(a, 10) - parseInt(b, 10) ||
+      Number(a.includes("+")) - Number(b.includes("+"))
+  )
+  const searchText = new Map(
+    projects.map((p) => [
+      p.id,
+      [
+        p.code,
+        p.title,
+        p.mentor,
+        p.affiliation,
+        p.track,
+        p.type,
+        p.description,
+        p.skillsDescription,
+        ...p.skills,
+      ]
+        .join(" ")
+        .toLowerCase(),
+    ])
+  )
+
+  return { skills, mentors, commitments, availabilityOptions, searchText }
+}
 
 function ProjectCatalogue({ preview = false }: { preview?: boolean }) {
+  const boards = useProjectBoards()
+  const visibility = useLibraryVisibility()
+  const allProjects = React.useMemo(
+    () => catalogueProjects(boards, visibility),
+    [boards, visibility]
+  )
+  const hash = React.useSyncExternalStore(
+    subscribeHash,
+    () => window.location.hash
+  )
+  const year = Number(hash.match(/^#\/projects\/(\d{4})/)?.[1] || 2026)
+  const years = [...new Set(allProjects.map((p) => p.year))].sort(
+    (a, b) => b - a
+  )
+  return (
+    <CatalogueContent
+      key={`${preview}-${year}`}
+      preview={preview}
+      year={year}
+      years={years}
+      projects={allProjects.filter((p) => p.year === year)}
+    />
+  )
+}
+function subscribeHash(fn: () => void) {
+  window.addEventListener("hashchange", fn)
+  return () => window.removeEventListener("hashchange", fn)
+}
+
+function CatalogueContent({
+  preview,
+  year,
+  years,
+  projects,
+}: {
+  preview: boolean
+  year: number
+  years: number[]
+  projects: CatalogueProject[]
+}) {
+  const researchFields = useResearchFields(projects.map((p) => p.track))
+  const fields = ["All fields", ...researchFields.map((f) => f.name)]
+  const codes = new Map(projects.map((p) => [p.id, p.code]))
+  const { skills, mentors, commitments, availabilityOptions, searchText } =
+    React.useMemo(() => catalogueOptions(projects), [projects])
   const [query, setQuery] = React.useState("")
   const [field, setField] = React.useState("All fields")
   const [skill, setSkill] = React.useState("")
@@ -149,7 +202,7 @@ function ProjectCatalogue({ preview = false }: { preview?: boolean }) {
         <div className={styles.heading}>
           <div>
             {preview ? (
-              <h2 id={headingId}>2026 projects</h2>
+              <h2 id={headingId}>{year} projects</h2>
             ) : (
               <h1 id={headingId}>Projects</h1>
             )}
@@ -164,9 +217,16 @@ function ProjectCatalogue({ preview = false }: { preview?: boolean }) {
         </div>
         {!preview && (
           <nav aria-label="Programme year" className={styles.years}>
-            <a href={projectsRouteHash} aria-current="page">
-              2026 <span>{projects.length} projects</span>
-            </a>
+            {years.map((item) => (
+              <a
+                key={item}
+                href={`#/projects/${item}`}
+                aria-current={item === year ? "page" : undefined}
+              >
+                {item}{" "}
+                {item === year && <span>{projects.length} projects</span>}
+              </a>
+            ))}
           </nav>
         )}
         {preview ? (
@@ -225,7 +285,7 @@ function ProjectCatalogue({ preview = false }: { preview?: boolean }) {
                   >
                     <div className={styles.fieldList}>
                       {fields.map((item) => {
-                        const Icon = fieldIcons[item]
+                        const Icon = fieldIcons[item] ?? Grid2X2
                         const count =
                           item === "All fields"
                             ? matching.length
@@ -427,15 +487,24 @@ function ProjectCatalogue({ preview = false }: { preview?: boolean }) {
                         setBriefOpen(true)
                       }}
                     >
-                      <img
-                        className={styles.portrait}
-                        src={project.photo}
-                        alt=""
-                        width={56}
-                        height={56}
-                        loading="lazy"
-                        decoding="async"
-                      />
+                      {project.photo ? (
+                        <img
+                          className={styles.portrait}
+                          src={project.photo}
+                          alt=""
+                          width={56}
+                          height={56}
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      ) : (
+                        <span
+                          className={`${styles.portrait} ${styles.portraitFallback}`}
+                          aria-hidden
+                        >
+                          <Grid2X2 size={23} />
+                        </span>
+                      )}
                       <div className={styles.projectBody}>
                         <div className={styles.projectTitle}>
                           <h3>{project.title}</h3>

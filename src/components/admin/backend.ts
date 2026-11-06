@@ -7,6 +7,7 @@ import { isDraft } from "../projectboard/data"
 import type { ProjectSplit } from "./project-registry-model"
 import type { ParticipantDetails } from "./participant-tools"
 import type { Cohort, ProjectInput } from "./cohort-model"
+import type { ResearchField } from "./research-fields-model"
 import { sendInvitationBatches } from "./invitation-batches"
 
 // Device-only preparation stays available on localhost. Production never uses it.
@@ -18,8 +19,9 @@ type State = {
   visibility: Record<string, boolean>; editing: Record<string, boolean>; boards: Board[];
   deletedPeople: Assignment[]; deletedProjects: ProjectRecord[];
   cohorts: Cohort[]; cohortError: string;
+  researchFields: ResearchField[]; researchFieldError: string;
 }
-const empty: State = { ready: false, error: "", isAdmin: false, userId: null, people: [], projects: [], drafts: {}, revisions: {}, visibility: {}, editing: {}, boards: [], deletedPeople: [], deletedProjects: [], cohorts: [], cohortError: "" }
+const empty: State = { ready: false, error: "", isAdmin: false, userId: null, people: [], projects: [], drafts: {}, revisions: {}, visibility: {}, editing: {}, boards: [], deletedPeople: [], deletedProjects: [], cohorts: [], cohortError: "", researchFields: [], researchFieldError: "" }
 let state = empty
 const listeners = new Set<() => void>()
 let epoch = 0
@@ -34,11 +36,12 @@ export async function refreshBackend() {
   try {
     const { data: { session } } = await supabase.auth.getSession()
     const userId = session?.user.id || null
-    const [projects, people, drafts, role] = await Promise.all([
+    const [projects, people, drafts, role, fields] = await Promise.all([
       supabase.from("myssp_projects").select("*").eq("retired", false).order("code"),
       userId ? supabase.from("myssp_participants").select("*") : Promise.resolve({data: [], error: null}),
       supabase.from("myssp_submissions").select("project_id,content,revision"),
       userId ? supabase.rpc("myssp_is_admin") : Promise.resolve({data: false, error: null}),
+      supabase.from("myssp_research_fields").select("name,prefix").order("created_at").order("name"),
     ])
     if (projects.error || people.error || drafts.error || role.error) throw new Error("Database setup is incomplete or access was denied.")
     // Older deployments remain usable while the cohort migration is being applied.
@@ -64,6 +67,8 @@ export async function refreshBackend() {
       deletedProjects: allProjects.filter(p => p.deleted_at),
       cohorts: cohorts.data || [],
       cohortError: cohorts.error ? "New cohorts and projects need the cohort database migration. Existing projects are still available." : "",
+      researchFields: fields.error ? state.researchFields : fields.data || [],
+      researchFieldError: fields.error ? "Research fields could not be loaded. Refresh and try again." : "",
     })
   } catch (error) {
     // A failed refresh is not a sign-out. Preserve the current editor and let
@@ -180,6 +185,17 @@ export async function createLiveCohort(year: number, name: string) {
   const { error } = await supabase.rpc("myssp_create_cohort", { cohort_year: year, cohort_name: name.trim() })
   if (error) throw new Error(error.code === "23505" ? "This cohort already exists. Refresh and select it." : state.cohortError || "Could not create the cohort. Refresh and try again.")
   await refreshBackend()
+}
+export async function createLiveResearchField(field: ResearchField) {
+  if (!supabase || !state.isAdmin) throw new Error("Committee sign-in required.")
+  const { data, error } = await supabase.rpc("myssp_create_research_field", { field_name: field.name, code_prefix: field.prefix })
+  if (error) throw new Error(error.code === "23505" ? "This research field already exists. Refresh and select it." : "Could not add the research field. Check the database connection and try again.")
+  const created = data as ResearchField
+  // Keep the confirmed write even if the refresh subsequently fails.
+  epoch++
+  publish({ ...state, researchFields: [...state.researchFields.filter(f => f.name !== created.name), created] })
+  await refreshBackend()
+  return created
 }
 export async function saveLiveProject(input: ProjectInput, previous?: Board) {
   if (!supabase || !state.isAdmin) throw new Error("Committee sign-in required.")

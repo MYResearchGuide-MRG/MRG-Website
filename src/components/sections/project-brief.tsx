@@ -46,7 +46,7 @@ export function ProjectBrief({ project }: { project: Project }) {
           {project.track} / {project.type}
         </span>
         <span aria-hidden className="h-px w-8 bg-border" />
-        <span className="label-micro text-muted-foreground">{CODES.get(project.id)}</span>
+        <span className="label-micro text-muted-foreground">{project.code || CODES.get(project.id)}</span>
         {project.status === "pending" && (
           <span className="label-micro border border-border px-2 py-1 text-muted-foreground">
             Awaiting mentor confirmation
@@ -62,7 +62,7 @@ export function ProjectBrief({ project }: { project: Project }) {
           applicant weighs hardest, and it was previously one grey cell among
           three. */}
       <div className="mt-8 flex items-center gap-4 border-t border-border pt-6">
-        <img
+        {project.photo && <img
           src={project.photo}
           alt=""
           width={560}
@@ -71,7 +71,7 @@ export function ProjectBrief({ project }: { project: Project }) {
           decoding="async"
           className="h-auto w-14 shrink-0 border border-border object-cover"
           style={{ aspectRatio: "4 / 5" }}
-        />
+        />}
         <div className="min-w-0">
           <p className="label-micro text-muted-foreground">Mentor</p>
           <p className="mt-1.5 leading-snug font-medium">{project.mentor}</p>

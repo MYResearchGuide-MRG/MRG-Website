@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react"
-import { ArrowRight, FolderPlus, LockKeyhole } from "lucide-react"
+import { ArrowRight, FolderPlus, LockKeyhole, Plus } from "lucide-react"
+import { Collapsible } from "radix-ui"
 import {
   Dialog,
   DialogContent,
@@ -8,6 +9,7 @@ import {
 } from "../ui/dialog"
 import { trackOrder, type Board, type Track } from "../projectboard/data"
 import { AdminSelect } from "./AdminSelect"
+import { createResearchField, useResearchFields } from "./research-fields"
 import {
   cohortError,
   projectInputError,
@@ -132,6 +134,13 @@ export function ProjectEditor({
   onSaved: (id: string, code: string) => void
 }) {
   const boards = useProjectBoards()
+  const researchFields = useResearchFields(boards.map((b) => b.track))
+  const [addingField, setAddingField] = useState(false)
+  const [fieldName, setFieldName] = useState("")
+  const [fieldPrefix, setFieldPrefix] = useState("")
+  const [fieldBusy, setFieldBusy] = useState(false)
+  const [fieldError, setFieldError] = useState("")
+  const [fieldStatus, setFieldStatus] = useState("")
   const [input, setInput] = useState<ProjectInput>(() => ({
     year,
     code: board?.code || suggestedCode(trackOrder[0], year, boards),
@@ -147,8 +156,38 @@ export function ProjectEditor({
   function field(key: keyof ProjectInput, value: string) {
     setInput((current) => ({ ...current, [key]: value }))
   }
+  async function addField() {
+    if (fieldBusy) return
+    setFieldBusy(true)
+    setFieldError("")
+    try {
+      const created = await createResearchField({
+        name: fieldName,
+        prefix: fieldPrefix,
+      })
+      setInput((current) => ({
+        ...current,
+        track: created.name,
+        code: codeEdited
+          ? current.code
+          : suggestedCode(created.name, year, boards, [
+              ...researchFields,
+              created,
+            ]),
+      }))
+      setAddingField(false)
+      setFieldName("")
+      setFieldPrefix("")
+      setFieldStatus(`${created.name} added and selected.`)
+    } catch (e) {
+      setFieldError(e instanceof Error ? e.message : "Could not add the field.")
+    } finally {
+      setFieldBusy(false)
+    }
+  }
   async function submit(event: FormEvent) {
     event.preventDefault()
+    if (addingField || fieldBusy) return
     const invalid = projectInputError(input, boards, board?.id)
     if (invalid) {
       setError(invalid)
@@ -168,7 +207,7 @@ export function ProjectEditor({
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open && !busy) onClose()
+        if (!open && !busy && !fieldBusy) onClose()
       }}
     >
       <DialogContent className="ad-modal ad-create-modal">
@@ -184,7 +223,7 @@ export function ProjectEditor({
           </div>
         </div>
         <form className="ad-editor-form" onSubmit={submit}>
-          <fieldset disabled={busy}>
+          <fieldset disabled={busy || fieldBusy}>
             <div className="ad-project-form-grid">
               <label>
                 Research field
@@ -197,12 +236,17 @@ export function ProjectEditor({
                       track: value as Track,
                       code: codeEdited
                         ? current.code
-                        : suggestedCode(value as Track, year, boards),
+                        : suggestedCode(
+                            value as Track,
+                            year,
+                            boards,
+                            researchFields
+                          ),
                     }))
                   }
-                  options={trackOrder.map((track) => ({
-                    value: track,
-                    label: track,
+                  options={researchFields.map((field) => ({
+                    value: field.name,
+                    label: field.name,
                   }))}
                 />
               </label>
@@ -224,6 +268,100 @@ export function ProjectEditor({
                     : "Unique within this year."}
                 </small>
               </label>
+            </div>
+            <div className="ad-field-create">
+              <Collapsible.Root
+                open={addingField}
+                onOpenChange={setAddingField}
+              >
+                {!addingField && (
+                  <Collapsible.Trigger
+                    type="button"
+                    className="ad-field-add"
+                    onClick={() => {
+                      setFieldError("")
+                      setFieldStatus("")
+                    }}
+                  >
+                    <Plus size={14} /> Add research field
+                  </Collapsible.Trigger>
+                )}
+                <Collapsible.Content className="ad-field-content">
+                  <div
+                    className="ad-field-create-panel"
+                    role="group"
+                    aria-label="New research field"
+                  >
+                    <div className="ad-project-form-grid">
+                      <label>
+                        Field name
+                        <input
+                          autoFocus
+                          maxLength={80}
+                          value={fieldName}
+                          placeholder="e.g. Engineering"
+                          onChange={(e) => setFieldName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault()
+                              void addField()
+                            }
+                          }}
+                        />
+                      </label>
+                      <label>
+                        Code prefix
+                        <input
+                          maxLength={5}
+                          value={fieldPrefix}
+                          placeholder="e.g. ENG"
+                          onChange={(e) =>
+                            setFieldPrefix(e.target.value.toUpperCase())
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault()
+                              void addField()
+                            }
+                          }}
+                        />
+                      </label>
+                    </div>
+                    <p>
+                      Available for all cohorts, Projects and Project Archive
+                      filters. The prefix suggests codes such as ENG-1.
+                    </p>
+                    {fieldError && (
+                      <p className="ad-error" role="alert">
+                        {fieldError}
+                      </p>
+                    )}
+                    <div className="ad-field-create-actions">
+                      <button
+                        type="button"
+                        className="ad-button"
+                        disabled={fieldBusy}
+                        onClick={() => setAddingField(false)}
+                      >
+                        Cancel field
+                      </button>
+                      <button
+                        type="button"
+                        className="ad-button ad-primary"
+                        disabled={fieldBusy}
+                        onClick={() => void addField()}
+                      >
+                        {fieldBusy ? "Adding…" : "Add field"}
+                      </button>
+                    </div>
+                  </div>
+                </Collapsible.Content>
+              </Collapsible.Root>
+              {fieldStatus && (
+                <p role="status" className="ad-field-status">
+                  {fieldStatus}
+                </p>
+              )}
             </div>
             <label>
               Project title
@@ -279,12 +417,15 @@ export function ProjectEditor({
             <button
               type="button"
               className="ad-button"
-              disabled={busy}
+              disabled={busy || fieldBusy}
               onClick={onClose}
             >
               Cancel
             </button>
-            <button className="ad-button ad-primary" disabled={busy}>
+            <button
+              className="ad-button ad-primary"
+              disabled={busy || fieldBusy || addingField}
+            >
               {busy ? "Saving…" : board ? "Save changes" : "Create project"}
               <ArrowRight size={15} />
             </button>

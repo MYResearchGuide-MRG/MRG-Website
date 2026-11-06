@@ -87,6 +87,21 @@ test("split must include every student once and leave no empty teams", () => {
     )
   }
 })
+test("committee-created research fields support splitting projects with longer code prefixes", () => {
+  const engineering = { ...parent, code: "ENG-1" }
+  const engineeringSplit = {
+    ...split,
+    teams: split.teams.map((team, index) => ({
+      ...team,
+      code: `ENG-1${index === 0 ? "A" : "B"}`,
+    })),
+  }
+  assert.equal(splitError(engineeringSplit, [engineering], []), null)
+  assert.deepEqual(
+    applyProjectSplits([engineering], [engineeringSplit]).map((board) => board.code),
+    ["ENG-1A", "ENG-1B"]
+  )
+})
 test("reject duplicate pages, codes, repeated splits and missing titles", () => {
   assert.ok(splitError(split, projects, [split]))
   for (const change of [

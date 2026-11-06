@@ -77,11 +77,7 @@ export function trackFromHash(hash: string): string | null {
 }
 
 function isProjectsRoute(hash: string): boolean {
-  return (
-    hash === "#/projects" ||
-    hash === projectsRouteHash ||
-    hash.startsWith(`${projectsRouteHash}?`)
-  )
+  return /^#\/projects(?:\/(20\d{2}|2100))?(?:\?.*)?$/.test(hash)
 }
 
 function isProjectboardRoute(hash: string): boolean {

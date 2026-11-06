@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react"
 import { boards as originalBoards, type Board } from "../projectboard/data"
 import { isLocalPreview } from "./local-preview"
+import { getResearchFields } from "./research-fields"
 import {
   useBackend,
   getBackend,
@@ -136,6 +137,7 @@ export async function createCohort(year: number, name: string) {
 export async function saveProjectBrief(input: ProjectInput, previous?: Board) {
   const error = projectInputError(input, getProjectBoards(), previous?.id)
   if (error) throw new Error(error)
+  if (!getResearchFields().some(f => f.name === input.track)) throw new Error("Add this research field before assigning it to a project.")
   if (useLiveBackend) return saveLiveProject(input, previous)
   if (!isLocalPreview || !cohorts.some((c) => c.year === input.year))
     throw new Error("Choose an existing cohort.")

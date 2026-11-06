@@ -43,7 +43,7 @@ export function splitError(
     if (!/^[a-z0-9-]{1,100}$/.test(team.id) || takenIds.has(team.id))
       return "Each team needs its own unique page address."
     if (
-      !/^[A-Z]-\d+[A-Z]{1,2}$/.test(team.code) ||
+      !/^[A-Z]{1,5}-\d+[A-Z]{1,2}$/.test(team.code) ||
       !team.code.startsWith(parent.code) ||
       takenCodes.has(team.code)
     )
