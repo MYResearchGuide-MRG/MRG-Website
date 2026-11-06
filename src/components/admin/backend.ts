@@ -15,13 +15,14 @@ export const useLiveBackend = !isLocalPreview || import.meta.env.VITE_ACCESS_MOD
 export type ProjectRecord = { id: string; code: string; payload: Board; published: boolean; editing_enabled: boolean; retired: boolean; deleted_at: string | null }
 type State = {
   ready: boolean; error: string; isAdmin: boolean; userId: string | null;
+  accountEmail: string; accountName: string; accountPhoto: string;
   people: Assignment[]; projects: ProjectRecord[]; drafts: Record<string, Draft>; revisions: Record<string, number>;
   visibility: Record<string, boolean>; editing: Record<string, boolean>; boards: Board[];
   deletedPeople: Assignment[]; deletedProjects: ProjectRecord[];
   cohorts: Cohort[]; cohortError: string;
   researchFields: ResearchField[]; researchFieldError: string;
 }
-const empty: State = { ready: false, error: "", isAdmin: false, userId: null, people: [], projects: [], drafts: {}, revisions: {}, visibility: {}, editing: {}, boards: [], deletedPeople: [], deletedProjects: [], cohorts: [], cohortError: "", researchFields: [], researchFieldError: "" }
+const empty: State = { ready: false, error: "", isAdmin: false, userId: null, accountEmail: "", accountName: "", accountPhoto: "", people: [], projects: [], drafts: {}, revisions: {}, visibility: {}, editing: {}, boards: [], deletedPeople: [], deletedProjects: [], cohorts: [], cohortError: "", researchFields: [], researchFieldError: "" }
 let state = empty
 const listeners = new Set<() => void>()
 let epoch = 0
@@ -48,12 +49,18 @@ export async function refreshBackend() {
     const cohorts = role.data === true
       ? await supabase.from("myssp_cohorts").select("year,name").order("year", { ascending: false })
       : { data: [], error: null }
+    const adminProfile = role.data === true && userId
+      ? await supabase.from("myssp_admin_profiles").select("name,photo").eq("user_id", userId).maybeSingle()
+      : { data: null, error: null }
     if (ticket !== epoch) return
     const allProjects = projects.data as ProjectRecord[]
     const records = allProjects.filter(p => !p.deleted_at)
-    const allPeople = (people.data || []).map(p => ({id:p.id, name:p.name, email:p.email, projectId:p.project_id, revision:1, revoked:p.revoked, code:null, expiresAt:0, usedAt:null, invitedAt:p.invited_at ? Date.parse(p.invited_at) : null, attempts:0, lockedUntil:0, deletedAt:p.deleted_at, displayProfile:p.display_profile || {}}))
+    const allPeople = (people.data || []).map(p => ({id:p.id, userId:p.user_id, name:p.name, email:p.email, projectId:p.project_id, revision:1, revoked:p.revoked, code:null, expiresAt:0, usedAt:null, invitedAt:p.invited_at ? Date.parse(p.invited_at) : null, attempts:0, lockedUntil:0, deletedAt:p.deleted_at, displayProfile:p.display_profile || {}}))
     publish({
       ready: true, error: "", isAdmin: role.data === true, userId,
+      accountEmail: session?.user.email || "",
+      accountName: adminProfile.data?.name || (typeof session?.user.user_metadata?.full_name === "string" ? session.user.user_metadata.full_name : ""),
+      accountPhoto: adminProfile.data?.photo || "",
       projects: records, boards: records.map(p => ({...p.payload, id: p.id, code: p.code})),
       visibility: Object.fromEntries(records.map(p => [p.id,p.published])),
       editing: Object.fromEntries(records.map(p => [p.id,p.editing_enabled])),
@@ -109,6 +116,17 @@ export async function signOutLive() {
   await refreshBackend()
 }
 export function liveProject() { return state.ready && !state.isAdmin ? state.people.find(p => !p.revoked && state.boards.some(b => b.id === p.projectId))?.projectId || null : null }
+export async function saveOwnProfileLive(name: string, photo: string) {
+  if (!supabase || !state.userId) throw new Error("Sign in to update your profile.")
+  if (state.isAdmin) {
+    const { error } = await supabase.from("myssp_admin_profiles").upsert({ user_id: state.userId, name, photo })
+    if (error) throw new Error("Could not update your profile. Please try again.")
+  } else {
+    const { error } = await supabase.rpc("myssp_update_own_profile", { full_name: name, profile_photo: photo })
+    if (error) throw new Error(error.code === "PGRST202" ? "Profile editing needs the latest database update." : "Could not update your profile. Please try again.")
+  }
+  await refreshBackend()
+}
 export async function setDeletedLive(kind: "participant" | "project", id: string, remove: boolean, destination?: string) {
   if (!supabase || !state.isAdmin) throw new Error("Committee sign-in required.")
   const { error } = await supabase.rpc("myssp_set_deleted", {kind, record_id:id, remove, destination:destination ?? null})

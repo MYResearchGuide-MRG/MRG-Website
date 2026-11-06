@@ -4,6 +4,7 @@ import { ArrowUpRight, LayoutDashboard, Menu, X } from "lucide-react"
 import { homeRouteHash, projectsRouteHash, useRoute } from "@/lib/results"
 import { MysspLogo } from "@/components/layout/myssp-logo"
 import { DemoDayMenu } from "@/components/layout/demo-day-menu"
+import { ProfileMenu } from "@/components/layout/profile-menu"
 import { navItems } from "@/lib/site"
 import { cn } from "@/lib/utils"
 import action from "@/components/ui/nav-action.module.css"
@@ -157,6 +158,7 @@ export function SiteHeader({
                 Admin panel
               </a>
             )}
+            {signedIn && <ProfileMenu isAdmin={isAdmin} onSignOut={onSignOut} />}
             {signedIn ? (
               <button
                 type="button"

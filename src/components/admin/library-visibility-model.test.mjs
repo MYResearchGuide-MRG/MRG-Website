@@ -39,4 +39,5 @@ test("hidden direct links are blocked except for the assigned participant", () =
   assert.equal(canViewProject({}, "a", "a"), true)
   assert.equal(canViewProject({ a: true }, "a", null), true)
   assert.equal(canViewProject({ a: false }, "a", null), false)
+  assert.equal(canViewProject({ a: false }, "a", null, true), true)
 })

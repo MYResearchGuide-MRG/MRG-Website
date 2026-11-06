@@ -30,9 +30,10 @@ export function readVisibility(
 export function canViewProject(
   visibility: LibraryVisibility,
   projectId: string,
-  assignedProjectId: string | null
+  assignedProjectId: string | null,
+  isAdmin = false
 ): boolean {
-  return visibility[projectId] === true || projectId === assignedProjectId
+  return isAdmin || visibility[projectId] === true || projectId === assignedProjectId
 }
 
 export function visibleProjects<T extends { id: string }>(

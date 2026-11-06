@@ -531,10 +531,12 @@ function ProjectLibrary({
 
 export default function Projectboard({
   assignedProjectId,
+  isAdmin,
   onSignIn,
   onEditStateChange,
 }: {
   assignedProjectId: string | null
+  isAdmin: boolean
   onSignIn: () => void
   onEditStateChange: (state: { dirty: boolean; busy: boolean }) => void
 }) {
@@ -606,7 +608,7 @@ export default function Projectboard({
             <a href={root}>Return to the project archive</a>
           </main>
         ) : projectId || isWorkspace ? (
-          board && canViewProject(visibility, board.id, assignedProjectId) ? (
+          board && canViewProject(visibility, board.id, assignedProjectId, isAdmin) ? (
             <ProjectDetail
               key={`${board.id}-${signedIn}`}
               board={board}

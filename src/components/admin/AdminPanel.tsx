@@ -227,6 +227,9 @@ export default function AdminPanel() {
           </span>
         </a>
         <div className="ad-header-actions">
+          <a className="ad-back ad-review-link" href="#/profile/projects">
+            Review project pages <ArrowUpRight size={15} />
+          </a>
           <a className="ad-back" href="#/projectboard">
             <span className="ad-library-full">View project archive</span>
             <span className="ad-library-short">Archive</span>

@@ -1,6 +1,7 @@
 // Local preview model only. Production authorization belongs in Supabase RLS.
 export type Assignment = {
   id: string
+  userId?: string | null
   name: string
   email: string
   projectId: string

@@ -115,10 +115,13 @@ export type Route =
   | "projects"
   | "home"
   | "admin"
+  | "profile"
 
 export function useRoute(): Route {
   const [route, setRoute] = React.useState<Route>(() =>
-    window.location.hash === "#/admin"
+    window.location.hash.startsWith("#/profile")
+      ? "profile"
+      : window.location.hash === "#/admin"
       ? "admin"
       : isProjectsRoute(window.location.hash)
         ? "projects"
@@ -139,6 +142,8 @@ export function useRoute(): Route {
       const demoDay = parseDemoDayRoute(hash)
       if (hash === "#/admin") {
         setRoute("admin")
+      } else if (/^#\/profile(?:\/(?:projects|settings))?$/.test(hash)) {
+        setRoute("profile")
       } else if (isProjectsRoute(hash)) {
         setRoute("projects")
       } else if (isProjectboardRoute(hash)) {

@@ -33,6 +33,7 @@ const Projectboard = React.lazy(
 const AccessDialog = React.lazy(
   () => import("@/components/projectboard/AccessDialog")
 )
+const ProfilePage = React.lazy(() => import("@/components/profile/ProfilePage"))
 
 function App() {
   const route = useRoute()
@@ -81,6 +82,8 @@ function App() {
     document.title =
       route === "admin"
         ? `Committee | ${defaultTitle.current}`
+        : route === "profile"
+          ? `My profile | ${defaultTitle.current}`
         : route === "projects"
           ? `Projects | ${defaultTitle.current}`
           : route === "projectboard"
@@ -116,7 +119,11 @@ function App() {
         setSignOutOpen(true)
       }} />
 
-      {route === "projectboard" ? (
+      {route === "profile" ? (
+        <React.Suspense fallback={<main className="container min-h-[70svh] pt-32" role="status">Loading profile…</main>}>
+          <ProfilePage isAdmin={isAdmin} onSignIn={signIn} onSignOut={() => setSignOutOpen(true)} />
+        </React.Suspense>
+      ) : route === "projectboard" ? (
         <React.Suspense
           fallback={
             <main className="container min-h-[70svh] pt-32" role="status">
@@ -127,6 +134,7 @@ function App() {
           <Projectboard
             key={`${access.session?.participantId || "public"}-${assignedProjectId}`}
             assignedProjectId={assignedProjectId}
+            isAdmin={isAdmin}
             onSignIn={signIn}
             onEditStateChange={setEditState}
           />

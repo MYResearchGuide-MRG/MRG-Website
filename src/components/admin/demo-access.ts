@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react"
 import { getProjectBoards, saveProjectSplit } from "./project-registry"
 import type { ProjectSplit } from "./project-registry-model"
 import { isLocalPreview } from "./local-preview"
-import { useBackend, getBackend, useLiveBackend, importLiveParticipants, changeLiveAssignment, participantSignIn, liveProject, signOutLive, splitLiveProject } from "./backend"
+import { useBackend, getBackend, useLiveBackend, importLiveParticipants, changeLiveAssignment, participantSignIn, liveProject, signOutLive, splitLiveProject, saveOwnProfileLive } from "./backend"
 import { applyProjectSplits } from "./project-registry-model"
 import { saveLiveParticipant } from "./backend"
 import { validateParticipantDetails, type ParticipantDetails } from "./participant-tools"
@@ -172,6 +172,18 @@ export function currentProject(): string | null {
     canEdit(state.session, person, person.projectId)
     ? person.projectId
     : null
+}
+export async function saveOwnProfile(name: string, photo: string) {
+  const trimmed = name.trim()
+  if (!trimmed || trimmed.length > 100) throw new Error("Enter a name of up to 100 characters.")
+  if (photo.length > 350_000 || (photo && !/^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(photo)))
+    throw new Error("Choose a smaller JPG, PNG or WebP image.")
+  if (useLiveBackend) return saveOwnProfileLive(trimmed, photo)
+  const person = state.people.find(p => p.id === state.session?.participantId)
+  if (!person) throw new Error("Sign in to update your profile.")
+  publish({ ...state, people: state.people.map(p => p.id === person.id ? {
+    ...p, name: trimmed, displayProfile: { ...p.displayProfile, name: trimmed, photo },
+  } : p) })
 }
 export async function signOutParticipant() {
   if (useLiveBackend) { await signOutLive(); return }
