@@ -43,6 +43,7 @@ def run(url):
             return page.get_by_role("button", name="Sign out", exact=True).first
 
         visit(ROOT + "/project/" + OWN)
+        expect(page.get_by_role("link", name="Admin panel", exact=True)).to_have_count(0)
         expect(page.get_by_role("button", name="Edit project", exact=True)).to_be_visible()
         # Repeated saves do not log the participant out, lose changes, or leak
         # edit controls onto another team's public project.

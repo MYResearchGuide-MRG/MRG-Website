@@ -10,6 +10,22 @@
   justify-content: space-between;
 }
 
+.adminLink {
+  composes: dark from "../ui/action-motion.module.css";
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid #3a3a3a;
+  border-radius: 7px;
+  background: transparent;
+  color: #ededed;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
 @media (min-width: 1024px) {
   .row {
     display: grid;

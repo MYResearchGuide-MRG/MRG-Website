@@ -38,12 +38,12 @@ import { NewCohortDialog, ProjectEditor } from "./CohortDialogs"
 import { SplitProjectDialog } from "./SplitProjectDialog"
 import { type Assignment } from "./access-model"
 import {
-  isLocalPreview,
   prepareInvitations,
   useDemoAccess,
 } from "./demo-access"
 import "./admin.css"
 import { AdminSignIn } from "./AdminSignIn"
+import { setPreviewCommitteeSession, useCommitteeAccess } from "./committee-session"
 import { SignOutDialog } from "@/components/layout/sign-out-dialog"
 import { useProjectEditing, setProjectEditing } from "./project-editing"
 import {
@@ -88,7 +88,7 @@ export default function AdminPanel() {
   const backend = useBackend()
   const [busy, setBusy] = useState(false)
   const visibleCount = boards.filter((b) => visibility[b.id] === true).length
-  const [entered, setEntered] = useState(false)
+  const committeeAccess = useCommitteeAccess()
   const [signOutOpen, setSignOutOpen] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
   const [signOutError, setSignOutError] = useState("")
@@ -100,7 +100,7 @@ export default function AdminPanel() {
     try {
       if (useLiveBackend) await signOutLive()
       setSignOutOpen(false)
-      setEntered(false)
+      setPreviewCommitteeSession(false)
     } catch {
       setSignOutError("Could not sign out. Please try again.")
     } finally {
@@ -200,7 +200,7 @@ export default function AdminPanel() {
       setBusy(false)
     }
   }
-  if (useLiveBackend ? !backend.isAdmin : !isLocalPreview || !entered)
+  if (!committeeAccess)
     return (
       <main className="ad-root ad-gate">
         <a href="#/" className="ad-back">
@@ -211,8 +211,8 @@ export default function AdminPanel() {
           <h1>Committee workspace</h1>
           <p>Manage participant access and project assignments.</p>
           <AdminSignIn
-            onSuccess={() => setEntered(true)}
-            onDevice={() => setEntered(true)}
+            onSuccess={() => setPreviewCommitteeSession(true)}
+            onDevice={() => setPreviewCommitteeSession(true)}
           />
         </div>
       </main>

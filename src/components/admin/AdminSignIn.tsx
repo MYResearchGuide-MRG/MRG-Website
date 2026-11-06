@@ -9,6 +9,7 @@ import {
 } from "lucide-react"
 import { adminSignIn, useLiveBackend } from "./backend"
 import { isLocalPreview } from "./local-preview"
+import { setPreviewCommitteeSession } from "./committee-session"
 import "./auth.css"
 
 export function AdminSignIn({
@@ -93,7 +94,10 @@ export function AdminSignIn({
         </button>
       </form>
       {isLocalPreview && !useLiveBackend && onDevice && (
-        <button className="ad-device-link" onClick={onDevice}>
+        <button className="ad-device-link" onClick={() => {
+          setPreviewCommitteeSession(true)
+          onDevice()
+        }}>
           Open workspace on this device
         </button>
       )}

@@ -1,5 +1,5 @@
 import * as React from "react"
-import { ArrowUpRight, Menu, X } from "lucide-react"
+import { ArrowUpRight, LayoutDashboard, Menu, X } from "lucide-react"
 
 import { homeRouteHash, projectsRouteHash, useRoute } from "@/lib/results"
 import { MysspLogo } from "@/components/layout/myssp-logo"
@@ -11,10 +11,12 @@ import styles from "./site-header.module.css"
 
 export function SiteHeader({
   signedIn,
+  isAdmin,
   onSignIn,
   onSignOut,
 }: {
   signedIn: boolean
+  isAdmin: boolean
   onSignIn: () => void
   onSignOut: () => void
 }) {
@@ -150,6 +152,11 @@ export function SiteHeader({
           </nav>
 
           <div className="flex shrink-0 items-center gap-2.5 justify-self-end">
+            {signedIn && isAdmin && (
+              <a href="#/admin" onClick={closeMenu} className={cn(styles.adminLink, "hidden lg:inline-flex")}>
+                Admin panel
+              </a>
+            )}
             {signedIn ? (
               <button
                 type="button"
@@ -224,6 +231,17 @@ export function SiteHeader({
                   )}
                 </React.Fragment>
               ))}
+              {signedIn && isAdmin && (
+                <a
+                  href="#/admin"
+                  onClick={closeMenu}
+                  className="mt-2 flex items-center gap-3 border-t border-white/[0.12] px-4 py-3.5 text-[15px] text-foreground transition-colors hover:bg-foreground/[0.06]"
+                >
+                  <LayoutDashboard size={17} aria-hidden />
+                  Admin panel
+                  <ArrowUpRight size={15} className="ml-auto" aria-hidden />
+                </a>
+              )}
             </div>
           </nav>
         )}

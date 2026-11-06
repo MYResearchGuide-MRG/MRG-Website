@@ -47,6 +47,27 @@ def run(base_url, screenshot):
         page.get_by_role("button", name="Open workspace on this device").click()
         expect(page.locator("tbody tr")).to_have_count(12)
 
+        # Committee members can browse public pages and return without signing
+        # in again. Both desktop and mobile provide the same destination.
+        for width in (1440, 1024, 390):
+            page.set_viewport_size({"width": width, "height": 900})
+            page.locator(".ad-header a[href='#/projectboard']").click()
+            page.reload()
+            expect(page.get_by_role("button", name="Sign out", exact=True)).to_be_visible()
+            if width < 1024:
+                page.get_by_role("button", name="Open navigation menu").click()
+            admin_link = page.get_by_role("link", name="Admin panel", exact=True).filter(visible=True)
+            expect(admin_link).to_be_visible()
+            assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), "Header overflow"
+            if width >= 1024:
+                nav = page.get_by_role("navigation", name="Main navigation").bounding_box()
+                action = admin_link.bounding_box()
+                assert nav["x"] + nav["width"] <= action["x"] - 4, "Header actions overlap navigation"
+            admin_link.click()
+            expect(page.locator("tbody tr")).to_have_count(12)
+            expect(page.get_by_role("button", name="Open workspace on this device")).to_have_count(0)
+        page.set_viewport_size({"width": 1440, "height": 1000})
+
         select_all = page.get_by_role("checkbox", name="Select all matching participants")
         selection = page.locator(".ad-selection [role=status]")
         checked_rows = page.locator("tbody input[type=checkbox]:checked")
@@ -157,6 +178,10 @@ def run(base_url, screenshot):
         page.get_by_role("button", name="Sign out", exact=True).first.click()
         confirm.get_by_role("button", name="Sign out", exact=True).click()
         expect(page.get_by_role("heading", name="Committee workspace")).to_be_visible()
+        page.get_by_role("link", name="Back to MYSSP", exact=True).click()
+        expect(page.get_by_role("button", name="Sign in", exact=True)).to_be_visible()
+        page.get_by_role("button", name="Open navigation menu").click()
+        expect(page.get_by_role("link", name="Admin panel", exact=True)).to_have_count(0)
         assert not errors, errors
         browser.close()
         print("PASS: cross-page selection, mixed state, keyboard, sorting, filters, recipient counts, roster updates, 60-person cohort, mobile layout and confirmed admin sign-out")
