@@ -15,8 +15,9 @@ import { Eligibility } from "@/components/sections/eligibility"
 import { Faq } from "@/components/sections/faq"
 import { TimelineSection } from "@/components/sections/timeline"
 import { Resources } from "@/components/sections/resources"
-import { Awards } from "@/components/sections/awards"
+import { DemoDayPage } from "@/components/sections/demo-day-page"
 import { useRoute } from "@/lib/results"
+import { useDemoDayYear } from "@/lib/demo-day"
 import {
   currentProject,
   signOutParticipant,
@@ -34,6 +35,7 @@ const AccessDialog = React.lazy(
 
 function App() {
   const route = useRoute()
+  const demoDayYear = useDemoDayYear()
   // Demo access is shared with the site header; production auth will replace it.
   const access = useDemoAccess()
   const [, refreshSession] = React.useReducer((n) => n + 1, 0)
@@ -70,9 +72,11 @@ function App() {
               : route === "resources"
                 ? `Resources | ${defaultTitle.current}`
                 : route === "awards"
-                  ? `Awards | ${defaultTitle.current}`
-                  : defaultTitle.current
-  }, [route])
+                  ? `${demoDayYear} Awards | ${defaultTitle.current}`
+                  : route === "judges"
+                    ? `${demoDayYear} Judges | ${defaultTitle.current}`
+                    : defaultTitle.current
+  }, [route, demoDayYear])
 
   if (route === "admin")
     return (
@@ -114,8 +118,8 @@ function App() {
             <Results />
           ) : route === "resources" ? (
             <Resources />
-          ) : route === "awards" ? (
-            <Awards />
+          ) : route === "awards" || route === "judges" ? (
+            <DemoDayPage section={route} />
           ) : (
             <>
               <Hero />

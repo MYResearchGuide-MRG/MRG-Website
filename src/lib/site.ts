@@ -36,5 +36,9 @@ export const navItems = [
   { label: "Projects", href: "#/projects/2026" },
   { label: "Project Archive", href: "#/projectboard" },
   { label: "Resources", href: "#/resources" },
+] as const
+
+export const demoDayItems = [
+  { label: "Judges", href: "#/judges" },
   { label: "Awards", href: "#/awards" },
 ] as const

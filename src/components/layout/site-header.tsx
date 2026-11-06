@@ -3,12 +3,19 @@ import { ArrowUpRight, Menu, X } from "lucide-react"
 
 import { homeRouteHash, projectsRouteHash, useRoute } from "@/lib/results"
 import { MysspLogo } from "@/components/layout/myssp-logo"
+import { DemoDayMenu } from "@/components/layout/demo-day-menu"
 import { navItems } from "@/lib/site"
 import { cn } from "@/lib/utils"
 import action from "@/components/ui/nav-action.module.css"
 import styles from "./site-header.module.css"
 
-export function SiteHeader({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: () => void }) {
+export function SiteHeader({
+  signedIn,
+  onSignIn,
+}: {
+  signedIn: boolean
+  onSignIn: () => void
+}) {
   const [scrolled, setScrolled] = React.useState(false)
   const [menuOpen, setMenuOpen] = React.useState(false)
   const route = useRoute()
@@ -76,7 +83,12 @@ export function SiteHeader({ signedIn, onSignIn }: { signedIn: boolean; onSignIn
   const floating = scrolled || menuOpen
 
   return (
-    <header className="pointer-events-none fixed inset-x-0 top-0 z-40 flex justify-center px-3 sm:px-6">
+    <header
+      className={cn(
+        styles.viewport,
+        "pointer-events-none fixed inset-x-0 top-0 z-40 flex justify-center px-3 sm:px-6"
+      )}
+    >
       <div
         ref={shellRef}
         className={cn(
@@ -90,7 +102,12 @@ export function SiteHeader({ signedIn, onSignIn }: { signedIn: boolean; onSignIn
             : "mt-0 max-w-[90rem]"
         )}
       >
-        <div className="flex h-[62px] items-center justify-between gap-3 px-3 sm:h-[70px] sm:gap-6 sm:px-6">
+        <div
+          className={cn(
+            styles.row,
+            "h-[62px] gap-3 px-3 sm:h-[70px] sm:gap-6 sm:px-6"
+          )}
+        >
           <a
             href={homeRouteHash}
             onClick={closeMenu}
@@ -107,22 +124,36 @@ export function SiteHeader({ signedIn, onSignIn }: { signedIn: boolean; onSignIn
             />
           </a>
 
-          <nav aria-label="Main navigation" className="hidden items-center gap-6 lg:flex">
+          <nav
+            aria-label="Main navigation"
+            className="hidden items-center gap-6 lg:flex"
+          >
             {items.map((item) => (
-              <a
-                key={item.href}
-                href={item.href}
-                aria-current={isActive(item.href) ? "page" : undefined}
-                className="text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground aria-[current=page]:text-foreground"
-              >
-                {item.label}
-              </a>
+              <React.Fragment key={item.href}>
+                <a
+                  href={item.href}
+                  aria-current={isActive(item.href) ? "page" : undefined}
+                  className="text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground aria-[current=page]:text-foreground"
+                >
+                  {item.label}
+                </a>
+                {item.href === projectsRouteHash && (
+                  <DemoDayMenu
+                    active={route === "judges" || route === "awards"}
+                    route={route}
+                  />
+                )}
+              </React.Fragment>
             ))}
           </nav>
 
-          <div className="flex shrink-0 items-center gap-2.5">
+          <div className="flex shrink-0 items-center gap-2.5 justify-self-end">
             {signedIn ? (
-              <a href="#/projectboard/workspace" className={action.button} onClick={closeMenu}>
+              <a
+                href="#/projectboard/workspace"
+                className={action.button}
+                onClick={closeMenu}
+              >
                 My project <ArrowUpRight size={15} aria-hidden />
               </a>
             ) : (
@@ -144,7 +175,9 @@ export function SiteHeader({ signedIn, onSignIn }: { signedIn: boolean; onSignIn
               type="button"
               onClick={() => setMenuOpen((open) => !open)}
               className="flex size-11 items-center justify-center rounded-[7px] hover:bg-foreground/[0.06] lg:hidden"
-              aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
+              aria-label={
+                menuOpen ? "Close navigation menu" : "Open navigation menu"
+              }
               aria-expanded={menuOpen}
               aria-controls="mobile-navigation-menu"
             >
@@ -166,15 +199,24 @@ export function SiteHeader({ signedIn, onSignIn }: { signedIn: boolean; onSignIn
           >
             <div className="grid">
               {items.map((item) => (
-                <a
-                  key={item.href}
-                  href={item.href}
-                  onClick={closeMenu}
-                  aria-current={isActive(item.href) ? "page" : undefined}
-                  className="rounded-md px-4 py-3.5 text-[15px] text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground aria-[current=page]:bg-foreground/[0.06] aria-[current=page]:text-foreground"
-                >
-                  {item.label}
-                </a>
+                <React.Fragment key={item.href}>
+                  <a
+                    href={item.href}
+                    onClick={closeMenu}
+                    aria-current={isActive(item.href) ? "page" : undefined}
+                    className="rounded-md px-4 py-3.5 text-[15px] text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground aria-[current=page]:bg-foreground/[0.06] aria-[current=page]:text-foreground"
+                  >
+                    {item.label}
+                  </a>
+                  {item.href === projectsRouteHash && (
+                    <DemoDayMenu
+                      mobile
+                      active={route === "judges" || route === "awards"}
+                      route={route}
+                      onNavigate={closeMenu}
+                    />
+                  )}
+                </React.Fragment>
               ))}
             </div>
           </nav>

@@ -59,11 +59,11 @@ export default function AccessDialog({
             document.activeElement instanceof HTMLElement
               ? document.activeElement
               : null
-          titleRef.current?.focus()
+          titleRef.current?.focus({ preventScroll: true })
         }}
         onCloseAutoFocus={(event) => {
           event.preventDefault()
-          returnFocus.current?.focus()
+          returnFocus.current?.focus({ preventScroll: true })
           setEmail("")
           setCode("")
           setError("")

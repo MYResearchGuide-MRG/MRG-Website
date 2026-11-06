@@ -1,3 +1,22 @@
+.viewport {
+  /* Radix's modal scroll lock reserves this space on the body. Fixed elements
+     need the same offset to keep their width and centre when a dialog opens. */
+  right: var(--removed-body-scroll-bar-size, 0px);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@media (min-width: 1024px) {
+  .row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  }
+}
+
 .shell {
   transition:
     max-width 500ms ease-out,

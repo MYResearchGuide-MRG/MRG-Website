@@ -1,0 +1,60 @@
+.desktop { position: relative; }
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #a3a3a3;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 180ms ease;
+}
+.trigger:hover, .trigger[data-active], .trigger[aria-expanded="true"] { color: #fff; }
+.trigger > svg { transition: transform 180ms ease; }
+.trigger[aria-expanded="true"] > svg { transform: rotate(180deg); }
+.panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: -14px;
+  width: 184px;
+  padding: 6px;
+  border: 1px solid #333;
+  border-radius: 9px;
+  background: #080808;
+  box-shadow: 0 12px 32px #0006;
+}
+.panel a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 5px;
+  color: #b6b6b6;
+  font-size: 14px;
+  text-decoration: none;
+  transition: background 180ms ease, color 180ms ease;
+}
+.panel a:hover, .panel a[aria-current="page"] { color: #fff; background: #1c1c1c; }
+.panel a:focus-visible, .trigger:focus-visible { outline: 2px solid #ddd; outline-offset: 3px; }
+.mobile .trigger {
+  width: 100%;
+  justify-content: space-between;
+  padding: 14px 16px;
+  font-size: 15px;
+}
+.mobile .panel {
+  position: static;
+  width: auto;
+  margin: 0 8px 8px;
+  border-radius: 6px;
+  box-shadow: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .trigger, .trigger > svg, .panel a { transition: none; }
+}
