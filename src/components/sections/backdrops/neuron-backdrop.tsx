@@ -7,6 +7,12 @@ type Node = { x: number; y: number; vx: number; vy: number; r: number }
 
 const LINK_DIST = 150 // px; links only draw inside this radius
 const MOUSE_RADIUS = 170
+/**
+ * Warm tint the field takes on around the pointer: Tailwind orange-200 on the
+ * dark theme, orange-400 on the light one, where orange-200 vanishes into white.
+ */
+const GLOW_ON_DARK: [number, number, number] = [254, 215, 170]
+const GLOW_ON_LIGHT: [number, number, number] = [251, 146, 60]
 
 /**
  * Particle network. Adapted from the "Aether Flow" canvas hero, with the
@@ -58,6 +64,14 @@ export function NeuronBackdrop() {
       mouse.x = -9999
       mouse.y = -9999
     }
+    // Ink is light on the dark theme, so its brightness picks the glow.
+    const GLOW = r + g + b > 382 ? GLOW_ON_DARK : GLOW_ON_LIGHT
+    // 1 at the pointer, fading to 0 at MOUSE_RADIUS, so the tint feathers out
+    // rather than switching on at a hard edge.
+    const glowAt = (x: number, y: number) =>
+      Math.max(0, 1 - Math.hypot(x - mouse.x, y - mouse.y) / MOUSE_RADIUS)
+    const tint = (k: number) =>
+      `${Math.round(r + (GLOW[0] - r) * k)},${Math.round(g + (GLOW[1] - g) * k)},${Math.round(b + (GLOW[2] - b) * k)}`
     window.addEventListener("pointermove", onMove, { passive: true })
     window.addEventListener("pointerleave", onLeave)
 
@@ -97,11 +111,8 @@ export function NeuronBackdrop() {
                   const d2 = dx * dx + dy * dy
                   if (d2 > LINK_DIST * LINK_DIST) continue
                   const t = 1 - Math.sqrt(d2) / LINK_DIST
-                  const near =
-                    Math.hypot(p.x - mouse.x, p.y - mouse.y) < MOUSE_RADIUS
-                  ctx.strokeStyle = `rgba(${r},${g},${b},${
-                    t * (near ? 0.52 : 0.24)
-                  })`
+                  const k = glowAt((p.x + q.x) / 2, (p.y + q.y) / 2)
+                  ctx.strokeStyle = `rgba(${tint(k)},${t * (0.24 + 0.28 * k)})`
                   ctx.beginPath()
                   ctx.moveTo(p.x, p.y)
                   ctx.lineTo(q.x, q.y)
@@ -113,8 +124,8 @@ export function NeuronBackdrop() {
         }
       }
 
-      ctx.fillStyle = `rgba(${r},${g},${b},0.62)`
       for (const n of nodes) {
+        ctx.fillStyle = `rgba(${tint(glowAt(n.x, n.y))},0.62)`
         ctx.beginPath()
         ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2)
         ctx.fill()

@@ -563,10 +563,21 @@ export const projects: Project[] = [
 
 export const tracks: Array<Track | "All"> = ["All", ...trackOrder]
 
+/** The four chapters the milestones are grouped into on the home page. */
+export type TimelineStage = "Applications" | "Onboarding" | "Research" | "Showcase"
+
+export const timelineStages: TimelineStage[] = [
+  "Applications",
+  "Onboarding",
+  "Research",
+  "Showcase",
+]
+
 export type TimelinePhase = {
   /** Human-readable date, exactly as the committee published it. */
   date: string
   title: string
+  stage: TimelineStage
   description: string
   /** ISO bounds, used to derive complete / active / upcoming at render time. */
   start: string
@@ -582,6 +593,7 @@ export const timeline: TimelinePhase[] = [
   {
     date: "21 August 2026",
     title: "Applications Open",
+    stage: "Applications",
     description: "Announced via social media and partnered institutions.",
     start: "2026-08-21",
     end: "2026-08-21",
@@ -589,6 +601,7 @@ export const timeline: TimelinePhase[] = [
   {
     date: "11 September 2026",
     title: "Application Deadline",
+    stage: "Applications",
     description:
       "All student submissions due. Board of Executive Directors shortlist applicants on a rolling basis, so applying early may help to simplify your application procedure.",
     start: "2026-09-11",
@@ -597,6 +610,7 @@ export const timeline: TimelinePhase[] = [
   {
     date: "12 September 2026",
     title: "Final Review",
+    stage: "Applications",
     description:
       "Lead researchers of projects announce final selection to directors (max 3 per project).",
     start: "2026-09-12",
@@ -605,6 +619,7 @@ export const timeline: TimelinePhase[] = [
   {
     date: "15 September 2026",
     title: "Selection Announcement",
+    stage: "Onboarding",
     description:
       "Students are matched with mentors and research projects, where team leaders are assigned for MYSSP's bi-weekly progress check meetings.",
     start: "2026-09-15",
@@ -613,6 +628,7 @@ export const timeline: TimelinePhase[] = [
   {
     date: "19 September 2026",
     title: "Opening Ceremony",
+    stage: "Onboarding",
     description:
       "Programme welcome to all participants, key details and relevant information shared with the cohort.",
     start: "2026-09-19",
@@ -621,6 +637,7 @@ export const timeline: TimelinePhase[] = [
   {
     date: "20-25 September 2026",
     title: "Onboarding & Burn-in",
+    stage: "Onboarding",
     description:
       "Orientation, introductions, and preparatory tasks assigned by mentor.",
     start: "2026-09-20",
@@ -629,6 +646,7 @@ export const timeline: TimelinePhase[] = [
   {
     date: "25 September - 20 November 2026",
     title: "Main Research Period",
+    stage: "Research",
     description: "Core research and project work.",
     start: "2026-09-25",
     end: "2026-11-20",
@@ -636,6 +654,7 @@ export const timeline: TimelinePhase[] = [
   {
     date: "18 October 2026",
     title: "Mid-Programme Check-in",
+    stage: "Research",
     description:
       "Progress updates; optional talks by mentors and partnered organisations.",
     start: "2026-10-18",
@@ -644,6 +663,7 @@ export const timeline: TimelinePhase[] = [
   {
     date: "18 November 2026",
     title: "Project Submission Deadline",
+    stage: "Research",
     description:
       "All project works must be submitted via the given submission templates by this date, as participants prepare for their showcase presentation on Demo Day.",
     start: "2026-11-18",
@@ -652,6 +672,7 @@ export const timeline: TimelinePhase[] = [
   {
     date: "20 November 2026",
     title: "Programme Ends",
+    stage: "Showcase",
     description:
       "Official conclusion of MYSSP 2026. All programme activities, mentor engagements, and participant responsibilities conclude.",
     start: "2026-11-20",
@@ -660,6 +681,7 @@ export const timeline: TimelinePhase[] = [
   {
     date: "28 November 2026",
     title: "Malaysia Science Scholars' Demo Day",
+    stage: "Showcase",
     description: "Virtual showcase of all research works.",
     start: "2026-11-28",
     end: "2026-11-28",
@@ -671,35 +693,35 @@ export const eligibility = {
     {
       title: "Age Requirement",
       description:
-        "14-20 years old as of January 1, 2026. Participants under 18 need parent/guardian consent",
+        "14–20 years old as of 1 January 2026. Participants under 18 need parent or guardian consent.",
       icon: "calendar",
     },
     {
       title: "Education Level",
-      description: "Currently enrolled in  secondary school and pre-university",
+      description: "Currently enrolled in secondary school or pre-university.",
       icon: "graduation",
     },
     {
       title: "Location & Access",
       description:
-        "All projects (online & campus-based) are only available to students based in Malaysia. Reliable internet access is required for virtual meetings",
+        "All projects, online and campus-based, are open only to students based in Malaysia. Reliable internet access is needed for virtual meetings.",
       icon: "map",
     },
     {
       title: "Team Size",
       description:
-        "Up to 3 students are placed on each project; some mentors take fewer",
+        "Up to 3 students are placed on each project; some mentors take fewer.",
       icon: "users",
     },
     {
       title: "Time Commitment",
-      description: "Commitment varies according to listed projects",
+      description: "Commitment varies by project; each brief lists its own.",
       icon: "clock",
     },
     {
       title: "Prerequisites",
       description:
-        "No previous research experience required — just curiosity and commitment. Technical requirements vary by project (check individual project pages)",
+        "No previous research experience needed, just curiosity and commitment. Technical requirements vary by project; check each brief.",
       icon: "check",
     },
   ],
@@ -809,24 +831,22 @@ export const faqs = [
 ]
 
 /**
- * `cap` is the rendered height for each mark.
+ * Partners shown on the home page. MYResearchGuide is the organiser, not a
+ * partner, so it lives in the section's heading rather than in this list.
  *
- * They cannot share one height: a wide wordmark set to the same cap height as a
- * tall stacked mark dwarfs it, so each is sized to look equally weighted rather
- * than to measure equally. MABECS is the tallest because its mark is portrait
- * and reads smallest at any given height.
+ * Logos are shown in colour with no plate behind them, so each file must have
+ * a transparent background. UTAR's original is an opaque JPEG; the version
+ * used here has the white around its navy box cleared.
+ *
+ * `cap` is the rendered height for each mark. They cannot
+ * share one height: a wide wordmark set to the same height as a stacked mark
+ * dwarfs it, so each is sized to look equally weighted rather than to measure
+ * equally.
  */
 export const partners = [
   {
-    name: "MYResearchGuide",
-    logo: "/mrg-logo-inverted.png",
-    description: "Programme Organiser",
-    url: "https://www.myresearchguide.org/",
-    cap: "max-h-9",
-  },
-  {
     name: "UTAR",
-    logo: "/utar-logo.jpg",
+    logo: "/partners/utar-color.png",
     description: "Universiti Tunku Abdul Rahman",
     url: "https://www.utar.edu.my/",
     cap: "max-h-14",
@@ -836,13 +856,13 @@ export const partners = [
     logo: "/mabecs-logo.png",
     description: "Research Sponsor",
     url: "https://www.mabecs.com/en-gb",
-    cap: "max-h-20",
+    cap: "max-h-14",
   },
   {
     name: "MATLAB",
     logo: "/matlab-logo.png",
     description: "Technology Sponsor",
     url: "https://www.mathworks.com/products/matlab.html",
-    cap: "max-h-14",
+    cap: "max-h-11",
   },
 ]

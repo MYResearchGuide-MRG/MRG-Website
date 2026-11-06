@@ -19,6 +19,15 @@ import {
 
 type State = { people: Assignment[]; session: ParticipantSession | null }
 const rosterKey = "myssp-committee-roster-v1"
+const sessionKey = "myssp-preview-session-v1"
+function readSession(people: Assignment[]): ParticipantSession | null {
+  if (!isLocalPreview) return null
+  try {
+    const session = JSON.parse(sessionStorage.getItem(sessionKey) || "null") as ParticipantSession | null
+    const person = people.find(p => p.id === session?.participantId)
+    return person && canEdit(session, person, person.projectId) ? session : null
+  } catch { return null }
+}
 function readPeople(): Assignment[] {
   if (!isLocalPreview) return []
   try {
@@ -32,16 +41,28 @@ function readPeople(): Assignment[] {
     }))
   } catch { return [] }
 }
-let state: State = { people: readPeople(), session: null }
+const initialPeople = readPeople()
+let state: State = { people: initialPeople, session: readSession(initialPeople) }
 const listeners = new Set<() => void>()
 function publish(next: State) {
   if (isLocalPreview) localStorage.setItem(rosterKey, JSON.stringify(next.people.map(({id,name,email,projectId,revision,revoked,displayProfile}) => ({id,name,email,projectId,revision,revoked,displayProfile}))))
+  const person = next.people.find(p => p.id === next.session?.participantId)
+  if (!person || !canEdit(next.session, person, person.projectId)) next = { ...next, session: null }
+  if (isLocalPreview) {
+    // This is only the isolated localhost demo. Live sessions are managed by
+    // Supabase, never by these browser-side preview permissions.
+    try {
+      if (next.session) sessionStorage.setItem(sessionKey, JSON.stringify(next.session))
+      else sessionStorage.removeItem(sessionKey)
+    } catch { /* Browsing within this tab still works without storage. */ }
+  }
   state = next
   listeners.forEach((fn) => fn())
 }
 if (typeof window !== "undefined") window.addEventListener("storage", event => {
   if (event.key === rosterKey || event.key === null) {
-    state = { people: readPeople(), session: null }
+    const people = readPeople()
+    state = { people, session: readSession(people) }
     listeners.forEach(fn => fn())
   }
 })
@@ -54,7 +75,7 @@ function subscribe(fn: () => void) {
 export function useDemoAccess() {
   const local = useSyncExternalStore(subscribe, () => state)
   const remote = useBackend()
-  return useLiveBackend ? { people: remote.people, session: remote.userId ? {participantId:remote.userId} : null } : local
+  return useLiveBackend ? { people: remote.people, session: remote.userId ? {participantId:remote.userId} : null } : { ...local, session: currentProject() ? local.session : null }
 }
 
 export async function addParticipants(rows: ImportRow[]) {
@@ -152,8 +173,8 @@ export function currentProject(): string | null {
     ? person.projectId
     : null
 }
-export function signOutParticipant() {
-  if (useLiveBackend) { void signOutLive(); return }
+export async function signOutParticipant() {
+  if (useLiveBackend) { await signOutLive(); return }
   publish({ ...state, session: null })
 }
 

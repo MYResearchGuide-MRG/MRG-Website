@@ -66,7 +66,9 @@ export async function refreshBackend() {
       cohortError: cohorts.error ? "New cohorts and projects need the cohort database migration. Existing projects are still available." : "",
     })
   } catch (error) {
-    if (ticket === epoch) publish({...empty, error: error instanceof Error ? error.message : "Could not connect to the database."})
+    // A failed refresh is not a sign-out. Preserve the current editor and let
+    // server policies reject writes if permissions have changed meanwhile.
+    if (ticket === epoch) publish({...state, error: error instanceof Error ? error.message : "Could not connect to the database."})
   }
 }
 
@@ -94,9 +96,11 @@ export async function participantSignIn(email: string, token: string) {
   return allowed
 }
 export async function signOutLive() {
+  if (!supabase) throw new Error("Sign-in is not configured yet.")
+  const { error } = await supabase.auth.signOut({ scope: "local" })
+  if (error) throw error
   epoch++
   publish(empty)
-  await supabase?.auth.signOut()
   await refreshBackend()
 }
 export function liveProject() { return state.ready && !state.isAdmin ? state.people.find(p => !p.revoked && state.boards.some(b => b.id === p.projectId))?.projectId || null : null }
@@ -154,8 +158,15 @@ export async function inviteLiveParticipants(ids:string[]) {
 }
 export async function saveLiveDraft(draft:Draft, expectedRevision:number) {
   if (!supabase || liveProject() !== draft.projectId) return false
+  const userId = state.userId
   const {error} = await supabase.rpc("myssp_save_submission",{project:draft.projectId,body:draft,expected_revision:expectedRevision})
   if (error) { await refreshBackend(); return false }
+  // The write is confirmed even if the next read fails. Keep that saved version
+  // available without overwriting a newer teammate revision or another session.
+  if (state.userId === userId && liveProject() === draft.projectId && (state.revisions[draft.projectId] ?? 0) <= expectedRevision) {
+    epoch++
+    publish({...state, drafts: {...state.drafts, [draft.projectId]: draft}, revisions: {...state.revisions, [draft.projectId]: expectedRevision + 1}})
+  }
   await refreshBackend(); return true
 }
 export async function splitLiveProject(split:ProjectSplit, boards:Board[], assignments:Record<string,string>) {

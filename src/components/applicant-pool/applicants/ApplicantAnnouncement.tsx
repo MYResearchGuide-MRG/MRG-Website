@@ -1,6 +1,9 @@
+import { motion, useReducedMotion } from "motion/react"
+
+import { lineMaskVariants } from "@/components/motion/variants"
 import { ApplicantProjectGroup } from "./ApplicantProjectGroup"
 import { projectCodes, projects } from "@/data/competition-data"
-import { SELECTED, type SelectedRow } from "@/data/selected"
+import { SELECTED, projectCodeOf, type SelectedRow } from "@/data/selected"
 
 /** Code -> published title, from the same catalogue the results page reads. */
 const TITLE_BY_CODE: Map<string, string> = (() => {
@@ -36,13 +39,26 @@ const GROUPS: Array<{ code: string; rows: SelectedRow[] }> = (() => {
  * found by reading the project it belongs to, or with the browser's own find.
  */
 export function ApplicantAnnouncement() {
+  const reduced = useReducedMotion()
+
   return (
     <section
       id="applicants"
       className="scroll-mt-24 border-t border-border py-24 md:py-32"
     >
       <div className="container">
-        <h2 className="display-lg max-w-3xl">The finalists</h2>
+        {/* On arrival the heading slides up out of its own line, then each
+            project group plays in as it scrolls into view. */}
+        <h2 className="display-lg max-w-3xl overflow-hidden pb-[0.08em]">
+          <motion.span
+            className="block"
+            initial={reduced ? false : "hidden"}
+            animate="visible"
+            variants={lineMaskVariants}
+          >
+            The finalists
+          </motion.span>
+        </h2>
 
         {/* Two columns of project groups, so the register scans as a grid of
             names rather than one long scroll. `items-start` keeps a short group
@@ -52,7 +68,7 @@ export function ApplicantAnnouncement() {
             <ApplicantProjectGroup
               key={group.code}
               code={group.code}
-              title={TITLE_BY_CODE.get(group.code) ?? null}
+              title={TITLE_BY_CODE.get(projectCodeOf(group.code)) ?? null}
               rows={group.rows}
             />
           ))}

@@ -14,6 +14,7 @@ import { riseVariants, staggerVariants, viewportOnce } from "./variants"
 const MOTION_TAGS = {
   article: motion.article,
   div: motion.div,
+  dl: motion.dl,
   footer: motion.footer,
   header: motion.header,
   li: motion.li,
@@ -62,7 +63,7 @@ export function Reveal({
 }
 
 type RevealGroupProps = HTMLMotionProps<"div"> & {
-  as?: "div" | "ul" | "ol" | "section"
+  as?: "div" | "ul" | "ol" | "dl" | "section"
 }
 
 /**

@@ -174,9 +174,11 @@ function FilterGroup({
 function ProjectLibrary({
   draft,
   libraryBoards,
+  assignedProjectId,
 }: {
   draft?: Draft
   libraryBoards: Board[]
+  assignedProjectId: string | null
 }) {
   const programmeYears = [...new Set(libraryBoards.map(board => board.year))].sort((a, b) => b - a)
   const backend = useBackend()
@@ -255,6 +257,7 @@ function ProjectLibrary({
         <h1 id="project-library-heading" tabIndex={-1}>
           Project Archive
         </h1>
+        {assignedProjectId && <a className="pb-button" href={boardUrl(assignedProjectId)}>My project <ArrowRight size={16} /></a>}
         <label className="pb-search">
           <Search size={18} />
           <span className="pb-sr-only">Search projects</span>
@@ -528,11 +531,11 @@ function ProjectLibrary({
 export default function Projectboard({
   assignedProjectId,
   onSignIn,
-  onSignOut,
+  onEditStateChange,
 }: {
   assignedProjectId: string | null
   onSignIn: () => void
-  onSignOut: () => void
+  onEditStateChange: (state: { dirty: boolean; busy: boolean }) => void
 }) {
   const hash = useSyncExternalStore(subscribe, snapshot)
   const boards = useProjectBoards()
@@ -561,7 +564,7 @@ export default function Projectboard({
     window.scrollTo({ top: 0, behavior: "instant" })
   }, [hash])
   async function save(next: Draft, expectedRevision:number) {
-    // Prototype scope only. Production must enforce this with server-side membership policies.
+    // The live submission RPC also enforces membership, locks and revisions.
     if (
       !assignedBoard ||
       !isProjectEditable(assignedBoard.id) ||
@@ -613,7 +616,7 @@ export default function Projectboard({
                 useLiveBackend ? backend.drafts[board.id] || (board.id === assignedProjectId ? newDraft(board) : undefined) : signedIn && board.id === assignedProjectId ? draft : undefined
               }
               onSave={save}
-              onSignOut={onSignOut}
+              onEditStateChange={onEditStateChange}
             />
           ) : (
             <main className="pb-main pb-empty">
@@ -625,6 +628,7 @@ export default function Projectboard({
           )
         ) : (
           <ProjectLibrary
+            assignedProjectId={assignedProjectId}
             libraryBoards={visibleProjects(boards, visibility)}
             draft={signedIn ? draft : undefined}
           />

@@ -1,117 +1,173 @@
 import * as React from "react"
-import { CountdownPill } from "@/components/results-countdown"
+import { useInView, useReducedMotion } from "motion/react"
+import {
+  BadgeCheck,
+  CalendarDays,
+  Clock,
+  GraduationCap,
+  MapPin,
+  Users,
+  type LucideIcon,
+} from "lucide-react"
 
 import { Reveal, RevealGroup, RevealItem } from "@/components/motion/reveal"
-import { AnimatedIcon } from "@/components/icons"
-import { applicationStepIcons, requirementIcons } from "@/components/icons/icon-map"
+import { SlantLink } from "@/components/ui/slant-link"
 import { SectionHeading } from "./section-heading"
 import { applicationSteps, eligibility } from "@/data/competition-data"
+import { usePhase } from "@/lib/phase"
+import { siteConfig } from "@/lib/site"
+import { cn } from "@/lib/utils"
+import { EligibilityStack } from "./eligibility-stack"
+
+const icons: Record<string, LucideIcon> = {
+  calendar: CalendarDays,
+  graduation: GraduationCap,
+  map: MapPin,
+  users: Users,
+  clock: Clock,
+  check: BadgeCheck,
+}
+
+const criteria = eligibility.requirements.map((req) => ({
+  ...req,
+  Icon: icons[req.icon] ?? BadgeCheck,
+}))
+
+/** How long each criterion holds the stack before it moves to the next. */
+const CYCLE_MS = 3200
 
 /**
- * Eligibility and the application steps used to be two full-height sections
- * that said, between them, about a screen and a half of very little. They are
- * one section now: what you need on the left, what you do about it on the
- * right, and the caveats as a footnote rather than a full-width panel.
+ * Who can apply, then how, set out like a spec sheet: the heading and the one
+ * action on the left (held in place while the list scrolls past on wide
+ * screens), and on the right, in a black outlined panel, two ruled lists —
+ * requirements as label/answer rows with an icon each, application steps as
+ * numbered rows.
+ *
+ * On wide screens the left column also holds an isometric stack of the
+ * criteria (see eligibility-stack). It steps through them on its own, and
+ * hovering a requirement row brings that one forward.
+ *
+ * The lede and the action follow the programme phase, so the section is
+ * accurate all year: "Apply now" while applications are open, and no action
+ * the rest of the year.
  */
 export function Eligibility() {
-  const [hoveredReq, setHoveredReq] = React.useState<number | null>(null)
-  const [hoveredStep, setHoveredStep] = React.useState<number | null>(null)
+  const phase = usePhase()
+  const open = phase.id === "applications"
+  const reduced = useReducedMotion()
+  const [active, setActive] = React.useState(0)
+  const [hovered, setHovered] = React.useState<number | null>(null)
+  // The stack only shows on wide screens, so only cycle it there, and only
+  // while the section is on screen.
+  const sectionRef = React.useRef<HTMLElement>(null)
+  const inView = useInView(sectionRef)
+  const [wide, setWide] = React.useState(false)
+
+  React.useEffect(() => {
+    const query = window.matchMedia("(min-width: 1024px)")
+    const update = () => setWide(query.matches)
+    update()
+    query.addEventListener("change", update)
+    return () => query.removeEventListener("change", update)
+  }, [])
+
+  React.useEffect(() => {
+    if (hovered !== null || reduced || !wide || !inView) return
+    const id = window.setInterval(
+      () => setActive((i) => (i + 1) % criteria.length),
+      CYCLE_MS
+    )
+    return () => window.clearInterval(id)
+  }, [hovered, reduced, wide, inView])
 
   return (
     <section
+      ref={sectionRef}
       id="eligibility"
-      className="scroll-mt-24 border-t border-border py-24 md:py-32"
+      className="section-y scroll-mt-24"
     >
-      <div className="container">
-        <SectionHeading
-          kicker="Who can apply"
-          index="02"
-          title="Eligibility &amp; how to apply"
-          lede="Check that you qualify, then apply in three steps."
-        />
-
-        <div className="mt-16 grid gap-14 lg:grid-cols-2 lg:gap-20">
-          {/* Requirements */}
-          <div>
-            <h3 className="label-micro text-muted-foreground">Requirements</h3>
-            <RevealGroup as="ul" className="mt-6 border-t border-border">
-              {eligibility.requirements.map((req, i) => {
-                const Icon = requirementIcons[req.icon]
-                return (
-                  <RevealItem
-                    as="li"
-                    key={req.title}
-                    onMouseEnter={() => setHoveredReq(i)}
-                    onMouseLeave={() => setHoveredReq(null)}
-                    className="grid grid-cols-[1.75rem_1fr] gap-x-4 gap-y-1 border-b border-border py-5"
-                  >
-                    <span className="pt-0.5 text-muted-foreground transition-colors duration-300 group-hover:text-foreground">
-                      {Icon && (
-                        <AnimatedIcon icon={Icon} active={hoveredReq === i} />
-                      )}
-                    </span>
-                    <h4 className="font-medium">{req.title}</h4>
-                    <p className="col-start-2 text-sm leading-relaxed text-muted-foreground">
-                      {req.description}
-                    </p>
-                  </RevealItem>
-                )
-              })}
-            </RevealGroup>
-          </div>
-
-          {/* Application steps */}
-          <div id="apply" className="scroll-mt-24">
-            <h3 className="label-micro text-muted-foreground">
-              APPLICATION
-            </h3>
-            <RevealGroup as="ol" className="mt-6 border-t border-border">
-              {applicationSteps.map((step) => {
-                const Icon = applicationStepIcons[step.step]
-                return (
-                  <RevealItem
-                    as="li"
-                    key={step.step}
-                    onMouseEnter={() => setHoveredStep(step.step)}
-                    onMouseLeave={() => setHoveredStep(null)}
-                    className="grid grid-cols-[2.5rem_1fr] items-start gap-x-4 border-b border-border py-5 sm:grid-cols-[2.5rem_3rem_1fr] sm:gap-x-5"
-                  >
-                    <span className="label-micro pt-1.5 text-muted-foreground">
-                      {String(step.step).padStart(2, "0")}
-                    </span>
-
-                    <span className="col-start-2 row-start-1 hidden size-11 items-center justify-center border border-border text-muted-foreground sm:flex">
-                      {Icon && (
-                        <AnimatedIcon
-                          icon={Icon}
-                          active={hoveredStep === step.step}
-                          size={20}
-                        />
-                      )}
-                    </span>
-
-                    <div className="col-start-2 min-w-0 sm:col-start-3">
-                      <h4 className="font-display text-lg leading-tight">
-                        {step.title}
-                      </h4>
-                      <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                        {step.description}
-                      </p>
-                    </div>
-                  </RevealItem>
-                )
-              })}
-            </RevealGroup>
-
-            <Reveal delay={0.1}>
-              <div className="mt-8 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-                <CountdownPill />
-                <p className="label-micro text-muted-foreground">
-                  Applications closed 10 September 2026
-                </p>
-              </div>
+      <div className="content-container grid gap-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-20">
+        <div className="lg:sticky lg:top-28 lg:self-start">
+          <SectionHeading
+            title="Eligibility and how to apply"
+            lede={
+              open
+                ? "Applications are open until 10 September. Check that you qualify, then apply in three steps."
+                : undefined
+            }
+          />
+          {open && (
+            <Reveal delay={0.2} className="mt-8">
+              <SlantLink
+                href={siteConfig.applicationFormUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Apply now
+              </SlantLink>
             </Reveal>
-          </div>
+          )}
+          <Reveal delay={0.25} className="mt-14 hidden justify-center lg:flex">
+            <EligibilityStack items={criteria} active={active} />
+          </Reveal>
+        </div>
+
+        <div className="panel p-6 md:p-8">
+          <h3 className="label-micro text-muted-foreground">Who can apply</h3>
+          <RevealGroup as="dl" className="mt-4">
+            {criteria.map((req, i) => (
+              <RevealItem
+                key={req.title}
+                className="grid gap-1 border-t border-border py-5 sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-6"
+                onHoverStart={() => {
+                  setHovered(i)
+                  setActive(i)
+                }}
+                onHoverEnd={() => setHovered(null)}
+              >
+                <dt className="flex items-start gap-2.5 text-sm font-medium">
+                  <req.Icon
+                    aria-hidden
+                    strokeWidth={1.5}
+                    className={cn(
+                      "mt-px size-4 shrink-0 transition-colors duration-300",
+                      i === active ? "text-foreground" : "text-muted-foreground"
+                    )}
+                  />
+                  {req.title}
+                </dt>
+                <dd className="text-sm leading-relaxed text-muted-foreground">
+                  {req.description}
+                </dd>
+              </RevealItem>
+            ))}
+          </RevealGroup>
+
+          <h3
+            id="apply"
+            className="label-micro mt-8 scroll-mt-24 text-muted-foreground"
+          >
+            How to apply
+          </h3>
+          <RevealGroup as="ol" className="mt-4">
+            {applicationSteps.map((step) => (
+              <RevealItem
+                as="li"
+                key={step.step}
+                className="grid grid-cols-[2rem_minmax(0,1fr)] gap-x-4 border-t border-border py-4"
+              >
+                <span className="font-mono text-sm text-[#6b7686] dark:text-[#a3adb8]">
+                  {String(step.step).padStart(2, "0")}
+                </span>
+                <div>
+                  <h4 className="text-sm font-medium">{step.title}</h4>
+                  <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                    {step.description}
+                  </p>
+                </div>
+              </RevealItem>
+            ))}
+          </RevealGroup>
         </div>
       </div>
     </section>

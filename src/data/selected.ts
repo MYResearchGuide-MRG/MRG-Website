@@ -6,6 +6,8 @@
  * Never email, age, or residence here.
  */
 export type SelectedRow = {
+  /** The project's code, with a team letter where one project runs as more
+      than one team (I-2A, I-2B). */
   code: string
   name: string
   school: string
@@ -105,32 +107,26 @@ export const SELECTED: SelectedRow[] = [
   },
   {
     code: "B-1",
-    name: "AHDI JAIN",
-    school: "SMK SERI GARING",
-    programme: "STPM",
-  },
-  {
-    code: "B-1",
     name: "Lee Yee Hui",
     school: "Epsom College Malaysia",
     programme: "A-Levels",
   },
   {
     code: "B-1",
-    name: "Wong Pin Hao",
-    school: "Sunway College KL",
-    programme: "A-Levels",
-  },
-  {
-    code: "B-2",
-    name: "Jin You Tong",
+    name: "Ng Zi Ning",
     school: "Crescendo-HELP International School",
-    programme: "IGCSE",
+    programme: "A-Levels",
   },
   {
     code: "B-2",
     name: "Ee Jing Xuan",
     school: "Sunway College",
+    programme: "A-Levels",
+  },
+  {
+    code: "B-2",
+    name: "Jin Yu Tong",
+    school: "Crescendo-HELP International School",
     programme: "A-Levels",
   },
   {
@@ -141,15 +137,21 @@ export const SELECTED: SelectedRow[] = [
   },
   {
     code: "C-1",
+    name: "Deva Loshhani A/P Kumaran",
+    school: "SMK Sentosa",
+    programme: "Form 3",
+  },
+  {
+    code: "C-1",
     name: "Harshyetha Varsha Murali",
     school: "Sekolah Tenby Ipoh",
-    programme: "",
+    programme: "Form 3",
   },
   {
     code: "C-1",
     name: "Stephanie Teh En Yue",
     school: "Kolej Matrikulasi Perak",
-    programme: "",
+    programme: "Matriculation",
   },
   {
     code: "M-1",
@@ -182,22 +184,22 @@ export const SELECTED: SelectedRow[] = [
     programme: "IGCSE",
   },
   {
-    code: "I-2",
+    code: "I-2A",
     name: "Brenden Chen Yang Jie",
     school: "Sunway College",
     programme: "A-Levels",
   },
   {
-    code: "I-2",
-    name: "NG WEN JUN",
-    school: "Sunway College",
-    programme: "A-Levels",
-  },
-  {
-    code: "I-2",
+    code: "I-2A",
     name: "Zahra Adam",
     school: "Garden International School",
     programme: "IGCSE",
+  },
+  {
+    code: "I-2B",
+    name: "NG WEN JUN",
+    school: "Sunway College",
+    programme: "A-Levels",
   },
   {
     code: "P-1",
@@ -220,3 +222,8 @@ export const SELECTED: SelectedRow[] = [
 ]
 
 export const selectedCount = SELECTED.length
+
+/** The project behind a row's code, without any team letter: I-2A → I-2. */
+export function projectCodeOf(code: string) {
+  return code.replace(/(?<=\d)[A-Z]$/, "")
+}

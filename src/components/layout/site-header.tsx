@@ -12,9 +12,11 @@ import styles from "./site-header.module.css"
 export function SiteHeader({
   signedIn,
   onSignIn,
+  onSignOut,
 }: {
   signedIn: boolean
   onSignIn: () => void
+  onSignOut: () => void
 }) {
   const [scrolled, setScrolled] = React.useState(false)
   const [menuOpen, setMenuOpen] = React.useState(false)
@@ -149,13 +151,17 @@ export function SiteHeader({
 
           <div className="flex shrink-0 items-center gap-2.5 justify-self-end">
             {signedIn ? (
-              <a
-                href="#/projectboard/workspace"
+              <button
+                type="button"
                 className={action.button}
-                onClick={closeMenu}
+                onClick={() => {
+                  closeMenu()
+                  onSignOut()
+                }}
+                aria-haspopup="dialog"
               >
-                My project <ArrowUpRight size={15} aria-hidden />
-              </a>
+                Sign out <ArrowUpRight size={15} aria-hidden />
+              </button>
             ) : (
               <button
                 type="button"

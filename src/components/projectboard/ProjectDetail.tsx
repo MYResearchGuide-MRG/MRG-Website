@@ -69,7 +69,7 @@ export function ProjectDetail({
   board,
   savedDraft,
   onSave,
-  onSignOut,
+  onEditStateChange,
   editable,
   owner,
   revision,
@@ -77,7 +77,7 @@ export function ProjectDetail({
   board: Board
   savedDraft?: Draft
   onSave: (draft: Draft, revision:number) => Promise<boolean>
-  onSignOut: () => void
+  onEditStateChange: (state: { dirty: boolean; busy: boolean }) => void
   editable: boolean
   owner: boolean
   revision: number
@@ -100,9 +100,11 @@ export function ProjectDetail({
   )
   const [status, setStatus] = useState("")
   const [uploading, setUploading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const savePending = useRef(false)
   const imageInput = useId()
   const sections = useRef<HTMLDivElement>(null)
-  const dirty = editing && JSON.stringify(draft) !== JSON.stringify(savedDraft)
+  const dirty = requestedEditing && JSON.stringify(draft) !== JSON.stringify(savedDraft ?? newDraft(board))
   const content = editing ? draft : savedDraft
   const title = content?.title ?? board.title
   const members = content?.teamMembers ?? teamProfiles(board)
@@ -110,7 +112,12 @@ export function ProjectDetail({
     JSON.stringify((draft.teamMembers ?? []).map(member => member.id)) !== JSON.stringify(teamProfiles(board).map(member => member.id)))
 
   useEffect(() => {
-    if (!dirty && !uploading) return
+    onEditStateChange({ dirty, busy: uploading || saving })
+  }, [dirty, uploading, saving, onEditStateChange])
+  useEffect(() => () => onEditStateChange({ dirty: false, busy: false }), [onEditStateChange])
+
+  useEffect(() => {
+    if (!dirty && !uploading && !saving) return
     const warn = (event: BeforeUnloadEvent) => {
       event.preventDefault()
       event.returnValue = ""
@@ -126,7 +133,7 @@ export function ProjectDetail({
         anchor.href === window.location.href
       )
         return
-      if (!window.confirm("Leave this project without saving your changes?")) {
+      if (saving || uploading || !window.confirm("Leave this project without saving your changes?")) {
         event.preventDefault()
         event.stopPropagation()
       }
@@ -137,16 +144,18 @@ export function ProjectDetail({
       window.removeEventListener("beforeunload", warn)
       document.removeEventListener("click", checkNavigation, true)
     }
-  }, [dirty, uploading])
+  }, [dirty, uploading, saving])
 
   function update<K extends Exclude<keyof Draft, "projectId" | "version">>(
     key: K,
     value: Draft[K]
   ) {
+    if (savePending.current) return
     setDraft((current) => ({ ...current, [key]: value }))
     setStatus("")
   }
   function updateMember(id: string, changes: Partial<Omit<TeamMemberProfile, "id">>) {
+    if (savePending.current) return
     setDraft((current) => ({
       ...current,
       teamMembers: (current.teamMembers ?? teamProfiles(board)).map((member) =>
@@ -168,7 +177,7 @@ export function ProjectDetail({
     }
   }
   async function save() {
-    if (!owner || !editable || uploading) return
+    if (!owner || !editable || uploading || savePending.current || staleTeam) return
     const invalidOverview = overviewError(draft)
     if (!draft.title.trim() || draft.title.length > 240 || invalidOverview) {
       setStatus(
@@ -218,12 +227,18 @@ export function ProjectDetail({
       paper: draft.paper.trim(),
       savedAt: new Date().toISOString(),
     }
-    if (await onSave(next, editRevision)) {
+    savePending.current = true
+    setSaving(true)
+    try {
+      if (!(await onSave(next, editRevision))) throw new Error("Save failed")
       setDraft(next)
       setEditing(false)
-      setStatus("Changes saved.")
-    } else {
+      setStatus("Changes saved. You can keep browsing while signed in.")
+    } catch {
       setStatus("Could not save. Your access may have changed or a teammate saved a newer version. Copy your changes before reloading.")
+    } finally {
+      savePending.current = false
+      setSaving(false)
     }
   }
 
@@ -252,7 +267,7 @@ export function ProjectDetail({
               <>
                 <button
                   className="pb-button"
-                  disabled={uploading}
+                  disabled={uploading || saving}
                   onClick={() => {
                     if (dirty && !window.confirm("Discard your unsaved changes?")) return
                     setDraft(savedDraft ?? newDraft(board))
@@ -262,15 +277,13 @@ export function ProjectDetail({
                 >
                   Cancel
                 </button>
-                <button className="pb-button pb-primary" disabled={uploading || staleTeam} onClick={save}>
-                  Save changes
+                <button className="pb-button pb-primary" disabled={uploading || saving || staleTeam} onClick={save}>
+                  {saving ? "Saving…" : "Save changes"}
                 </button>
               </>
             ) : (
               <>
-                <button className="pb-text-button" onClick={onSignOut}>
-                  Sign out
-                </button>
+                <a className="pb-button" href={libraryHash}>Browse projects</a>
                 <button
                   className="pb-button pb-primary"
                   disabled={!editable}
@@ -511,6 +524,7 @@ export function ProjectDetail({
                     {owner && !editing && (
                       <button
                         className="pb-button"
+                        disabled={!editable}
                         onClick={() => {
                           setDraft(savedDraft ?? newDraft(board))
                           setStatus("")

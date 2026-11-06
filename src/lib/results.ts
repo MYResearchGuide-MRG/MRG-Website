@@ -60,8 +60,28 @@ export const homeRouteHash = "#/"
 export const projectboardRouteHash = "#/projectboard"
 export const projectsRouteHash = "#/projects/2026"
 
+/** Catalogue link pre-filtered to one research area: `#/projects/2026?track=Biology`. */
+export function projectsTrackHash(track: string) {
+  return `${projectsRouteHash}?track=${encodeURIComponent(track)}`
+}
+
+/** A query parameter on a `#/projects/2026?…` hash, if present. */
+function libraryParam(hash: string, key: string): string | null {
+  if (!hash.startsWith(`${projectsRouteHash}?`)) return null
+  return new URLSearchParams(hash.slice(projectsRouteHash.length + 1)).get(key)
+}
+
+/** Track named in a `#/projects/2026?track=…` hash, if any. */
+export function trackFromHash(hash: string): string | null {
+  return libraryParam(hash, "track")
+}
+
 function isProjectsRoute(hash: string): boolean {
-  return hash === "#/projects" || hash === projectsRouteHash
+  return (
+    hash === "#/projects" ||
+    hash === projectsRouteHash ||
+    hash.startsWith(`${projectsRouteHash}?`)
+  )
 }
 
 function isProjectboardRoute(hash: string): boolean {
@@ -137,8 +157,8 @@ export function useRoute(): Route {
         setRoute("home")
       } else if (document.getElementById(hash.slice(1)) === null) {
         setRoute("home")
-        // A home section linked from a standalone page (the header's Project
-        // Library) only exists once home has mounted, so jump there after.
+        // A home section linked from a standalone page only exists once home
+        // has mounted, so jump there after.
         window.setTimeout(() =>
           document.getElementById(hash.slice(1))?.scrollIntoView()
         )

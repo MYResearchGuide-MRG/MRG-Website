@@ -44,6 +44,7 @@ import {
 } from "./demo-access"
 import "./admin.css"
 import { AdminSignIn } from "./AdminSignIn"
+import { SignOutDialog } from "@/components/layout/sign-out-dialog"
 import { useProjectEditing, setProjectEditing } from "./project-editing"
 import {
   useBackend,
@@ -88,6 +89,24 @@ export default function AdminPanel() {
   const [busy, setBusy] = useState(false)
   const visibleCount = boards.filter((b) => visibility[b.id] === true).length
   const [entered, setEntered] = useState(false)
+  const [signOutOpen, setSignOutOpen] = useState(false)
+  const [signingOut, setSigningOut] = useState(false)
+  const [signOutError, setSignOutError] = useState("")
+  const requestSignOut = () => { setSignOutError(""); setSignOutOpen(true) }
+  async function signOut() {
+    if (busy || signingOut) return
+    setSigningOut(true)
+    setSignOutError("")
+    try {
+      if (useLiveBackend) await signOutLive()
+      setSignOutOpen(false)
+      setEntered(false)
+    } catch {
+      setSignOutError("Could not sign out. Please try again.")
+    } finally {
+      setSigningOut(false)
+    }
+  }
   const [view, setView] = useState<View>("participants")
   const [project, setProject] = useState("")
   const [projectQuery, setProjectQuery] = useState("")
@@ -215,10 +234,7 @@ export default function AdminPanel() {
           </a>
           <button
             className="ad-mobile-exit"
-            onClick={() => {
-              setEntered(false)
-              if (useLiveBackend) void signOutLive()
-            }}
+            onClick={requestSignOut}
           >
             Sign out
           </button>
@@ -272,10 +288,7 @@ export default function AdminPanel() {
           </nav>
           <button
             className="ad-exit"
-            onClick={() => {
-              setEntered(false)
-              if (useLiveBackend) void signOutLive()
-            }}
+            onClick={requestSignOut}
           >
             <ArrowLeft size={15} /> Sign out
           </button>
@@ -685,6 +698,14 @@ export default function AdminPanel() {
           )}
         </main>
       </div>
+      <SignOutDialog
+        open={signOutOpen}
+        onOpenChange={(open) => { if (!signingOut) setSignOutOpen(open) }}
+        onConfirm={() => void signOut()}
+        busy={busy || signingOut}
+        unsaved={false}
+        error={busy ? "Please wait for the current update to finish." : signOutError}
+      />
       {recordAction && (
         <RecordActionDialog
           key={`${recordAction.kind}-${recordAction.id}`}

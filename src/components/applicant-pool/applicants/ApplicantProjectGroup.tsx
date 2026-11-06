@@ -1,6 +1,30 @@
+import { motion, useReducedMotion, type Variants } from "motion/react"
+
+import { easeOutExpo, viewportOnce } from "@/components/motion/variants"
 import type { SelectedRow } from "@/data/selected"
 
 import { ApplicantRow } from "./ApplicantRow"
+
+/** The group plays in order: heading, then the rule, then the names. */
+const groupVariants: Variants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.06 } },
+}
+const headingVariants: Variants = {
+  hidden: { opacity: 0, y: 14 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.6, ease: easeOutExpo },
+  },
+}
+const ruleVariants: Variants = {
+  hidden: { scaleX: 0 },
+  visible: {
+    scaleX: 1,
+    transition: { duration: 0.8, ease: easeOutExpo },
+  },
+}
 
 /**
  * One assigned project's finalists.
@@ -19,9 +43,17 @@ export function ApplicantProjectGroup({
   title: string | null
   rows: SelectedRow[]
 }) {
+  const reduced = useReducedMotion()
+
   return (
-    <table className="w-full table-fixed border-collapse">
-      <caption className="text-left">
+    <motion.table
+      className="w-full table-fixed border-collapse"
+      initial={reduced ? false : "hidden"}
+      whileInView="visible"
+      viewport={viewportOnce}
+      variants={groupVariants}
+    >
+      <motion.caption className="text-left" variants={headingVariants}>
         {/* Reserve the height of the tallest caption the two columns can meet at
             — the code's line plus two wrapped title lines in the narrower `lg`
             column, and plus one in the wider `xl` one. Without it a one-line
@@ -47,9 +79,11 @@ export function ApplicantProjectGroup({
             {title && <span className="text-muted-foreground">{title}</span>}
           </span>
         </span>
-      </caption>
+      </motion.caption>
       <thead>
-        <tr className="border-b border-border">
+        {/* The header's rule is drawn by its own line rather than the row's
+            border, so it can sweep in from the left. */}
+        <tr className="relative">
           {/* A fixed track for NAME, not an auto one: auto sizing gave every
               group its own split (257px in one, 486px in the next), so the
               school column started at a different x in all twelve tables and
@@ -69,6 +103,11 @@ export function ApplicantProjectGroup({
             className="label-micro pt-6 pb-3 text-left text-muted-foreground"
           >
             SCHOOL
+            <motion.span
+              aria-hidden
+              className="absolute inset-x-0 bottom-0 h-px origin-left bg-border"
+              variants={ruleVariants}
+            />
           </th>
         </tr>
       </thead>
@@ -77,6 +116,6 @@ export function ApplicantProjectGroup({
           <ApplicantRow key={`${row.name}-${row.school}`} row={row} />
         ))}
       </tbody>
-    </table>
+    </motion.table>
   )
 }

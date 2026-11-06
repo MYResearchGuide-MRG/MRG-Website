@@ -9,10 +9,10 @@ import {
   Dna,
   FlaskConical,
   Grid2X2,
+  Network,
   Search,
   Sigma,
   SlidersHorizontal,
-  Users,
   X,
   type LucideIcon,
 } from "lucide-react"
@@ -28,6 +28,7 @@ import {
 import { projectsRouteHash } from "@/lib/results"
 import { ProjectBrief } from "./project-brief"
 import { ProjectAdvisor } from "./project-advisor"
+import { ProjectWheel } from "./project-wheel"
 import styles from "./projects.module.css"
 
 const codes = projectCodes(projects)
@@ -38,7 +39,7 @@ const fieldIcons: Record<string, LucideIcon> = {
   Biology: Dna,
   Chemistry: FlaskConical,
   Mathematics: Sigma,
-  "Interdisciplinary & Social Sciences": Users,
+  "Interdisciplinary & Social Sciences": Network,
   Physics: Atom,
 }
 const skills = [
@@ -100,7 +101,7 @@ function ProjectCatalogue({ preview = false }: { preview?: boolean }) {
       (!availability || commitments.get(project.id) === availability)
   )
   const visible = preview
-    ? projects.slice(0, 3)
+    ? projects
     : matching.filter(
         (project) => field === "All fields" || project.track === field
       )
@@ -168,8 +169,19 @@ function ProjectCatalogue({ preview = false }: { preview?: boolean }) {
             </a>
           </nav>
         )}
-        <div className={preview ? styles.previewLayout : styles.layout}>
-          {!preview && (
+        {preview ? (
+          <ProjectWheel
+            items={visible}
+            codes={codes}
+            iconFor={(track) => fieldIcons[track] ?? Grid2X2}
+            onOpen={(project, card) => {
+              opener.current = card
+              setSelected(project)
+              setBriefOpen(true)
+            }}
+          />
+        ) : (
+          <div className={styles.layout}>
             <aside className={styles.filters} aria-label="Filter projects">
               <label htmlFor={searchId} className={styles.label}>
                 Search projects
@@ -360,113 +372,106 @@ function ProjectCatalogue({ preview = false }: { preview?: boolean }) {
               </Collapsible.Root>
               <ProjectAdvisor visible={visible} />
             </aside>
-          )}
-          <div className={styles.results}>
-            {!preview && (
+            <div className={styles.results}>
               <p className="sr-only" role="status">
                 {visible.length} {visible.length === 1 ? "project" : "projects"}
                 {activeFilters.length > 0 ? ` of ${projects.length}` : ""}
               </p>
-            )}
-            {!preview && activeFilters.length > 0 && (
-              <div
-                className={styles.activeFilters}
-                aria-label="Applied filters"
-              >
-                {activeFilters.map((filter, index) => (
-                  <button
-                    key={`${index}-${filter.label}`}
-                    type="button"
-                    onClick={filter.clear}
-                    aria-label={`Remove ${filter.label} filter`}
-                  >
-                    {filter.label}
-                    <X size={12} aria-hidden />
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  className={styles.clear}
-                  onClick={clearFilters}
+              {activeFilters.length > 0 && (
+                <div
+                  className={styles.activeFilters}
+                  aria-label="Applied filters"
                 >
-                  Clear all
-                </button>
-              </div>
-            )}
-            <div className={styles.list}>
-              <AnimatePresence mode="popLayout">
-                {visible.map((project, index) => (
-                  <motion.button
+                  {activeFilters.map((filter, index) => (
+                    <button
+                      key={`${index}-${filter.label}`}
+                      type="button"
+                      onClick={filter.clear}
+                      aria-label={`Remove ${filter.label} filter`}
+                    >
+                      {filter.label}
+                      <X size={12} aria-hidden />
+                    </button>
+                  ))}
+                  <button
                     type="button"
-                    className={styles.project}
-                    key={project.id}
-                    layout={reducedMotion ? false : "position"}
-                    initial={reducedMotion ? false : { opacity: 0, y: 14 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={reducedMotion ? undefined : { opacity: 0, y: -8 }}
-                    transition={{
-                      duration: reducedMotion ? 0 : 0.36,
-                      ease: [0.22, 1, 0.36, 1],
-                      delay: Math.min(index, 4) * 0.045,
-                      layout: { duration: 0.3 },
-                    }}
-                    aria-haspopup="dialog"
-                    aria-label={`Read ${codes.get(project.id)}: ${project.title}`}
-                    onClick={(event) => {
-                      opener.current = event.currentTarget
-                      setSelected(project)
-                      setBriefOpen(true)
-                    }}
+                    className={styles.clear}
+                    onClick={clearFilters}
                   >
-                    <img
-                      className={styles.portrait}
-                      src={project.photo}
-                      alt=""
-                      width={56}
-                      height={56}
-                      loading="lazy"
-                      decoding="async"
-                    />
-                    <div className={styles.projectBody}>
-                      <div className={styles.projectTitle}>
-                        <h3>{project.title}</h3>
-                        <ArrowUpRight size={17} aria-hidden />
-                      </div>
-                      <p className={styles.mentor}>
-                        <span>{project.mentor}</span>
-                        <span className={styles.institution}>
-                          {project.affiliation}
-                        </span>
-                      </p>
-                      <p className={styles.excerpt}>{project.description}</p>
-                      <div className={styles.tags}>
-                        <span className={styles.code}>
-                          {codes.get(project.id)}
-                        </span>
-                        <span>{project.track}</span>
-                        <span>{project.type}</span>
-                      </div>
-                    </div>
-                  </motion.button>
-                ))}
-              </AnimatePresence>
-              {visible.length === 0 && (
-                <div className={styles.empty}>
-                  <h2>No projects found</h2>
-                  <p>Try another keyword or research field.</p>
-                  <button type="button" onClick={clearFilters}>
-                    Clear filters
+                    Clear all
                   </button>
                 </div>
               )}
+              <div className={styles.list}>
+                <AnimatePresence mode="popLayout">
+                  {visible.map((project, index) => (
+                    <motion.button
+                      type="button"
+                      className={styles.project}
+                      key={project.id}
+                      layout={reducedMotion ? false : "position"}
+                      initial={reducedMotion ? false : { opacity: 0, y: 14 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={reducedMotion ? undefined : { opacity: 0, y: -8 }}
+                      transition={{
+                        duration: reducedMotion ? 0 : 0.36,
+                        ease: [0.22, 1, 0.36, 1],
+                        delay: Math.min(index, 4) * 0.045,
+                        layout: { duration: 0.3 },
+                      }}
+                      aria-haspopup="dialog"
+                      aria-label={`Read ${codes.get(project.id)}: ${project.title}`}
+                      onClick={(event) => {
+                        opener.current = event.currentTarget
+                        setSelected(project)
+                        setBriefOpen(true)
+                      }}
+                    >
+                      <img
+                        className={styles.portrait}
+                        src={project.photo}
+                        alt=""
+                        width={56}
+                        height={56}
+                        loading="lazy"
+                        decoding="async"
+                      />
+                      <div className={styles.projectBody}>
+                        <div className={styles.projectTitle}>
+                          <h3>{project.title}</h3>
+                          <ArrowUpRight size={17} aria-hidden />
+                        </div>
+                        <p className={styles.mentor}>
+                          <span>{project.mentor}</span>
+                          <span className={styles.institution}>
+                            {project.affiliation}
+                          </span>
+                        </p>
+                        <p className={styles.excerpt}>{project.description}</p>
+                        <div className={styles.tags}>
+                          <span className={styles.code}>
+                            {codes.get(project.id)}
+                          </span>
+                          <span>{project.track}</span>
+                          <span>{project.type}</span>
+                        </div>
+                      </div>
+                    </motion.button>
+                  ))}
+                </AnimatePresence>
+                {visible.length === 0 && (
+                  <div className={styles.empty}>
+                    <h2>No projects found</h2>
+                    <p>Try another keyword or research field.</p>
+                    <button type="button" onClick={clearFilters}>
+                      Clear filters
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
-            {preview && (
-              <a href={projectsRouteHash} className={styles.previewMore}>
-                Browse all 2026 projects <ArrowUpRight size={17} aria-hidden />
-              </a>
-            )}
           </div>
-        </div>
+        )}
       </div>
       <Dialog open={briefOpen} onOpenChange={setBriefOpen}>
         <DialogContent

@@ -9,12 +9,24 @@
   min-height: 80svh;
   padding: 124px 0 88px;
 }
+/* On the home page, the same rhythm as the other sections (.section-y). */
 .preview {
-  padding: 80px 0;
+  padding: 32px 0;
 }
+@media (min-width: 768px) {
+  .preview {
+    padding: 52px 0;
+  }
+}
+/* Matches the site's container, so the edges line up with the header's. */
 .container {
-  width: min(1240px, calc(100% - 64px));
+  width: min(72rem, calc(100% - 48px));
   margin-inline: auto;
+}
+@media (min-width: 640px) {
+  .container {
+    width: min(72rem, calc(100% - 48px));
+  }
 }
 .heading {
   display: flex;
@@ -32,26 +44,26 @@
   line-height: 1.15;
   letter-spacing: -0.045em;
 }
+.preview .heading h2 {
+  font-size: var(--text-h2);
+}
 .heading p {
   margin: 14px 0 0;
   color: var(--muted);
   font-size: 15px;
   line-height: 1.6;
 }
-.browse,
-.previewMore {
+.browse {
   display: inline-flex;
   align-items: center;
   gap: 12px;
   font-size: 14px;
   white-space: nowrap;
 }
-.browse svg,
-.previewMore svg {
+.browse svg {
   transition: transform 180ms ease;
 }
-.browse:hover svg,
-.previewMore:hover svg {
+.browse:hover svg {
   transform: translate(2px, -2px);
 }
 .years {
@@ -239,8 +251,7 @@
 .clear:hover {
   color: white;
 }
-.results,
-.previewLayout {
+.results {
   min-width: 0;
 }
 .activeFilters {
@@ -410,9 +421,6 @@
   border-radius: 4px;
   padding: 10px 16px;
   font-size: 13px;
-}
-.previewMore {
-  margin-top: 24px;
 }
 .catalogue a:focus-visible,
 .catalogue button:focus-visible {
@@ -675,26 +683,25 @@
   outline: 2px solid #ddd;
   outline-offset: 3px;
 }
+/* Black throughout, with the site's panel corners and border. */
 .briefDialog {
   display: block;
   max-width: 860px;
   max-height: 90svh;
-  background: #050505;
-  border-radius: 9px;
-  border-color: #383838;
+  background: #000;
+  border-radius: 8px;
+  border-color: var(--color-border);
 }
+/* No bar: the counter, arrows and close float at the top right, over the
+   brief, and stay there as it scrolls. */
 .briefToolbar {
   position: sticky;
   top: 0;
   z-index: 2;
   display: flex;
-  align-items: center;
   justify-content: flex-end;
-  gap: 16px;
-  min-height: 66px;
-  padding: 12px 24px;
-  border-bottom: 1px solid #303030;
-  background: #101010;
+  height: 0;
+  padding-inline: 20px;
   color: #bcbcbc;
   font-size: 12px;
 }
@@ -702,6 +709,11 @@
   display: flex;
   gap: 6px;
   align-items: center;
+  height: max-content;
+  margin-top: 20px;
+  padding: 4px;
+  border-radius: 6px;
+  background: #000;
 }
 .briefNavigation > span {
   font-variant-numeric: tabular-nums;
@@ -733,6 +745,10 @@
 .briefBody {
   padding: 32px 36px 40px;
   animation: briefSwitch 280ms ease-out both;
+}
+/* The brief's top line of labels stops short of the floating controls. */
+.briefBody > div > :first-child {
+  padding-right: 200px;
 }
 .animatedDialog[data-state="open"] {
   animation: dialogIn 420ms cubic-bezier(0.22, 1, 0.36, 1);
@@ -844,15 +860,9 @@
   }
 }
 @media (max-width: 760px) {
-  .container {
-    width: calc(100% - 32px);
-  }
   .page {
     padding-top: 104px;
     padding-bottom: 56px;
-  }
-  .preview {
-    padding-block: 56px;
   }
   .heading {
     align-items: start;
@@ -906,11 +916,17 @@
     margin-top: 18px;
   }
   .briefToolbar {
-    padding: 10px 14px;
-    gap: 8px;
+    padding-inline: 10px;
   }
+  .briefNavigation {
+    margin-top: 10px;
+  }
+  /* Too narrow to share the top line, so the brief starts below them. */
   .briefBody {
-    padding: 24px 20px 32px;
+    padding: 68px 20px 32px;
+  }
+  .briefBody > div > :first-child {
+    padding-right: 0;
   }
   .briefNavigation {
     gap: 4px;

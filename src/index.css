@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/inter";
+@import "@fontsource-variable/geist";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -14,9 +15,9 @@
    -------------------------------------------------------------------------- */
 
 @theme {
-  /* One family for the whole page, matching myresearchguide.org. The display
-     token is kept separate from --font-sans so headline weight and tracking
-     can move independently of body copy — see .display-* below. */
+  /* Inter throughout, matching MYResearchGuide. The display token is kept
+     separate from --font-sans so headline weight and tracking can move
+     independently of body copy — see .display-* below. */
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
 
@@ -24,6 +25,9 @@
   --color-background: oklch(1 0 0);
   --color-foreground: oklch(0.145 0 0);
   --color-card: oklch(1 0 0);
+  /* Light slate blue for feature cards: a brighter step of the hero
+     button's #a3adb8. The same in both themes; text on it is always dark. */
+  --color-tint: #dde3e9;
   --color-card-foreground: oklch(0.145 0 0);
   --color-popover: oklch(1 0 0);
   --color-popover-foreground: oklch(0.145 0 0);
@@ -61,9 +65,9 @@
      Sized down from the Instrument Serif original: a 600-weight grotesk at the
      old 6.5rem cap put far more ink on screen than the serif did and pushed
      the hero's copy and CTAs below the fold on a laptop. */
-  --text-display: clamp(2.5rem, 1.4rem + 4.4vw, 4.75rem);
-  --text-h2: clamp(1.875rem, 1.2rem + 2.6vw, 3rem);
-  --text-h3: clamp(1.375rem, 1.1rem + 1.1vw, 1.875rem);
+  --text-display: clamp(2.375rem, 4.7vw, 4.5rem);
+  --text-h2: clamp(1.75rem, 3vw, 2.5rem);
+  --text-h3: clamp(1.25rem, 2.4vw, 1.75rem);
 
   /* Foreground as plain sRGB channels, for canvas backdrops.
      Canvas needs numeric rgb; reading `color` back gives an oklch() string,
@@ -79,29 +83,30 @@
   --duration-slow: 620ms;
 }
 
-/* Dark — true black */
+/* Dark — MYResearchGuide's palette: a soft black page (#121212) with panels
+   in true black, lifted by a #2a2a2a hairline rather than a lighter fill. */
 .dark {
-  --color-background: oklch(0 0 0);
+  --color-background: #121212;
   --color-foreground: oklch(0.985 0 0);
-  --color-card: oklch(0.13 0 0);
+  --color-card: #000;
   --color-card-foreground: oklch(0.985 0 0);
-  --color-popover: oklch(0.13 0 0);
+  --color-popover: oklch(0.215 0 0);
   --color-popover-foreground: oklch(0.985 0 0);
   --color-primary: oklch(0.985 0 0);
   --color-primary-foreground: oklch(0 0 0);
-  --color-secondary: oklch(0.18 0 0);
+  --color-secondary: oklch(0.235 0 0);
   --color-secondary-foreground: oklch(0.985 0 0);
-  --color-muted: oklch(0.16 0 0);
+  --color-muted: oklch(0.21 0 0);
   --color-muted-foreground: oklch(0.73 0 0);
-  --color-accent: oklch(0.18 0 0);
+  --color-accent: oklch(0.235 0 0);
   --color-accent-foreground: oklch(0.985 0 0);
   --color-destructive: oklch(0.55 0.2 27.325);
   --color-destructive-foreground: oklch(0.985 0 0);
-  --color-border: oklch(0.24 0 0);
-  --color-input: oklch(0.24 0 0);
+  --color-border: #2a2a2a;
+  --color-input: #2a2a2a;
   --color-ring: oklch(0.75 0 0);
   --ink-rgb: 250 250 250;
-  --paper-rgb: 0 0 0;
+  --paper-rgb: 18 18 18;
 
   /* Lifted on black so the metals stay legible without going neon. */
   --color-gold: oklch(0.8 0.11 86);
@@ -159,79 +164,155 @@
   }
 }
 
+/* Extends Tailwind's own container, which would otherwise win over a
+   component rule. Past 80rem the floating header stops at 75rem, so content
+   does too and its edges line up with the header's; the max width counts the
+   padding. */
+@utility container {
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+  @media (width >= 40rem) {
+    padding-inline: 1.5rem;
+  }
+  @media (width >= 80rem) {
+    max-width: calc(75rem + 3rem);
+  }
+}
+
+/* Homepage content sits inside the floating header's 75rem footprint. */
+@utility content-container {
+  width: 100%;
+  max-width: 75rem;
+  margin-inline: auto;
+  padding-inline: 1.5rem;
+}
+
 @layer components {
-  .container {
-    width: 100%;
-    margin-inline: auto;
-    padding-inline: 1.25rem;
-  }
-
-  @media (min-width: 640px) {
-    .container {
-      max-width: 640px;
-      padding-inline: 1.5rem;
-    }
-  }
-
-  @media (min-width: 768px) {
-    .container {
-      max-width: 768px;
-    }
-  }
-
-  @media (min-width: 1024px) {
-    .container {
-      max-width: 1024px;
-    }
-  }
-
-  @media (min-width: 1280px) {
-    .container {
-      max-width: 1200px;
-    }
-  }
-
-  @media (min-width: 1536px) {
-    .container {
-      max-width: 1320px;
-    }
-  }
-
   /* Display type -------------------------------------------------------- */
 
-  /* Instrument Serif carried these at weight 400; a grotesk at 400 goes thin
-     and papery at display sizes, so the whole ramp moves to 600 and the
-     tracking tightens to compensate for the wider sans sidebearings. */
+  /* MYResearchGuide's headline voice: Inter at a medium 500 with tight
+     tracking, rather than a heavy weight. */
 
   .font-display {
     font-family: var(--font-display);
-    font-weight: 600;
-    letter-spacing: -0.02em;
+    font-weight: 500;
+    letter-spacing: -0.025em;
   }
 
   .display-xl {
     font-family: var(--font-display);
-    font-weight: 600;
+    font-weight: 500;
     font-size: var(--text-display);
-    line-height: 0.95;
-    letter-spacing: -0.04em;
+    line-height: 1.08;
+    letter-spacing: -0.055em;
+    text-wrap: balance;
   }
 
   .display-lg {
     font-family: var(--font-display);
-    font-weight: 600;
+    font-weight: 500;
     font-size: var(--text-h2);
-    line-height: 1.02;
-    letter-spacing: -0.032em;
+    line-height: 1.16;
+    letter-spacing: -0.045em;
     text-wrap: balance;
   }
 
   .display-md {
     font-family: var(--font-display);
-    font-weight: 600;
+    font-weight: 500;
     font-size: var(--text-h3);
-    line-height: 1.18;
-    letter-spacing: -0.022em;
+    line-height: 1.2;
+    letter-spacing: -0.035em;
+  }
+
+  /* Second line of a two-part heading, greyed out
+     ("All you need to know about / MYSSP."). */
+  .heading-muted {
+    display: block;
+    color: #999;
+  }
+
+  /* The black, hairline-outlined container MYResearchGuide sets its
+     sections in. */
+  .panel {
+    background-color: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+  }
+
+  /* The large inset frame shared by the hero and the closing banner. */
+  .frame {
+    border: 1px solid #202020;
+    border-radius: 26px;
+  }
+  @media (max-width: 700px) {
+    .frame {
+      border-radius: 20px;
+    }
+  }
+
+  /* Slow shimmer across the hero headline's second line. */
+  .colour-loop {
+    color: #c9ced7;
+    font-weight: 600;
+  }
+  @supports (background-clip: text) or (-webkit-background-clip: text) {
+    .colour-loop {
+      background-image: linear-gradient(
+        100deg,
+        #aaa5a0,
+        #dce5ef,
+        #aab9d3,
+        #c8c2bb,
+        #aaa5a0
+      );
+      background-size: 200% 100%;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      animation: colour-loop 9s ease-in-out infinite alternate;
+    }
+  }
+  @keyframes colour-loop {
+    from {
+      background-position: 0% 50%;
+    }
+    to {
+      background-position: 100% 50%;
+    }
+  }
+
+  /* Hero buttons, after MYResearchGuide: solid white primary, outlined
+     near-black secondary. */
+  .btn-light,
+  .btn-dark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    height: 44px;
+    padding-inline: 20px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+  }
+  .btn-light {
+    background-color: #fff;
+    color: #111;
+  }
+  .btn-light:hover {
+    background-color: #dfdfdf;
+  }
+  .btn-dark {
+    background-color: rgb(12 12 12 / 85%);
+    border-color: #454545;
+    color: #fff;
+  }
+  .btn-dark:hover {
+    background-color: #242424;
+    border-color: #777;
   }
 
   /* The small uppercase label used for kickers, field names and column
@@ -348,6 +429,18 @@
   /* The left-to-right veil above assumes copy in the left column. The hero's
      figure-less backdrops centre their copy instead, so the field has to open
      out from the middle rather than from one edge. */
+  /* Vertical rhythm shared by every home-page section, so the gap between
+     any two sections is the same: 104px on desktop and 64px on phones, as on
+     MYResearchGuide. */
+  .section-y {
+    padding-block: 2rem;
+  }
+  @media (min-width: 768px) {
+    .section-y {
+      padding-block: 3.25rem;
+    }
+  }
+
   .backdrop-veil-center {
     -webkit-mask-image: radial-gradient(
       ellipse 58% 62% at 50% 48%,
