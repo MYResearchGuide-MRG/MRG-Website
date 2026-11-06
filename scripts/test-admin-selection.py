@@ -149,9 +149,17 @@ def run(base_url, screenshot):
             page.screenshot(path=screenshot)
         page.get_by_role("button", name="Clear selection", exact=True).click()
         expect(selection).to_have_count(0)
+        page.get_by_role("button", name="Sign out", exact=True).first.click()
+        confirm = page.get_by_role("alertdialog")
+        expect(confirm).to_be_visible()
+        confirm.get_by_role("button", name="Stay signed in").click()
+        expect(select_all).to_be_visible()
+        page.get_by_role("button", name="Sign out", exact=True).first.click()
+        confirm.get_by_role("button", name="Sign out", exact=True).click()
+        expect(page.get_by_role("heading", name="Committee workspace")).to_be_visible()
         assert not errors, errors
         browser.close()
-        print("PASS: cross-page selection, mixed state, keyboard, sorting, filters, recipient counts, roster updates, 60-person cohort and mobile layout")
+        print("PASS: cross-page selection, mixed state, keyboard, sorting, filters, recipient counts, roster updates, 60-person cohort, mobile layout and confirmed admin sign-out")
 
 
 if __name__ == "__main__":

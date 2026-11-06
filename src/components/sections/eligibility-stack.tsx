@@ -138,7 +138,7 @@ export function EligibilityStack({
   ]
 
   return (
-    <div aria-hidden className="relative aspect-[360/384] w-full max-w-[400px]">
+    <div aria-hidden className="relative aspect-[360/384] w-full max-w-[340px]">
       <HalftoneCloud />
       <svg
         viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}

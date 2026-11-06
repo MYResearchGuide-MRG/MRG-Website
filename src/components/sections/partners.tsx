@@ -20,8 +20,8 @@ export function Partners() {
 
   return (
     <section className="section-y">
-      <RevealGroup className="flex flex-col items-center gap-10">
-        <RevealItem className="container">
+      <RevealGroup className="flex flex-col items-center gap-8">
+        <RevealItem className="content-container">
           <p className="label-micro flex flex-wrap items-baseline justify-center gap-x-2.5 gap-y-2 text-center text-muted-foreground">
             <span>A</span>
             <a
@@ -46,26 +46,26 @@ export function Partners() {
           </p>
         </RevealItem>
 
-        <RevealItem className="container flex flex-wrap justify-center gap-x-6 gap-y-8">
+        <RevealItem className="content-container flex flex-wrap justify-center gap-x-6 gap-y-8">
           {partners.map((partner) => (
             <motion.a
               key={partner.name}
               href={partner.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex h-24 w-60 items-center justify-center rounded-lg bg-white px-6"
+              className="flex h-20 w-52 items-center justify-center rounded-lg bg-white px-6"
               whileHover={reduced ? undefined : { y: -3 }}
               transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
             >
               <span
                 title={partner.description}
-                className="flex h-16 w-full items-center justify-center"
+                className="flex h-12 w-full items-center justify-center"
               >
                 <img
                   src={partner.logo}
                   alt={partner.name}
                   loading="lazy"
-                  className={`w-auto max-w-full object-contain ${partner.cap}`}
+                  className={`w-auto max-h-full max-w-full object-contain ${partner.cap}`}
                 />
               </span>
             </motion.a>

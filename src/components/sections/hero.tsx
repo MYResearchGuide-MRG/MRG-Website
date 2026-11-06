@@ -31,7 +31,7 @@ export function Hero() {
     // of being cut off by the header, and shares the header's side gutter.
     // Behind it is the interactive line network, which follows the theme.
     <section className="px-3 pt-[calc(62px+0.75rem)] pb-3 sm:px-6 sm:pt-[calc(70px+0.75rem)]">
-      <div className="relative flex min-h-[calc(100svh-62px-1.5rem)] flex-col overflow-hidden rounded-2xl bg-muted pt-16 text-foreground sm:min-h-[calc(100svh-70px-1.5rem)] dark:bg-black">
+      <div className="relative flex min-h-[calc(100svh-62px-1.5rem)] flex-col overflow-hidden rounded-2xl bg-muted pt-12 text-foreground sm:min-h-[calc(100svh-70px-1.5rem)] dark:bg-black">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 overflow-hidden"
@@ -39,7 +39,7 @@ export function Hero() {
           <NeuronBackdrop />
         </div>
 
-        <div className="relative container flex flex-1 flex-col items-center justify-center pb-16 text-center">
+        <div className="relative content-container flex flex-1 flex-col items-center justify-center pb-12 text-center">
           {/* Display headline. Its own entrance — scale+fade rather than the
             plain fade() used below — since it's the hero's signature mark,
             not another line of supporting copy. */}
@@ -57,13 +57,13 @@ export function Hero() {
               Malaysia Science Scholar&rsquo;s Programme (MYSSP) 2026 &mdash;
               science research mentorship for Malaysian pre-university students
             </span>
-            <MysspLogo alt="" className="h-auto w-full max-w-xl" />
+            <MysspLogo alt="" className="h-auto w-full max-w-[480px]" />
           </motion.h1>
 
           {/* Set like MYResearchGuide's hero description: Inter at a regular
             weight, soft white, with generous leading. */}
           <motion.p
-            className="mt-8 max-w-[680px] text-[15px] leading-[1.65] font-normal text-pretty text-[#dedede] md:mt-10 md:text-[17px]"
+            className="mt-7 max-w-[600px] text-[15px] leading-[1.65] font-normal text-pretty text-[#dedede] md:mt-8 md:text-base"
             {...fade(0.5)}
           >
             Welcome to the Malaysia Science Scholar&rsquo;s Programme (MYSSP),

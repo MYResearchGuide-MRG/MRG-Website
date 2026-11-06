@@ -64,7 +64,7 @@ const steps = [
 export function About() {
   return (
     <section id="about" className="section-y scroll-mt-24">
-      <div className="container">
+      <div className="content-container">
         <Reveal>
           <h2 className="display-lg">What is MYSSP?</h2>
         </Reveal>

@@ -18,7 +18,7 @@ export function Faq() {
       className="section-y scroll-mt-24"
       aria-labelledby="faq-heading"
     >
-      <div className="container">
+      <div className="content-container">
         <div className={styles.inner}>
           <Reveal className={styles.intro}>
             <h2 id="faq-heading">Frequently asked questions</h2>

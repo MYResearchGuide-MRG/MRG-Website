@@ -15,7 +15,7 @@ import styles from "./stay-connected.module.css"
 export function StayConnected() {
   return (
     <section className="section-y" aria-labelledby="stay-connected-title">
-      <div className="container">
+      <div className="content-container">
         <Reveal className={styles.banner}>
           <HalftoneBackdrop />
           <div className={styles.content}>

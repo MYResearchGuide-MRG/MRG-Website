@@ -3,6 +3,7 @@ import * as React from "react"
 import { SiteHeader } from "@/components/layout/site-header"
 import { SiteFooter } from "@/components/layout/site-footer"
 import { DesignSwitch } from "@/components/layout/design-switch"
+import { SignOutDialog } from "@/components/layout/sign-out-dialog"
 import { Hero } from "@/components/sections/hero"
 import { Results } from "@/components/sections/results"
 import { Partners } from "@/components/sections/partners"
@@ -35,7 +36,7 @@ const AccessDialog = React.lazy(
 function App() {
   const route = useRoute()
   const demoDayYear = useDemoDayYear()
-  // Demo access is shared with the site header; production auth will replace it.
+  // The same session drives navigation and project permissions on every route.
   const access = useDemoAccess()
   const [, refreshSession] = React.useReducer((n) => n + 1, 0)
   React.useEffect(() => {
@@ -43,16 +44,31 @@ function App() {
     return () => window.clearInterval(id)
   }, [])
   const assignedProjectId = currentProject()
-  const signedIn = Boolean(assignedProjectId)
+  const signedIn = Boolean(access.session)
+  const [editState, setEditState] = React.useState({ dirty: false, busy: false })
+  const [signOutOpen, setSignOutOpen] = React.useState(false)
+  const [signingOut, setSigningOut] = React.useState(false)
+  const [signOutError, setSignOutError] = React.useState("")
   const [accessOpen, setAccessOpen] = React.useState(false)
   const [accessMounted, setAccessMounted] = React.useState(false)
   const signIn = () => {
     setAccessMounted(true)
     setAccessOpen(true)
   }
-  const signOut = () => {
-    signOutParticipant()
-    window.location.hash = "#/projectboard"
+  const signOut = async () => {
+    if (signingOut || editState.busy) return
+    setSigningOut(true)
+    setSignOutError("")
+    try {
+      await signOutParticipant()
+      setSignOutOpen(false)
+      // Stay on the current page. Hidden projects become unavailable without
+      // membership; public projects remain readable after signing out.
+    } catch {
+      setSignOutError("Could not sign out. Please try again.")
+    } finally {
+      setSigningOut(false)
+    }
   }
 
   // The results reveal lives on its own hash route so the front page stays
@@ -92,7 +108,10 @@ function App() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <SiteHeader signedIn={signedIn} onSignIn={signIn} />
+      <SiteHeader signedIn={signedIn} onSignIn={signIn} onSignOut={() => {
+        setSignOutError("")
+        setSignOutOpen(true)
+      }} />
 
       {route === "projectboard" ? (
         <React.Suspense
@@ -106,7 +125,7 @@ function App() {
             key={`${access.session?.participantId || "public"}-${assignedProjectId}`}
             assignedProjectId={assignedProjectId}
             onSignIn={signIn}
-            onSignOut={signOut}
+            onEditStateChange={setEditState}
           />
         </React.Suspense>
       ) : (
@@ -139,6 +158,14 @@ function App() {
 
       <SiteFooter />
       <DesignSwitch />
+      <SignOutDialog
+        open={signOutOpen}
+        onOpenChange={(open) => { if (!signingOut) setSignOutOpen(open) }}
+        onConfirm={() => void signOut()}
+        busy={signingOut || editState.busy}
+        unsaved={editState.dirty}
+        error={editState.busy ? "Please wait for your changes to finish saving or your image to finish loading." : signOutError}
+      />
       {accessMounted && (
         <React.Suspense
           fallback={

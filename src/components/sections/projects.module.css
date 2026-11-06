@@ -20,12 +20,12 @@
 }
 /* Matches the site's container, so the edges line up with the header's. */
 .container {
-  width: min(75rem, calc(100% - 40px));
+  width: min(72rem, calc(100% - 48px));
   margin-inline: auto;
 }
 @media (min-width: 640px) {
   .container {
-    width: min(75rem, calc(100% - 48px));
+    width: min(72rem, calc(100% - 48px));
   }
 }
 .heading {
@@ -43,6 +43,9 @@
   font-weight: 550;
   line-height: 1.15;
   letter-spacing: -0.045em;
+}
+.preview .heading h2 {
+  font-size: var(--text-h2);
 }
 .heading p {
   margin: 14px 0 0;

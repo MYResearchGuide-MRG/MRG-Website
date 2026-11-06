@@ -265,7 +265,7 @@ export function TimelineSection() {
 
   return (
     <section id="timeline" className="section-y scroll-mt-24">
-      <div className="container">
+      <div className="content-container">
         <SectionHeading
           title="Programme timeline"
           lede="Timeline for cohort 2026, dates may shift slightly as the programme progresses."

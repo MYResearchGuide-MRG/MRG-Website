@@ -114,10 +114,10 @@ export function ColumnBand() {
   }, [reduced])
 
   return (
-    <div aria-hidden className="my-8 md:my-12">
+    <div aria-hidden className="content-container my-8 md:my-12">
       <canvas
         ref={canvasRef}
-        className="block h-[clamp(120px,13vw,220px)] w-full"
+        className="block h-[clamp(100px,11vw,160px)] w-full"
       />
     </div>
   )

@@ -22,10 +22,10 @@ import styles from "./project-wheel.module.css"
 // Radians a second while drifting. About one card every eleven seconds.
 const DRIFT = 0.026
 // Gap between neighbouring cards along the rim, in px.
-const GAP = 28
+const GAP = 24
 
 function geometry(width: number) {
-  const card = width < 640 ? 264 : 320
+  const card = width < 640 ? 248 : 288
   const radius = width < 640 ? 900 : 1500
   return { card, radius, step: (card + GAP) / radius }
 }
@@ -247,10 +247,12 @@ export function ProjectWheel({
             >
               <span className={styles.visual}>
                 <FieldGlyph Icon={Icon} seed={index} />
-                <span className={styles.code}>{codes.get(project.id)}</span>
-                <span className={styles.track}>{project.track}</span>
               </span>
               <span className={styles.body}>
+                <span className={styles.meta}>
+                  <span className={styles.code}>{codes.get(project.id)}</span>
+                  <span className={styles.track}>{project.track}</span>
+                </span>
                 <span className={styles.title}>{project.title}</span>
                 <span className={styles.description}>
                   {project.description}

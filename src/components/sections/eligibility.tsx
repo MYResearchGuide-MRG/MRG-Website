@@ -86,14 +86,14 @@ export function Eligibility() {
       id="eligibility"
       className="section-y scroll-mt-24"
     >
-      <div className="container grid gap-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-20">
+      <div className="content-container grid gap-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-20">
         <div className="lg:sticky lg:top-28 lg:self-start">
           <SectionHeading
             title="Eligibility and how to apply"
             lede={
               open
                 ? "Applications are open until 10 September. Check that you qualify, then apply in three steps."
-                : "Applications for this cohort have closed. Here is who can apply, and how, for when the next cohort opens."
+                : undefined
             }
           />
           {open && (
@@ -145,7 +145,7 @@ export function Eligibility() {
 
           <h3
             id="apply"
-            className="label-micro mt-14 scroll-mt-24 text-muted-foreground"
+            className="label-micro mt-8 scroll-mt-24 text-muted-foreground"
           >
             How to apply
           </h3>
@@ -154,7 +154,7 @@ export function Eligibility() {
               <RevealItem
                 as="li"
                 key={step.step}
-                className="grid grid-cols-[3rem_minmax(0,1fr)] gap-x-4 border-t border-border py-5 sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-x-6"
+                className="grid grid-cols-[2rem_minmax(0,1fr)] gap-x-4 border-t border-border py-4"
               >
                 <span className="font-mono text-sm text-[#6b7686] dark:text-[#a3adb8]">
                   {String(step.step).padStart(2, "0")}

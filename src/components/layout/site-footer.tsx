@@ -61,8 +61,8 @@ const linkGroups = [
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-border text-muted-foreground">
-      <div className="mx-auto max-w-[1440px] px-6 pt-11 pb-6 min-[701px]:px-8 min-[701px]:pt-16 min-[701px]:pb-7 min-[1101px]:px-12 min-[1101px]:pt-[76px] min-[1101px]:pb-8">
+    <footer className="border-t border-border bg-black text-muted-foreground">
+      <div className="content-container pt-11 pb-6 min-[701px]:pt-14 min-[701px]:pb-7 min-[1101px]:pt-16 min-[1101px]:pb-8">
         <div className="grid grid-cols-2 gap-x-6 gap-y-9 min-[701px]:grid-cols-[1.6fr_1fr_1fr] min-[701px]:gap-x-8 min-[701px]:gap-y-10 min-[1101px]:grid-cols-[minmax(280px,1.8fr)_repeat(3,minmax(0,1fr))] min-[1101px]:gap-14">
           <div className="col-span-full min-w-0 min-[701px]:col-span-1 min-[701px]:row-span-2 min-[1101px]:row-span-1">
             <a
