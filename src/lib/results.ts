@@ -65,12 +65,15 @@ export function projectsTrackHash(track: string) {
   return `${projectsRouteHash}?track=${encodeURIComponent(track)}`
 }
 
+/** A query parameter on a `#/projects/2026?…` hash, if present. */
+function libraryParam(hash: string, key: string): string | null {
+  if (!hash.startsWith(`${projectsRouteHash}?`)) return null
+  return new URLSearchParams(hash.slice(projectsRouteHash.length + 1)).get(key)
+}
+
 /** Track named in a `#/projects/2026?track=…` hash, if any. */
 export function trackFromHash(hash: string): string | null {
-  if (!hash.startsWith(`${projectsRouteHash}?`)) return null
-  return new URLSearchParams(hash.slice(projectsRouteHash.length + 1)).get(
-    "track"
-  )
+  return libraryParam(hash, "track")
 }
 
 function isProjectsRoute(hash: string): boolean {

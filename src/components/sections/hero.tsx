@@ -1,13 +1,15 @@
 import { motion, useReducedMotion } from "motion/react"
 
-import { SlantLink } from "@/components/ui/slant-link"
+import { ArrowUpRight } from "lucide-react"
 import { CountdownPill } from "@/components/results-countdown"
-import { CellsBackdrop } from "./backdrops/cells-backdrop"
+import { NeuronBackdrop } from "./backdrops/neuron-backdrop"
 import { easeOutExpo } from "@/components/motion/variants"
 import { MysspLogo } from "@/components/layout/myssp-logo"
 import { BookGlyph } from "@/components/icons/book-glyph"
 import { siteConfig } from "@/lib/site"
+import action from "@/components/ui/action-motion.module.css"
 import { usePhase } from "@/lib/phase"
+import { projectsRouteHash, resourcesRouteHash } from "@/lib/results"
 export function Hero() {
   const reduced = useReducedMotion()
   const phase = usePhase()
@@ -27,15 +29,14 @@ export function Hero() {
     // starts a gutter below the header bar (62px, 70px from sm) rather than
     // butting against it, so it reads as a card floating on the page instead
     // of being cut off by the header, and shares the header's side gutter.
-    // Its animated backdrop is dark in either theme, so the panel pins the
-    // dark theme for its contents (the "dark" class).
+    // Behind it is the interactive line network, which follows the theme.
     <section className="px-3 pt-[calc(62px+0.75rem)] pb-3 sm:px-6 sm:pt-[calc(70px+0.75rem)]">
-      <div className="dark relative flex min-h-[calc(100svh-62px-1.5rem)] flex-col overflow-hidden rounded-2xl bg-[#162a2c] pt-16 text-foreground sm:min-h-[calc(100svh-70px-1.5rem)]">
+      <div className="relative flex min-h-[calc(100svh-62px-1.5rem)] flex-col overflow-hidden rounded-2xl bg-muted pt-16 text-foreground sm:min-h-[calc(100svh-70px-1.5rem)] dark:bg-black">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 overflow-hidden"
         >
-          <CellsBackdrop />
+          <NeuronBackdrop />
         </div>
 
         <div className="relative container flex flex-1 flex-col items-center justify-center pb-16 text-center">
@@ -59,8 +60,10 @@ export function Hero() {
             <MysspLogo alt="" className="h-auto w-full max-w-xl" />
           </motion.h1>
 
+          {/* Set like MYResearchGuide's hero description: Inter at a regular
+            weight, soft white, with generous leading. */}
           <motion.p
-            className="mt-8 max-w-2xl text-[1.0625rem] leading-relaxed text-foreground md:mt-10 md:text-lg"
+            className="mt-8 max-w-[680px] text-[15px] leading-[1.65] font-normal text-pretty text-[#dedede] md:mt-10 md:text-[17px]"
             {...fade(0.5)}
           >
             Welcome to the Malaysia Science Scholar&rsquo;s Programme (MYSSP),
@@ -72,12 +75,12 @@ export function Hero() {
               href={siteConfig.mainSiteUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="link-wipe text-foreground"
+              className="link-wipe text-white"
             >
               MYResearchGuide
             </a>
             , MYSSP is an{" "}
-            <strong className="font-semibold">
+            <strong className="font-medium text-white">
               8-week free mentorship programme pairing students with experienced
               researchers
             </strong>{" "}
@@ -104,17 +107,34 @@ export function Hero() {
               {phase.note}
             </p>
             {phase.cta ? (
-              <SlantLink
+              <a
                 href={phase.cta.href}
+                className={`btn-light ${action.light}`}
                 {...(phase.cta.external
                   ? { target: "_blank", rel: "noopener noreferrer" }
                   : {})}
               >
                 {phase.cta.label}
-              </SlantLink>
+                <ArrowUpRight aria-hidden className="size-[17px] shrink-0" />
+              </a>
             ) : (
               <CountdownPill />
             )}
+            {/* Two quieter routes into the site under the lead button, in
+                MYResearchGuide's white-and-outlined button pair. */}
+            <div className="flex flex-wrap justify-center gap-3">
+              <a href={projectsRouteHash} className={`btn-dark ${action.dark}`}>
+                Projects
+                <ArrowUpRight aria-hidden className="size-[17px] shrink-0" />
+              </a>
+              <a
+                href={resourcesRouteHash}
+                className={`btn-dark ${action.dark}`}
+              >
+                Infopack
+                <ArrowUpRight aria-hidden className="size-[17px] shrink-0" />
+              </a>
+            </div>
           </motion.div>
         </div>
       </div>

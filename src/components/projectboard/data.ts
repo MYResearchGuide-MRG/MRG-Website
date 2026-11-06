@@ -4,7 +4,7 @@ import {
   trackOrder,
   type Track,
 } from "@/data/competition-data"
-import { SELECTED } from "@/data/selected"
+import { SELECTED, projectCodeOf } from "@/data/selected"
 import { validAdditionalMaterials, type AdditionalMaterial } from "./materials"
 
 export { trackOrder }
@@ -26,7 +26,11 @@ export const awardCategories = [
 ] as const
 export type AwardCategory = (typeof awardCategories)[number]["id"]
 export type BoardAward = { category: AwardCategory; name: string }
-type BoardStudent = (typeof SELECTED)[number] & { memberId?: string; bio?: string; photo?: string }
+type BoardStudent = (typeof SELECTED)[number] & {
+  memberId?: string
+  bio?: string
+  photo?: string
+}
 
 export const boards = projects
   .filter((p) => p.status === "confirmed")
@@ -36,7 +40,10 @@ export const boards = projects
     year: 2026,
     // Populate only after the committee confirms award results.
     awards: [] as BoardAward[],
-    team: SELECTED.filter((student) => student.code === codes.get(project.id)) as BoardStudent[],
+    // Every team on the project, so I-2A and I-2B both land on I-2.
+    team: SELECTED.filter(
+      (student) => projectCodeOf(student.code) === codes.get(project.id)
+    ) as BoardStudent[],
   }))
 export type Board = (typeof boards)[number]
 export const programmeYears = [

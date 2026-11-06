@@ -1,10 +1,9 @@
 import * as React from "react"
-import { motion, useReducedMotion } from "motion/react"
 
 import { RevealGroup, RevealItem } from "@/components/motion/reveal"
-import { easeOutExpo } from "@/components/motion/variants"
 import { SectionHeading } from "./section-heading"
-import { timeline, timelineStages } from "@/data/competition-data"
+import { TrailBackdrop } from "./backdrops/trail-backdrop"
+import { timeline } from "@/data/competition-data"
 import { cn } from "@/lib/utils"
 
 type Status = "complete" | "active" | "upcoming"
@@ -34,184 +33,310 @@ function useToday() {
   }, [])
 }
 
-const DAY = 86_400_000
+const MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+]
+
+/** "2026-09-25" → "25 Sep". */
+function shortDate(iso: string) {
+  const [, m, d] = iso.split("-").map(Number)
+  return `${d} ${MONTHS[m - 1]}`
+}
 
 /**
- * The programme as four stages side by side, each listing its milestones,
- * with a bar on top that fills as the stage passes. The current stage is
- * raised and tagged "Now", so a visitor can see where things stand without
- * reading a single date. Stacks to one column on small screens.
+ * Compact range: "20 Nov", "20–25 Sep", "25 Sep – 20 Nov". `tight` drops the
+ * spaces around the dash, for the narrow date column in the milestone lists.
  */
-export function TimelineSection() {
-  const today = useToday()
-  const reduced = useReducedMotion()
+function shortRange(start: string, end: string, tight = false) {
+  if (start === end) return shortDate(start)
+  const [, m1, d1] = start.split("-").map(Number)
+  const [, m2, d2] = end.split("-").map(Number)
+  if (m1 === m2) return `${d1}–${d2} ${MONTHS[m1 - 1]}`
+  return `${shortDate(start)}${tight ? "–" : " – "}${shortDate(end)}`
+}
 
-  const stages = timelineStages.map((name, index) => {
-    const items = timeline.filter((item) => item.stage === name)
-    const start = items.reduce(
-      (m, i) => (i.start < m ? i.start : m),
-      items[0].start
-    )
-    const end = items.reduce((m, i) => (i.end > m ? i.end : m), items[0].end)
-    const status = statusOf({ start, end }, today)
-    // How far through the stage today is, counting its last day as included.
-    const progress =
-      status === "complete"
-        ? 1
-        : status === "upcoming"
-          ? 0
-          : (Date.parse(today) - Date.parse(start) + DAY) /
-            (Date.parse(end) - Date.parse(start) + DAY)
-    return { name, index, items, status, progress }
-  })
+const DATE_TONE: Record<Status, string> = {
+  complete: "text-muted-foreground",
+  active: "text-foreground",
+  upcoming: "text-foreground/80",
+}
 
+const TITLE_TONE: Record<Status, string> = {
+  complete: "text-muted-foreground",
+  active: "text-foreground",
+  upcoming: "text-muted-foreground",
+}
+
+/** The milestone underway gets an atom rather than a dot, turning slowly. */
+function Atom({ className }: { className?: string }) {
   return (
-    <section id="timeline" className="scroll-mt-24 py-20 md:py-28">
-      <div className="container">
-        <SectionHeading
-          kicker="Programme"
-          title="Programme timeline"
-          lede="From applications to Demo Day. Dates may shift slightly as the programme progresses."
-        />
-
-        <RevealGroup
-          as="ol"
-          className="mt-14 grid gap-4 md:grid-cols-2 lg:grid-cols-4"
-        >
-          {stages.map((stage) => (
-            <RevealItem
-              as="li"
-              key={stage.name}
-              aria-current={stage.status === "active" ? "step" : undefined}
-              className={cn(
-                "flex flex-col rounded-xl p-5 transition-colors",
-                stage.status === "active" ? "bg-card" : undefined
-              )}
-            >
-              <div className="h-1 overflow-hidden rounded-full bg-border">
-                <motion.div
-                  className={cn(
-                    "h-full origin-left rounded-full",
-                    stage.status === "active" ? "bg-[#a3adb8]" : "bg-foreground"
-                  )}
-                  initial={reduced ? false : { scaleX: 0 }}
-                  whileInView={{ scaleX: stage.progress }}
-                  viewport={{ once: true }}
-                  transition={{
-                    duration: 1.1,
-                    delay: 0.15 + stage.index * 0.12,
-                    ease: easeOutExpo,
-                  }}
-                  style={reduced ? { scaleX: stage.progress } : undefined}
-                />
-              </div>
-
-              <div className="mt-5 flex items-center justify-between gap-3">
-                <span className="label-micro text-muted-foreground">
-                  Stage {String(stage.index + 1).padStart(2, "0")}
-                </span>
-                {stage.status === "active" && (
-                  <span className="rounded-full bg-[#a3adb8] px-2.5 py-0.5 text-[11px] font-semibold text-neutral-900">
-                    Now
-                  </span>
-                )}
-                {stage.status === "complete" && (
-                  <span className="text-[11px] text-muted-foreground">
-                    Done
-                  </span>
-                )}
-              </div>
-              <h3
-                className={cn(
-                  "mt-2 font-display text-xl leading-snug",
-                  stage.status === "complete" && "text-muted-foreground"
-                )}
-              >
-                {stage.name}
-              </h3>
-
-              <ul className="mt-5 space-y-4">
-                {stage.items.map((item) => {
-                  const status = statusOf(item, today)
-                  return (
-                    <li key={item.title} className="flex gap-3">
-                      <StatusMark status={status} />
-                      <div className="min-w-0">
-                        <div className="text-xs text-muted-foreground">
-                          {item.date}
-                        </div>
-                        <div
-                          className={cn(
-                            "mt-0.5 text-sm leading-snug",
-                            status === "complete"
-                              ? "text-muted-foreground"
-                              : "text-foreground",
-                            status === "active" && "font-semibold"
-                          )}
-                        >
-                          {item.title}
-                        </div>
-                        {status === "active" && (
-                          <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-                            {item.description}
-                          </p>
-                        )}
-                      </div>
-                    </li>
-                  )
-                })}
-              </ul>
-            </RevealItem>
-          ))}
-        </RevealGroup>
-      </div>
-    </section>
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden
+      className={cn(
+        "rounded-full bg-card text-foreground motion-safe:animate-[spin_14s_linear_infinite]",
+        className
+      )}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+    >
+      <ellipse cx="12" cy="12" rx="4.2" ry="10" />
+      <ellipse cx="12" cy="12" rx="4.2" ry="10" transform="rotate(60 12 12)" />
+      <ellipse cx="12" cy="12" rx="4.2" ry="10" transform="rotate(-60 12 12)" />
+      <circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none" />
+    </svg>
   )
 }
 
 /**
- * Round, and drawn against --color-muted-foreground rather than --color-border:
- * border-coloured hairline marks all but vanish on the dark background.
+ * Done milestones are solid, upcoming ones hollow, and the one underway is
+ * the atom. Centred on its anchor, which sits on the track.
  */
-function StatusMark({ status }: { status: Status }) {
-  // The milestone underway gets an atom rather than a dot, turning slowly.
-  if (status === "active") {
-    return (
-      <svg
-        viewBox="0 0 24 24"
-        aria-hidden
-        className="mt-0.5 size-4 shrink-0 text-[#a3adb8] motion-safe:animate-[spin_14s_linear_infinite]"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2}
-      >
-        <ellipse cx="12" cy="12" rx="4.2" ry="10" />
-        <ellipse
-          cx="12"
-          cy="12"
-          rx="4.2"
-          ry="10"
-          transform="rotate(60 12 12)"
-        />
-        <ellipse
-          cx="12"
-          cy="12"
-          rx="4.2"
-          ry="10"
-          transform="rotate(-60 12 12)"
-        />
-        <circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none" />
-      </svg>
-    )
-  }
+function Dot({ status, className }: { status: Status; className?: string }) {
+  if (status === "active") return <Atom className={cn("size-6", className)} />
   return (
     <span
       aria-hidden
       className={cn(
-        "relative mt-1 block size-2.5 shrink-0 rounded-full",
-        status === "complete" && "bg-muted-foreground",
-        status === "upcoming" && "border-[1.5px] border-muted-foreground"
+        "block size-2.5 rounded-full",
+        status === "complete"
+          ? "bg-foreground"
+          : "border-[1.5px] border-muted-foreground bg-card",
+        className
       )}
     />
+  )
+}
+
+type Flag = {
+  item: (typeof timeline)[number]
+  status: Status
+}
+
+/** One milestone: date, then title. */
+function FlagLabel({ flag }: { flag: Flag }) {
+  return (
+    <>
+      <p
+        className={cn(
+          "font-mono text-base font-semibold whitespace-nowrap",
+          DATE_TONE[flag.status]
+        )}
+      >
+        {shortRange(flag.item.start, flag.item.end, true)}
+      </p>
+      <p className={cn("mt-1 text-sm leading-snug", TITLE_TONE[flag.status])}>
+        {flag.item.title}
+      </p>
+    </>
+  )
+}
+
+/** A row of evenly spaced flags, each with its dot sitting on the track below. */
+function FlagRow({ flags, cols }: { flags: Flag[]; cols: number }) {
+  return (
+    <ol
+      className="relative z-10 grid gap-x-6 px-8"
+      style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+    >
+      {flags.map((flag) => (
+        <li
+          key={flag.item.title}
+          aria-current={flag.status === "active" ? "step" : undefined}
+          className="relative pb-8"
+        >
+          <FlagLabel flag={flag} />
+          {/* A zero-size anchor on the track, so measuring it gives the
+              dot's centre whatever size the dot is. */}
+          <span data-dot className="absolute bottom-0 left-0 size-0">
+            <Dot
+              status={flag.status}
+              className="-translate-x-1/2 -translate-y-1/2"
+            />
+          </span>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+type Point = { x: number; y: number }
+
+/** Radius of the curl that carries the track from one row to the next. */
+const CURL = 28
+
+/**
+ * The track as one SVG path: along the first row, a curl down the right
+ * edge, back along under it, a curl down the left edge, then along the
+ * second row to its last milestone. `until` cuts it short at a milestone,
+ * which draws the stretch already travelled.
+ */
+function trackPath(
+  dots: Point[],
+  split: number,
+  width: number,
+  until = dots.length - 1
+) {
+  if (until < 0) return ""
+  const start = dots[0]
+  const y1 = start.y
+  if (until < split) return `M ${start.x} ${y1} H ${dots[until].x}`
+  const y2 = dots[split].y
+  const right = width - 1
+  const left = 1
+  const turn = y1 + CURL * 2
+  return [
+    `M ${start.x} ${y1}`,
+    `H ${right - CURL}`,
+    `A ${CURL} ${CURL} 0 0 1 ${right} ${y1 + CURL}`,
+    `A ${CURL} ${CURL} 0 0 1 ${right - CURL} ${turn}`,
+    `H ${left + CURL}`,
+    `A ${CURL} ${CURL} 0 0 0 ${left} ${turn + CURL}`,
+    `V ${y2 - CURL}`,
+    `A ${CURL} ${CURL} 0 0 0 ${left + CURL} ${y2}`,
+    `H ${dots[until].x}`,
+  ].join(" ")
+}
+
+/**
+ * The programme as one track that wraps onto a second row, like a line of
+ * text: it runs right along the first row, curls back under it, and carries
+ * on along the second. Milestones are spaced evenly rather than to scale, so
+ * nothing crowds and every date sits in the same place in its column, ready
+ * to be scanned. The track is drawn bright up to the milestone underway,
+ * which turns as an atom, and faint beyond it. Phones get the same
+ * milestones down a vertical rail.
+ */
+export function TimelineSection() {
+  const today = useToday()
+
+  const flags: Flag[] = [...timeline]
+    .sort((a, b) => (a.start < b.start ? -1 : 1))
+    .map((item) => ({ item, status: statusOf(item, today) }))
+
+  const cols = Math.ceil(flags.length / 2)
+  const rows = [flags.slice(0, cols), flags.slice(cols)]
+
+  // How far along the track has been travelled: to the milestone underway,
+  // or failing that the last one done.
+  const activeIndex = flags.findIndex((f) => f.status === "active")
+  const reached =
+    activeIndex !== -1
+      ? activeIndex
+      : flags.reduce((last, f, i) => (f.status === "complete" ? i : last), -1)
+
+  // The path follows the dots wherever the layout puts them, so measure.
+  const chartRef = React.useRef<HTMLDivElement>(null)
+  const [geometry, setGeometry] = React.useState<{
+    width: number
+    height: number
+    dots: Point[]
+  } | null>(null)
+
+  React.useLayoutEffect(() => {
+    const chart = chartRef.current
+    if (!chart) return
+    const measure = () => {
+      const box = chart.getBoundingClientRect()
+      if (box.width === 0) return
+      const dots = [...chart.querySelectorAll("[data-dot]")].map((el) => {
+        const r = el.getBoundingClientRect()
+        return { x: r.left - box.left, y: r.top - box.top }
+      })
+      setGeometry({ width: box.width, height: box.height, dots })
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(chart)
+    return () => observer.disconnect()
+  }, [])
+
+  return (
+    <section id="timeline" className="section-y scroll-mt-24">
+      <div className="container">
+        <SectionHeading
+          title="Programme timeline"
+          lede="Timeline for cohort 2026, dates may shift slightly as the programme progresses."
+        />
+
+        {/* The panel runs on past the last milestones and fades out, outline
+            and all, into the page. */}
+        <RevealGroup className="panel relative isolate mt-10 overflow-hidden [mask-image:linear-gradient(to_bottom,#000_calc(100%_-_5rem),rgb(0_0_0/45%)_calc(100%_-_2rem),transparent)] px-6 pt-8 pb-20 md:[mask-image:linear-gradient(to_bottom,#000_calc(100%_-_6rem),rgb(0_0_0/45%)_calc(100%_-_2.5rem),transparent)] md:px-8 md:pt-10 md:pb-24">
+          <TrailBackdrop />
+          {/* Desktop: two rows joined by one continuous line. */}
+          <RevealItem className="hidden md:block">
+            <div ref={chartRef} className="relative">
+              {geometry && (
+                <svg
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 overflow-visible"
+                  width={geometry.width}
+                  height={geometry.height}
+                  fill="none"
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                >
+                  <path
+                    d={trackPath(geometry.dots, cols, geometry.width)}
+                    className="stroke-foreground/20"
+                  />
+                  <path
+                    d={trackPath(geometry.dots, cols, geometry.width, reached)}
+                    className="stroke-foreground"
+                  />
+                </svg>
+              )}
+              <FlagRow flags={rows[0]} cols={cols} />
+              <div className="pt-24">
+                <FlagRow flags={rows[1]} cols={cols} />
+              </div>
+            </div>
+          </RevealItem>
+
+          {/* Phones: the same milestones down a vertical rail, bright up to
+              the one underway. */}
+          <RevealItem className="md:hidden">
+            <ol>
+              {flags.map((flag, index) => (
+                <li
+                  key={flag.item.title}
+                  aria-current={flag.status === "active" ? "step" : undefined}
+                  className="relative pb-6 pl-8"
+                >
+                  {index < flags.length - 1 && (
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "absolute top-3 -bottom-3 left-0 w-[1.5px] -translate-x-1/2",
+                        index < reached ? "bg-foreground" : "bg-foreground/20"
+                      )}
+                    />
+                  )}
+                  <span className="absolute top-3 left-0 size-0">
+                    <Dot
+                      status={flag.status}
+                      className="-translate-x-1/2 -translate-y-1/2"
+                    />
+                  </span>
+                  <FlagLabel flag={flag} />
+                </li>
+              ))}
+            </ol>
+          </RevealItem>
+        </RevealGroup>
+      </div>
+    </section>
   )
 }

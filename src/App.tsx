@@ -3,16 +3,15 @@ import * as React from "react"
 import { SiteHeader } from "@/components/layout/site-header"
 import { SiteFooter } from "@/components/layout/site-footer"
 import { DesignSwitch } from "@/components/layout/design-switch"
-import { LiquidCursor } from "@/components/layout/liquid-cursor"
 import { Hero } from "@/components/sections/hero"
 import { Results } from "@/components/sections/results"
 import { Partners } from "@/components/sections/partners"
-import { ProjectsCatalogue } from "@/components/sections/projects"
-import { ResearchAreas } from "@/components/sections/research-areas"
-import { HowItWorks } from "@/components/sections/how-it-works"
-import { Cohort } from "@/components/sections/cohort"
+import { Projects, ProjectsCatalogue } from "@/components/sections/projects"
+import { About } from "@/components/sections/about"
+import { ColumnBand } from "@/components/sections/column-band"
 import { Eligibility } from "@/components/sections/eligibility"
 import { Faq } from "@/components/sections/faq"
+import { StayConnected } from "@/components/sections/stay-connected"
 import { TimelineSection } from "@/components/sections/timeline"
 import { Resources } from "@/components/sections/resources"
 import { DemoDayPage } from "@/components/sections/demo-day-page"
@@ -124,14 +123,15 @@ function App() {
             <>
               <Hero />
               <Partners />
-              {/* The timeline sits straight after the hero: where the
-                  programme is right now is what most visitors come to check. */}
+              {/* What the programme is, then where it stands right now: the
+                  two things most visitors come to find out. */}
+              <About />
               <TimelineSection />
-              <HowItWorks />
-              <ResearchAreas />
-              <Cohort />
+              <Projects />
               <Eligibility />
+              <ColumnBand />
               <Faq />
+              <StayConnected />
             </>
           )}
         </main>
@@ -139,7 +139,6 @@ function App() {
 
       <SiteFooter />
       <DesignSwitch />
-      <LiquidCursor />
       {accessMounted && (
         <React.Suspense
           fallback={
