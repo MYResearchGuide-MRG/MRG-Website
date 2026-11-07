@@ -10,6 +10,8 @@ The mentor UI is available in the local preview. The live database is unchanged 
 
 Mentors can read only their assigned project briefs and submissions. They cannot change submissions, awards, project visibility or team membership. Pausing a mentor removes private access through database policies even if their sign-in session remains open. When a project is split, its mentor assignments copy to the child pages; review those assignments afterward.
 
+CSV project codes refer to the selected cohort. After a split, the original code (for example `I-2`) resolves to its active team codes (`I-2A` and `I-2B`), which are shown in the import review. Enter `I-2A` to assign only that team, or `I-2A;I-2B` to list both explicitly. Overlapping codes are combined without duplicate assignments. Existing mentors retain access to both children when the committee splits a project later.
+
 The six-character mentor code stays valid until reissued. Each new invitation replaces the old code. The Edge Function never returns the code to the browser or logs it. In the local preview, invitations generate test codes on the device and send no email.
 
 ## Submission deadline and archive URL

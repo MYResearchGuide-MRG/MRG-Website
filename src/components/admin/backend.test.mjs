@@ -9,12 +9,12 @@ const source = stripTypeScriptTypes(readFileSync(new URL("./backend.ts", import.
   .replace('!isLocalPreview || import.meta.env.VITE_ACCESS_MODE === "supabase"', "true")
 let nextFixture = 0
 async function fixture() {
-  const transport = { user: "student", failRead: false, failSignOut: false, failSave: false, revision: 2, title: "Before save", saveCalls: 0 }
+  const transport = { user: "student", failRead: false, failSignOut: false, failSave: false, revision: 2, title: "Before save", saveCalls: 0, tables: {} }
   let authChanged
   const response = table => transport.failRead ? { error: new Error("Offline") } : { error: null, data:
-    table === "myssp_projects" ? [{ id: "one", code: "A-1", payload: { title: "Project one" }, published: true, editing_enabled: true }] :
+    transport.tables[table] ?? (table === "myssp_projects" ? [{ id: "one", code: "A-1", payload: { title: "Project one" }, published: true, editing_enabled: true }] :
     table === "myssp_participants" ? [{ id: "member", name: "Test", email: "test@example.test", project_id: "one", revoked: false }] :
-    table === "myssp_submissions" ? [{ project_id: "one", content: { projectId: "one", title: transport.title }, revision: transport.revision }] : [] }
+    table === "myssp_submissions" ? [{ project_id: "one", content: { projectId: "one", title: transport.title }, revision: transport.revision }] : []) }
   const supabase = {
     auth: {
       getSession: async () => ({ data: { session: transport.user ? { user: { id: transport.user } } : null } }),
@@ -60,6 +60,18 @@ test("failed refresh preserves the signed-in participant and saved work", async 
   assert.equal(api.liveProject(), "one")
   assert.equal(api.getBackend().drafts.one.title, "Before save")
   assert.ok(api.getBackend().error)
+})
+
+test("mentor view keeps both split pages and drops the retired parent assignment", async () => {
+  const { api, transport } = await fixture()
+  transport.tables = {
+    myssp_projects: ['a','b'].map(team=>({id:`child-${team}`,code:`I-2${team.toUpperCase()}`,payload:{title:`Team ${team}`},published:false})),
+    myssp_mentors: [{id:'mentor',user_id:'student',name:'Test Mentor',email:'mentor@example.test',affiliation:'University',revoked:false}],
+    myssp_mentor_projects: ['parent','child-a','child-b'].map(project_id=>({mentor_id:'mentor',project_id})),
+  }
+  await api.refreshBackend()
+  assert.deepEqual(api.getBackend().mentors[0].projectIds,['child-a','child-b'])
+  assert.deepEqual(api.getBackend().boards.map(board=>board.code),['I-2A','I-2B'])
 })
 
 test("confirmed save remains visible if the following refresh fails", async () => {

@@ -61,6 +61,7 @@ export async function refreshBackend() {
     if (ticket !== epoch) return
     const allProjects = projects.data as ProjectRecord[]
     const records = allProjects.filter(p => !p.deleted_at)
+    const activeProjectIds = new Set(records.map(project => project.id))
     const allPeople = (people.data || []).map(p => ({id:p.id, userId:p.user_id, name:p.name, email:p.email, projectId:p.project_id, revision:1, revoked:p.revoked, code:null, expiresAt:0, usedAt:null, invitedAt:p.invited_at ? Date.parse(p.invited_at) : null, attempts:0, lockedUntil:0, deletedAt:p.deleted_at, displayProfile:p.display_profile || {}}))
     const mentorAssignments = new Map<string,string[]>()
     for (const link of mentorProjects.data || []) mentorAssignments.set(link.mentor_id, [...(mentorAssignments.get(link.mentor_id) || []), link.project_id])
@@ -68,7 +69,9 @@ export async function refreshBackend() {
       id: mentor.id, userId: mentor.user_id, name: mentor.name, email: mentor.email,
       affiliation: mentor.affiliation, revoked: mentor.revoked,
       invitedAt: mentor.invited_at ? Date.parse(mentor.invited_at) : null,
-      projectIds: mentorAssignments.get(mentor.id) || [],
+      // Split triggers retain the retired parent link as well as the children.
+      // Only active pages belong in the picker, dashboard and save payload.
+      projectIds: (mentorAssignments.get(mentor.id) || []).filter(id => activeProjectIds.has(id)),
     }))
     publish({
       ready: true, error: "", isAdmin: role.data === true, userId,

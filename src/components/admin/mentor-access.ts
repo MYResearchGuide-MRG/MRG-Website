@@ -1,9 +1,9 @@
 import { useSyncExternalStore } from "react"
-import { getProjectBoards } from "./project-registry"
+import { getProjectBoards, getProjectSplits, useProjectBoards } from "./project-registry"
 import { generateCode } from "./access-model"
 import { useBackend, getBackend, useLiveBackend, mentorSignInLive, saveLiveMentor, inviteLiveMentors, importLiveMentors } from "./backend"
 import { isLocalPreview } from "./local-preview"
-import { mentorInputError, type Mentor, type MentorInput } from "./mentor-model"
+import { mentorInputError, resolvePreviewMentorProjects, type Mentor, type MentorInput } from "./mentor-model"
 
 const storageKey = "myssp-mentor-preview-v1"
 const sessionKey = "myssp-mentor-session-v1"
@@ -37,7 +37,10 @@ if (typeof window !== "undefined") window.addEventListener("storage", event => {
 export function useMentorAccess() {
   const local = useSyncExternalStore(subscribe, () => localState)
   const remote = useBackend()
-  const mentors = useLiveBackend ? remote.mentors : local.mentors
+  const boards = useProjectBoards()
+  const mentors = useLiveBackend ? remote.mentors : local.mentors.map(mentor => ({
+    ...mentor, projectIds: resolvePreviewMentorProjects(mentor.projectIds, boards, getProjectSplits()),
+  }))
   const current = useLiveBackend
     ? mentors.find(mentor => mentor.userId === remote.userId && !mentor.revoked) || null
     : mentors.find(mentor => mentor.id === local.session && !mentor.revoked) || null

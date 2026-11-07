@@ -49,12 +49,21 @@ test('mentor access is limited to assigned private projects and is read-only', a
   assert.deepEqual((await db.query('select id from myssp_projects')).rows.map(row=>row.id),['two'])
   assert.equal(await count('myssp_submissions'),0)
 
-  await as('service_role')
-  await db.exec("insert into myssp_projects(id,code,payload,parent_id) values('child','A-2A','{\"team\":[]}','two')")
+  await as('authenticated',admin)
+  await db.query('select myssp_split_project($1,$2,$3)', ['two', [
+    {id:'child-a',code:'A-2A',payload:{title:'Team A',team:[]}},
+    {id:'child-b',code:'A-2B',payload:{title:'Team B',team:[]}},
+  ], {}])
   await as('authenticated',mentor)
   assert.equal(await count('myssp_projects'),2)
+  assert.deepEqual((await db.query('select id from myssp_projects order by id')).rows.map(row=>row.id),['child-a','child-b'])
+  assert.equal((await db.query('select myssp_is_mentor($1) as allowed',['two'])).rows[0].allowed,false)
+  for (const project of ['child-a','child-b']) {
+    assert.equal((await db.query('select myssp_is_mentor($1) as allowed',[project])).rows[0].allowed,true)
+    await assert.rejects(() => db.query('select myssp_save_submission($1,$2,$3)',[project,{projectId:project},1]))
+  }
   await as('authenticated',admin)
-  await db.query('select myssp_save_mentor($1,$2,$3,$4,$5,$6)',[mentorId,'Dr. Mentor','mentor@example.com','Example University',['two'],true])
+  await db.query('select myssp_save_mentor($1,$2,$3,$4,$5,$6)',[mentorId,'Dr. Mentor','mentor@example.com','Example University',['child-a','child-b'],true])
   await as('authenticated',mentor)
   assert.equal(await count('myssp_projects'),0)
   assert.equal(await count('myssp_submissions'),0)
@@ -65,8 +74,9 @@ test('mentor access is limited to assigned private projects and is read-only', a
   ]]))
   assert.equal(await count('myssp_mentors'),1)
   assert.equal((await db.query('select myssp_import_mentors($1) as added',[[
-    {name:'New',email:'new@example.com',affiliation:'Lab',project_ids:['two']},
+    {name:'New',email:'new@example.com',affiliation:'Lab',project_ids:['child-a','child-b']},
   ]])).rows[0].added,1)
   assert.equal(await count('myssp_mentors'),2)
+  assert.deepEqual((await db.query("select project_id from myssp_mentor_projects mp join myssp_mentors m on m.id=mp.mentor_id where m.email='new@example.com' order by project_id")).rows.map(row=>row.project_id),['child-a','child-b'])
   await db.close()
 })
