@@ -1,10 +1,10 @@
 import { useMemo, useState, type ChangeEvent, type FormEvent } from "react"
-import { ArrowUpRight, Check, Download, Mail, Pencil, Plus, Search, Upload, UsersRound } from "lucide-react"
+import { ArrowUpRight, Check, Download, Mail, Pencil, Plus, RotateCcw, Search, Trash2, Upload, UsersRound } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import type { Board } from "../projectboard/data"
 import { boardUrl } from "../projectboard/paths"
 import { useLiveBackend } from "./backend"
-import { importMentors, inviteMentors, previewMentorCode, saveMentor, useMentorAccess } from "./mentor-access"
+import { importMentors, inviteMentors, previewMentorCode, saveMentor, setMentorDeleted, useMentorAccess } from "./mentor-access"
 import { mentorCsvTemplate, mentorInputError, parseMentorCsv, type Mentor, type MentorInput } from "./mentor-model"
 import "./mentors.css"
 
@@ -22,15 +22,19 @@ export function MentorManagement({ boards, year }: { boards: Board[]; year: numb
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState("")
   const [previewId, setPreviewId] = useState<string | null>(null)
-  const cohortMentors = mentors.filter(mentor => mentor.projectIds.some(id => boards.some(board => board.id === id && board.year === year)))
+  const [recordAction, setRecordAction] = useState<Mentor | null>(null)
+  const activeMentors = mentors.filter(mentor => !mentor.deletedAt)
+  const cohortMentors = activeMentors.filter(mentor => mentor.projectIds.some(id => boards.some(board => board.id === id && board.year === year)))
   const listed = (scope === "all" ? mentors : cohortMentors).filter(mentor => {
     const haystack = `${mentor.name} ${mentor.email} ${mentor.affiliation} ${mentor.projectIds.map(id => boards.find(board => board.id === id)?.code || "").join(" ")}`.toLowerCase()
-    return haystack.includes(query.toLowerCase().trim()) && (filter === "all" || (filter === "active" ? !mentor.revoked : filter === "not-invited" ? !mentor.invitedAt : mentor.revoked))
+    return !mentor.deletedAt && haystack.includes(query.toLowerCase().trim()) && (filter === "all" || (filter === "active" ? !mentor.revoked : filter === "not-invited" ? !mentor.invitedAt : mentor.revoked))
   })
-  const selectable = listed.filter(mentor => !mentor.revoked)
+  // Deleted accounts stay discoverable even after their last project is retired.
+  const visibleMentors = filter === "deleted" ? mentors.filter(mentor => mentor.deletedAt && `${mentor.name} ${mentor.email}`.toLowerCase().includes(query.toLowerCase().trim())) : listed
+  const selectable = visibleMentors.filter(mentor => !mentor.revoked && !mentor.deletedAt)
   const selectedHere = selectable.filter(mentor => selected.includes(mentor.id))
   const allSelected = selectable.length > 0 && selectable.every(mentor => selected.includes(mentor.id))
-  const invitees = mentors.filter(mentor => confirmIds.includes(mentor.id) && !mentor.revoked)
+  const invitees = mentors.filter(mentor => confirmIds.includes(mentor.id) && !mentor.revoked && !mentor.deletedAt)
 
   async function send() {
     if (!invitees.length || busy) return
@@ -57,55 +61,70 @@ export function MentorManagement({ boards, year }: { boards: Board[]; year: numb
     </div>
     <div className="am-toolbar">
       <label className="am-search"><Search size={16} aria-hidden /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search name, email or project" aria-label="Search mentors" /></label>
-      <select aria-label="Mentor cohort" value={scope} onChange={event => setScope(event.target.value as "cohort" | "all")}><option value="cohort">{year} cohort</option><option value="all">All cohorts</option></select>
-      <select aria-label="Filter mentors" value={filter} onChange={event => setFilter(event.target.value)}><option value="all">All mentors</option><option value="active">Active</option><option value="not-invited">Not invited</option><option value="revoked">Access paused</option></select>
+      <select aria-label="Mentor cohort" disabled={filter === "deleted"} value={scope} onChange={event => setScope(event.target.value as "cohort" | "all")}><option value="cohort">{year} cohort</option><option value="all">All cohorts</option></select>
+      <select aria-label="Filter mentors" value={filter} onChange={event => setFilter(event.target.value)}><option value="all">All mentors</option><option value="active">Active</option><option value="not-invited">Not invited</option><option value="revoked">Access paused</option><option value="deleted">Deleted mentors</option></select>
       <button className="ad-button" onClick={() => setImportOpen(true)}><Upload size={15} aria-hidden /> Import CSV</button>
       <button className="ad-button ad-primary" onClick={() => setEditing("new")}><Plus size={15} aria-hidden /> Add mentor</button>
     </div>
     {selectedHere.length > 0 && <div className="am-selection"><span>{selectedHere.length} selected</span><button className="ad-button" disabled={busy} onClick={() => setConfirmIds(selectedHere.map(mentor => mentor.id))}><Mail size={15} aria-hidden /> Send access codes</button><button onClick={() => setSelected([])}>Clear</button></div>}
     <div className="am-table-wrap">
       <table className="am-table"><thead><tr><th><input type="checkbox" aria-label="Select all filtered mentors" checked={allSelected} disabled={!selectable.length} onChange={() => setSelected(allSelected ? selected.filter(id => !listed.some(mentor => mentor.id === id)) : [...new Set([...selected, ...selectable.map(mentor => mentor.id)])])} /></th><th>Mentor</th><th>Assigned projects</th><th>Access</th><th><span className="sr-only">Actions</span></th></tr></thead><tbody>
-        {listed.map(mentor => <tr key={mentor.id}>
-          <td><input type="checkbox" aria-label={`Select ${mentor.name}`} checked={selected.includes(mentor.id)} disabled={mentor.revoked} onChange={() => setSelected(selected.includes(mentor.id) ? selected.filter(id => id !== mentor.id) : [...selected, mentor.id])} /></td>
+        {visibleMentors.map(mentor => <tr key={mentor.id}>
+          <td><input type="checkbox" aria-label={`Select ${mentor.name}`} checked={selected.includes(mentor.id)} disabled={mentor.revoked || Boolean(mentor.deletedAt)} onChange={() => setSelected(selected.includes(mentor.id) ? selected.filter(id => id !== mentor.id) : [...selected, mentor.id])} /></td>
           <td><strong>{mentor.name}</strong><span>{mentor.affiliation || "Affiliation not added"}</span><span className="am-email">{mentor.email}</span></td>
           <td><div className="am-project-links">{mentor.projectIds.map(id => { const board = boards.find(board => board.id === id); return board ? <a key={id} href={boardUrl(id)} title={board.title}>{board.code} <ArrowUpRight size={12} aria-hidden /></a> : <span key={id}>Unassigned project</span> })}</div></td>
-          <td><span className={`am-status ${mentor.revoked ? "am-status-muted" : ""}`}><i />{mentor.revoked ? "Paused" : mentor.invitedAt ? "Invited" : "Not invited"}</span></td>
-          <td><div className="am-actions"><button aria-label={`Edit ${mentor.name}`} onClick={() => setEditing(mentor)}><Pencil size={15} aria-hidden /> Edit</button><button disabled={busy || mentor.revoked} onClick={() => setConfirmIds([mentor.id])}><Mail size={15} aria-hidden /> {mentor.invitedAt ? "Reissue" : "Invite"}</button></div></td>
+          <td><span className={`am-status ${mentor.revoked || mentor.deletedAt ? "am-status-muted" : ""}`}><i />{mentor.deletedAt ? "Deleted" : mentor.revoked ? "Paused" : mentor.invitedAt ? "Invited" : "Not invited"}</span></td>
+          <td><div className="am-actions">{mentor.deletedAt ? <button disabled={busy} aria-label={"Restore " + mentor.name} onClick={() => setRecordAction(mentor)}><RotateCcw size={15} aria-hidden /> Restore</button> : <><button aria-label={`Edit ${mentor.name}`} onClick={() => setEditing(mentor)}><Pencil size={15} aria-hidden /> Edit</button><button disabled={busy || mentor.revoked} onClick={() => setConfirmIds([mentor.id])}><Mail size={15} aria-hidden /> {mentor.invitedAt ? "Reissue" : "Invite"}</button><button className="am-delete" disabled={busy} aria-label={"Delete " + mentor.name} title="Delete mentor" onClick={() => setRecordAction(mentor)}><Trash2 size={15} aria-hidden /></button></>}</div></td>
         </tr>)}
       </tbody></table>
-      {!listed.length && <div className="am-empty"><UsersRound size={24} aria-hidden /><h2>{cohortMentors.length || scope === "all" ? "No mentors match these filters" : `No mentors assigned to ${year}`}</h2><p>Add a mentor and select the projects they supervise. Invitations are sent separately.</p><button className="ad-button" onClick={() => setEditing("new")}>Add mentor</button>{scope === "cohort" && mentors.length > cohortMentors.length && <button className="ad-button" onClick={() => setScope("all")}>View all cohorts</button>}</div>}
+      {!visibleMentors.length && <div className="am-empty"><UsersRound size={24} aria-hidden /><h2>{filter === "deleted" ? "No deleted mentors" : cohortMentors.length || scope === "all" ? "No mentors match these filters" : `No mentors assigned to ${year}`}</h2><p>{filter === "deleted" ? "Deleted mentors appear here so you can restore them." : "Add a mentor and select the projects they supervise. Invitations are sent separately."}</p><button className="ad-button" onClick={() => setEditing("new")}>Add mentor</button>{scope === "cohort" && activeMentors.length > cohortMentors.length && <button className="ad-button" onClick={() => setScope("all")}>View all cohorts</button>}</div>}
     </div>
-    {editing && <MentorEditor key={editing === "new" ? "new" : editing.id} mentor={editing === "new" ? undefined : editing} boards={boards} year={year} existing={mentors} onClose={() => setEditing(null)} onSaved={() => { setNotice(editing === "new" ? "Mentor added. Send an invitation when ready." : "Mentor details saved."); setEditing(null) }} />}
+    {editing && <MentorEditor key={editing === "new" ? "new" : editing.id} mentor={editing === "new" ? undefined : editing} boards={boards} year={year} existing={mentors} onClose={() => setEditing(null)} onSaved={emailChanged => { setNotice(editing === "new" ? "Mentor added. Send an invitation when ready." : emailChanged ? "Email updated. Send an invitation to the new address. The previous login no longer has project access." : "Mentor details saved."); setEditing(null) }} />}
+    {recordAction && <MentorDeleteDialog mentor={recordAction} onClose={() => setRecordAction(null)} onSaved={() => { setNotice(recordAction.deletedAt ? "Mentor restored with their previous project assignments." : "Mentor deleted. Access removed. You can restore them under Deleted mentors."); setSelected(ids => ids.filter(id => id !== recordAction.id)); setRecordAction(null) }} />}
     {importOpen && <MentorImport boards={boards.filter(board => board.year === year)} existing={mentors} onClose={() => setImportOpen(false)} onImported={count => { setImportOpen(false); setNotice(`${count} mentors added. Review assignments before sending invitations.`) }} />}
     {confirmIds.length > 0 && <Dialog open onOpenChange={open => { if (!open) setConfirmIds([]) }}><DialogContent className="ad-modal am-dialog"><DialogTitle>{invitees.some(mentor => mentor.invitedAt) ? "Send new access codes?" : "Invite mentors?"}</DialogTitle><DialogDescription>{useLiveBackend ? "Each mentor receives a private six-character code by email. Sending again replaces their existing code." : "This local preview prepares test codes only. No email will be sent."}</DialogDescription><div className="am-confirm-list">{invitees.map(mentor => <div key={mentor.id}><strong>{mentor.name}</strong><span>{mentor.email}</span></div>)}</div><div className="ad-modal-actions"><button className="ad-button" onClick={() => setConfirmIds([])}>Cancel</button><button className="ad-button ad-primary" disabled={busy || !invitees.length} onClick={() => void send()}><Mail size={15} aria-hidden /> {useLiveBackend ? "Send codes" : "Prepare codes"}</button></div></DialogContent></Dialog>}
     {previewId && !useLiveBackend && <Dialog open onOpenChange={open => { if (!open) setPreviewId(null) }}><DialogContent className="ad-modal am-dialog"><DialogTitle>Local mentor sign-in</DialogTitle><DialogDescription>Use this code to test the mentor view in this browser. No email was sent.</DialogDescription><p className="am-preview-code">{previewMentorCode(previewId)}</p><p className="am-hint">The code remains valid until you prepare a new one.</p><div className="ad-modal-actions"><button className="ad-button ad-primary" onClick={() => setPreviewId(null)}>Done</button></div></DialogContent></Dialog>}
   </section>
 }
 
-function MentorEditor({ mentor, boards, year, existing, onClose, onSaved }: { mentor?: Mentor; boards: Board[]; year: number; existing: Mentor[]; onClose: () => void; onSaved: () => void }) {
+function MentorEditor({ mentor, boards, year, existing, onClose, onSaved }: { mentor?: Mentor; boards: Board[]; year: number; existing: Mentor[]; onClose: () => void; onSaved: (emailChanged: boolean) => void }) {
   const [input, setInput] = useState<MentorInput>(mentor ? {name:mentor.name,email:mentor.email,affiliation:mentor.affiliation,projectIds:mentor.projectIds,revoked:mentor.revoked} : blank)
   const [error, setError] = useState("")
   const [saving, setSaving] = useState(false)
   const [projectQuery, setProjectQuery] = useState("")
+  const emailChanged = Boolean(mentor && input.email.trim().toLowerCase() !== mentor.email)
   const shown = boards.filter(board => board.year === year || input.projectIds.includes(board.id)).filter(board => `${board.code} ${board.title}`.toLowerCase().includes(projectQuery.toLowerCase()))
   async function submit(event: FormEvent) {
     event.preventDefault()
     const validation = mentorInputError(input, boards, existing, mentor?.id)
     if (validation) { setError(validation); return }
     setSaving(true); setError("")
-    try { await saveMentor(input, mentor?.id); onSaved() }
+    try { await saveMentor(input, mentor?.id); onSaved(emailChanged) }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Could not save mentor.") }
     finally { setSaving(false) }
   }
   return <Dialog open onOpenChange={open => { if (!open && !saving) onClose() }}><DialogContent className="ad-modal am-dialog am-editor"><DialogTitle>{mentor ? "Edit mentor" : "Add mentor"}</DialogTitle><DialogDescription>Set the account details and the projects this mentor can review.</DialogDescription><form onSubmit={event => void submit(event)}>
-    <div className="am-field-pair"><label>Name<input required maxLength={100} value={input.name} onChange={event => setInput({...input,name:event.target.value})} placeholder="Full name" /></label><label>Email address<input required type="email" value={input.email} disabled={Boolean(mentor?.invitedAt)} onChange={event => setInput({...input,email:event.target.value})} placeholder="mentor@example.com" /></label></div>
-    {mentor?.invitedAt && <p className="am-hint">To change a signed-in mentor’s email, pause this account and add a new one.</p>}
+    <div className="am-field-pair"><label>Name<input required maxLength={100} value={input.name} onChange={event => setInput({...input,name:event.target.value})} placeholder="Full name" /></label><label>Email address<input required type="email" value={input.email} maxLength={254} onChange={event => setInput({...input,email:event.target.value})} placeholder="mentor@example.com" /></label></div>
+    {emailChanged && <p className="am-email-notice" role="status">Saving a new email removes access from the previous login. Project assignments stay the same. Send a new invitation after saving.</p>}
     <label>Affiliation<input maxLength={180} value={input.affiliation} onChange={event => setInput({...input,affiliation:event.target.value})} placeholder="University or organisation" /></label>
     <div className="am-project-picker"><div className="am-picker-head"><strong>Projects this mentor can review</strong><span>{input.projectIds.length} selected</span></div><input aria-label="Find a project" value={projectQuery} onChange={event => setProjectQuery(event.target.value)} placeholder="Find a project by code or title" /><div className="am-project-options">{shown.map(board => <label key={board.id}><input type="checkbox" checked={input.projectIds.includes(board.id)} onChange={() => setInput({...input,projectIds: input.projectIds.includes(board.id) ? input.projectIds.filter(id => id !== board.id) : [...input.projectIds,board.id]})} /><span className="am-project-option-code">{board.code}</span><span>{board.title}<small>{board.year} cohort</small></span></label>)}</div></div>
     {mentor && <label className="am-pause"><input type="checkbox" checked={input.revoked} onChange={event => setInput({...input,revoked:event.target.checked})} /><span><strong>Pause mentor access</strong><small>The mentor cannot open assigned private projects until access is restored.</small></span></label>}
     {error && <p className="ad-error" role="alert">{error}</p>}
-    <div className="ad-modal-actions"><button type="button" className="ad-button" disabled={saving} onClick={onClose}>Cancel</button><button type="submit" className="ad-button ad-primary" disabled={saving}>{saving ? "Saving…" : "Save mentor"}</button></div>
+    <div className="ad-modal-actions"><button type="button" className="ad-button" disabled={saving} onClick={onClose}>Cancel</button><button type="submit" className="ad-button ad-primary" disabled={saving}>{saving ? "Saving…" : emailChanged ? "Save new email" : "Save mentor"}</button></div>
   </form></DialogContent></Dialog>
+}
+
+function MentorDeleteDialog({ mentor, onClose, onSaved }: { mentor: Mentor; onClose: () => void; onSaved: () => void }) {
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState("")
+  const restoring = Boolean(mentor.deletedAt)
+  async function submit() {
+    setSaving(true); setError("")
+    try { await setMentorDeleted(mentor.id, !restoring); onSaved() }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Could not update this mentor.") }
+    finally { setSaving(false) }
+  }
+  return <Dialog open onOpenChange={open => { if (!open && !saving) onClose() }}><DialogContent className="ad-modal am-dialog"><DialogTitle>{restoring ? "Restore mentor?" : "Delete mentor?"}</DialogTitle><DialogDescription>{restoring ? "Restores their previous project assignments and access status. A paused account will remain paused." : "Removes this mentor from the active list and blocks their project access. Projects and student work will stay untouched. You can undo this under Deleted mentors."}</DialogDescription><div className="am-confirm-list"><div><strong>{mentor.name}</strong><span>{mentor.email}</span></div></div>{error && <p className="ad-error" role="alert">{error}</p>}<div className="ad-modal-actions"><button className="ad-button" disabled={saving} onClick={onClose}>Cancel</button><button className={restoring ? "ad-button ad-primary" : "ad-button am-destructive"} disabled={saving} onClick={() => void submit()}>{saving ? "Saving…" : restoring ? "Restore mentor" : "Delete mentor"}</button></div></DialogContent></Dialog>
 }
 
 function MentorImport({ boards, existing, onClose, onImported }: { boards: Board[]; existing: Mentor[]; onClose: () => void; onImported: (count: number) => void }) {

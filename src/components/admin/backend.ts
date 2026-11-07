@@ -46,7 +46,7 @@ export async function refreshBackend() {
       supabase.from("myssp_submissions").select("project_id,content,revision"),
       userId ? supabase.rpc("myssp_is_admin") : Promise.resolve({data: false, error: null}),
       supabase.from("myssp_research_fields").select("name,prefix").order("created_at").order("name"),
-      userId ? supabase.from("myssp_mentors").select("id,user_id,name,email,affiliation,revoked,invited_at") : Promise.resolve({data: [], error: null}),
+      userId ? supabase.from("myssp_mentors").select("id,user_id,name,email,affiliation,revoked,invited_at,deleted_at") : Promise.resolve({data: [], error: null}),
       userId ? supabase.from("myssp_mentor_projects").select("mentor_id,project_id") : Promise.resolve({data: [], error: null}),
       supabase.rpc("myssp_submission_deadlines"),
     ])
@@ -69,6 +69,7 @@ export async function refreshBackend() {
       id: mentor.id, userId: mentor.user_id, name: mentor.name, email: mentor.email,
       affiliation: mentor.affiliation, revoked: mentor.revoked,
       invitedAt: mentor.invited_at ? Date.parse(mentor.invited_at) : null,
+      deletedAt: mentor.deleted_at || null,
       // Split triggers retain the retired parent link as well as the children.
       // Only active pages belong in the picker, dashboard and save payload.
       projectIds: (mentorAssignments.get(mentor.id) || []).filter(id => activeProjectIds.has(id)),
@@ -220,6 +221,12 @@ export async function saveLiveMentor(input: MentorInput, id?: string) {
     access_revoked: input.revoked,
   })
   if (error) throw new Error(error.code === "PGRST202" ? "Apply the mentor database migration first." : error.message)
+  await refreshBackend()
+}
+export async function setMentorDeletedLive(id: string, deleted: boolean) {
+  if (!supabase || !state.isAdmin) throw new Error("Committee sign-in required.")
+  const { error } = await supabase.rpc("myssp_set_mentor_deleted", { target: id, remove: deleted })
+  if (error) throw new Error(error.code === "PGRST202" ? "Mentor account management needs a database update. Contact the site administrator." : error.message)
   await refreshBackend()
 }
 export async function importLiveMentors(inputs: MentorInput[]) {

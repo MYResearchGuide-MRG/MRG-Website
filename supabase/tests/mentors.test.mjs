@@ -10,7 +10,7 @@ test('mentor access is limited to assigned private projects and is read-only', a
     create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
     grant usage on schema public,auth to anon,authenticated,service_role;
     grant execute on function auth.uid() to anon,authenticated,service_role;`)
-  for (const name of ['202611040001_myssp_access.sql','202611040003_roster_and_trash.sql','202611070001_mentor_access.sql'])
+  for (const name of ['202611040001_myssp_access.sql','202611040003_roster_and_trash.sql','202611070001_mentor_access.sql','202611070003_mentor_account_management.sql'])
     await db.exec(readFileSync(new URL(`../migrations/${name}`,import.meta.url),'utf8'))
   const admin='00000000-0000-0000-0000-000000000001'
   const mentor='00000000-0000-0000-0000-000000000002'
@@ -67,6 +67,55 @@ test('mentor access is limited to assigned private projects and is read-only', a
   await as('authenticated',mentor)
   assert.equal(await count('myssp_projects'),0)
   assert.equal(await count('myssp_submissions'),0)
+  // Deleted mentors cannot read, invite, edit or restore themselves.
+  await as('authenticated',admin)
+  await db.query('select myssp_set_mentor_deleted($1,true)',[mentorId])
+  await assert.rejects(() => db.query('select myssp_save_mentor($1,$2,$3,$4,$5,$6)',[mentorId,'Changed','mentor@example.com','Lab',['child-a','child-b'],false]), /Mentor not found/)
+  await as('service_role')
+  assert.equal((await db.query('select myssp_claim_mentor_invitation($1) as claimed',[mentorId])).rows[0].claimed,false)
+  await as('authenticated',mentor)
+  assert.equal(await count('myssp_mentors'),0)
+  assert.equal(await count('myssp_mentor_projects'),0)
+  assert.equal(await count('myssp_projects'),0)
+  await assert.rejects(() => db.query('select myssp_set_mentor_deleted($1,false)',[mentorId]),/Admin required/)
+  await as('authenticated',outsider)
+  await assert.rejects(() => db.query('select myssp_set_mentor_deleted($1,true)',[mentorId]),/Admin required/)
+  await as('authenticated',admin)
+  await db.query('select myssp_set_mentor_deleted($1,false)',[mentorId])
+  assert.equal((await db.query('select revoked from myssp_mentors where id=$1',[mentorId])).rows[0].revoked,true)
+  assert.equal(await count('myssp_submissions'),1)
+  await db.query('select myssp_save_mentor($1,$2,$3,$4,$5,$6)',[mentorId,'Dr. Mentor','mentor@example.com','Lab',['child-a','child-b'],false])
+  await as('authenticated',mentor)
+  assert.equal(await count('myssp_projects'),2)
+
+  // Change a previously invited identity, preserving both split assignments.
+  await db.exec('reset role')
+  await db.query('update myssp_mentors set invited_at=now(),invite_requested_at=now() where id=$1',[mentorId])
+  await as('authenticated',admin)
+  await assert.rejects(() => db.query('select myssp_save_mentor($1,$2,$3,$4,$5,$6)',[mentorId,'Dr. Mentor','other@example.com','Lab',['child-a','child-b'],false]),/sign-in account/)
+  await db.query('select myssp_save_mentor($1,$2,$3,$4,$5,$6)',[mentorId,'Dr. Mentor','Corrected@example.com','Lab',['child-a','child-b'],false])
+  const changed=(await db.query('select user_id,email,invited_at,invite_requested_at from myssp_mentors where id=$1',[mentorId])).rows[0]
+  assert.deepEqual(changed,{user_id:null,email:'corrected@example.com',invited_at:null,invite_requested_at:null})
+  assert.deepEqual((await db.query('select project_id from myssp_mentor_projects where mentor_id=$1 order by project_id',[mentorId])).rows.map(row=>row.project_id),['child-a','child-b'])
+  await as('authenticated',mentor) // stale old session is denied immediately
+  assert.equal(await count('myssp_projects'),0)
+  assert.equal(await count('myssp_mentors'),0)
+  await as('service_role')
+  await assert.rejects(() => db.query('update myssp_mentors set user_id=$1 where id=$2',[mentor,mentorId]),/Mentor details changed/)
+  await db.exec('reset role')
+  const replacement='00000000-0000-0000-0000-000000000004'
+  await db.query('insert into auth.users values($1,$2)',[replacement,'corrected@example.com'])
+  await db.query('update myssp_mentors set user_id=$1 where id=$2',[replacement,mentorId])
+  await as('authenticated',replacement)
+  assert.equal(await count('myssp_projects'),2)
+  await as('authenticated',admin)
+  await db.query('select myssp_set_mentor_deleted($1,true)',[mentorId])
+  await as('authenticated',replacement)
+  assert.equal(await count('myssp_projects'),0)
+  await as('authenticated',admin)
+  await db.query('select myssp_set_mentor_deleted($1,false)',[mentorId])
+  await as('authenticated',replacement)
+  assert.equal(await count('myssp_projects'),2)
   await as('authenticated',admin)
   await assert.rejects(() => db.query('select myssp_import_mentors($1)',[[
     {name:'Good',email:'good@example.com',affiliation:'Lab',project_ids:['one']},

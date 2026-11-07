@@ -293,7 +293,7 @@ export default function AdminPanel() {
                 <Icon size={17} />
                 {label}
                 {id === "participants" && <span>{cohortPeople.length}</span>}
-                {id === "mentors" && <span>{mentors.filter(mentor => mentor.projectIds.some(id => boards.some(board => board.id === id))).length}</span>}
+                {id === "mentors" && <span>{mentors.filter(mentor => !mentor.deletedAt && mentor.projectIds.some(id => boards.some(board => board.id === id))).length}</span>}
               </button>
             ))}
           </nav>

@@ -4,25 +4,27 @@ import { stripTypeScriptTypes } from 'node:module'
 import { runInNewContext } from 'node:vm'
 import { test } from 'node:test'
 
-function fixture(kind, { signedIn = true, admin = true, deliveryFails = false } = {}) {
+function fixture(kind, { signedIn = true, admin = true, deliveryFails = false, lifecycleChange = false, uninvited = false } = {}) {
   const id = '00000000-0000-0000-0000-000000000001'
-  const row = { id, user_id: id, email: 'test@example.test', revoked: false }
-  let handler, sends = 0, serviceCreated = false
+  const row = { id, user_id: uninvited ? null : id, email: 'test@example.test', revoked: false, deleted_at: null, access_revision: 0 }
+  let handler, sends = 0, serviceCreated = false, removed = 0
   const metadata = { display_name: 'Test account' }
   const updates = []
   const service = {
     from: table => {
-      let single = false
+      let single = false, scoped = false
       const query = {
-        select: () => query, in: () => query, eq: () => query,
+        select: () => query, in: () => query, eq: (key) => { if (key === "access_revision") scoped = true; return query },
         update: () => query, is: () => query,
         maybeSingle: () => { single = true; return query },
-        then: (resolve, reject) => Promise.resolve({ error: null, data: single ? null : table === `myssp_${kind}` ? [row] : [] }).then(resolve, reject),
+        then: (resolve, reject) => Promise.resolve({ error: null, data: lifecycleChange && scoped ? [] : single ? null : table === `myssp_${kind}` ? [row] : [] }).then(resolve, reject),
       }
       return query
     },
-    rpc: async () => ({ data: true, error: null }),
+    rpc: async name => ({ data: name === "myssp_auth_user_for_email" ? null : true, error: null }),
     auth: { admin: {
+      createUser: async () => ({data:{user:{id,user_metadata:{}}},error:null}),
+      deleteUser: async () => { removed++; return {error:null} },
       getUserById: async () => ({ data: { user: { email: row.email, user_metadata: { ...metadata } } }, error: null }),
       updateUserById: async (_, update) => {
         updates.push(update)
@@ -56,7 +58,7 @@ function fixture(kind, { signedIn = true, admin = true, deliveryFails = false } 
   })
   return {
     call: () => handler(new Request('https://example.test/invite', { method: 'POST', body: JSON.stringify({ ids: [id] }) })),
-    metadata, updates, sends: () => sends, serviceCreated: () => serviceCreated,
+    removed: () => removed, metadata, updates, sends: () => sends, serviceCreated: () => serviceCreated,
   }
 }
 
@@ -82,3 +84,14 @@ for (const kind of ['mentors', 'participants']) {
     }
   })
 }
+
+// An email edit, pause or delete invalidates the invitation's row revision.
+test('mentors: stale invitation cannot attach a login, rotate a code or report delivery', async () => {
+  for (const uninvited of [false,true]) {
+    const f = fixture('mentors', {lifecycleChange:true,uninvited})
+    assert.deepEqual(await (await f.call()).json(), {sent:0,failed:1})
+    assert.equal(f.sends(),0)
+    assert.equal(f.updates.length,0)
+    assert.equal(f.removed(), uninvited ? 1 : 0)
+  }
+})

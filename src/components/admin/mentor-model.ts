@@ -11,6 +11,7 @@ export type Mentor = {
   projectIds: string[]
   revoked: boolean
   invitedAt: number | null
+  deletedAt?: string | null
 }
 
 export type MentorInput = Pick<Mentor, "name" | "email" | "affiliation" | "projectIds" | "revoked">
@@ -53,7 +54,8 @@ export function mentorInputError(input: MentorInput, boards: readonly Board[], e
   const email = input.email.trim().toLowerCase()
   if (!/^[^\s@,]+@[^\s@,]+\.[^\s@,]+$/.test(email) || email.length > 254) return "Enter a valid email address."
   if (input.affiliation.trim().length > 180) return "Keep the affiliation under 180 characters."
-  if (existing.some(mentor => mentor.id !== editingId && mentor.email === email)) return "This email is already in the mentor list."
+  const duplicate = existing.find(mentor => mentor.id !== editingId && mentor.email === email)
+  if (duplicate) return duplicate.deletedAt ? "This mentor is in Deleted mentors. Restore their account instead." : "This email is already in the mentor list."
   if (!input.projectIds.length) return "Assign at least one project."
   if (input.projectIds.length > 20) return "Assign up to 20 projects per mentor."
   if (new Set(input.projectIds).size !== input.projectIds.length || input.projectIds.some(id => !boards.some(board => board.id === id))) return "Choose valid projects without duplicates."

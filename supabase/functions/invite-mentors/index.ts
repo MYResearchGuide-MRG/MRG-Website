@@ -27,13 +27,13 @@ Deno.serve(async req => {
     if (!Array.isArray(body.ids) || body.ids.length < 1 || body.ids.length > 50 || body.ids.some((id:unknown) => typeof id !== "string" || !/^[a-f0-9-]{36}$/.test(id))) return reply({error:"Choose 1 to 50 mentors"},400)
     const ids = [...new Set(body.ids as string[])]
     const service = createClient(url,serviceKey,{auth:{persistSession:false,autoRefreshToken:false}})
-    const query = await service.from("myssp_mentors").select("id,email,user_id,revoked").in("id",ids)
+    const query = await service.from("myssp_mentors").select("id,email,user_id,revoked,deleted_at,access_revision").in("id",ids)
     if (query.error) return reply({error:"Could not load mentors"},500)
     let sent = 0, failed = ids.length - (query.data?.length || 0)
     for (const mentor of query.data || []) {
       try {
         const claim = await service.rpc("myssp_claim_mentor_invitation",{target:mentor.id})
-        if (mentor.revoked || claim.error || claim.data !== true) { failed++; continue }
+        if (mentor.revoked || mentor.deleted_at || claim.error || claim.data !== true) { failed++; continue }
         const code = accessCode()
         let authId = mentor.user_id as string | null
         let originalMetadata: Record<string,unknown> = {}
@@ -52,7 +52,7 @@ Deno.serve(async req => {
           const created = await service.auth.admin.createUser({email:mentor.email,password:code,email_confirm:true,user_metadata:{myssp_mentor:true}})
           if (created.error || !created.data.user) { failed++; continue }
           authId = created.data.user.id
-          const linked = await service.from("myssp_mentors").update({user_id:authId}).eq("id",mentor.id).is("user_id",null).select("id")
+          const linked = await service.from("myssp_mentors").update({user_id:authId}).eq("id",mentor.id).eq("email",mentor.email).eq("access_revision",mentor.access_revision).eq("revoked",false).is("deleted_at",null).is("user_id",null).select("id")
           if (linked.error || linked.data?.length !== 1) {
             await service.auth.admin.deleteUser(authId)
             failed++
@@ -60,6 +60,11 @@ Deno.serve(async req => {
           }
           originalMetadata = created.data.user.user_metadata || {}
         }
+        // A concurrent edit/delete must not link or mark an old invitation as sent.
+        const latest = await service.from("myssp_mentors").select("id")
+          .eq("id",mentor.id).eq("email",mentor.email).eq("user_id",authId)
+          .eq("access_revision",mentor.access_revision).eq("revoked",false).is("deleted_at",null)
+        if (latest.error || latest.data?.length !== 1) { failed++; continue }
         const metadata = {...originalMetadata,myssp_mentor:true,myssp_access_code:code}
         const prepared = await service.auth.admin.updateUserById(authId!,{password:code,user_metadata:metadata})
         if (prepared.error) { failed++; continue }
@@ -76,7 +81,10 @@ Deno.serve(async req => {
           if (cleaned.error) delivered = false
         }
         if (!delivered) { failed++; continue }
-        await service.from("myssp_mentors").update({invited_at:new Date().toISOString()}).eq("id",mentor.id)
+        const recorded = await service.from("myssp_mentors").update({invited_at:new Date().toISOString()})
+          .eq("id",mentor.id).eq("email",mentor.email).eq("user_id",authId)
+          .eq("access_revision",mentor.access_revision).eq("revoked",false).is("deleted_at",null).select("id")
+        if (recorded.error || recorded.data?.length !== 1) { failed++; continue }
         sent++
       } catch { failed++ }
     }

@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react"
 import { getProjectBoards, getProjectSplits, useProjectBoards } from "./project-registry"
 import { generateCode } from "./access-model"
-import { useBackend, getBackend, useLiveBackend, mentorSignInLive, saveLiveMentor, inviteLiveMentors, importLiveMentors } from "./backend"
+import { useBackend, getBackend, useLiveBackend, mentorSignInLive, saveLiveMentor, inviteLiveMentors, importLiveMentors, setMentorDeletedLive } from "./backend"
 import { isLocalPreview } from "./local-preview"
 import { mentorInputError, resolvePreviewMentorProjects, type Mentor, type MentorInput } from "./mentor-model"
 
@@ -42,8 +42,8 @@ export function useMentorAccess() {
     ...mentor, projectIds: resolvePreviewMentorProjects(mentor.projectIds, boards, getProjectSplits()),
   }))
   const current = useLiveBackend
-    ? mentors.find(mentor => mentor.userId === remote.userId && !mentor.revoked) || null
-    : mentors.find(mentor => mentor.id === local.session && !mentor.revoked) || null
+    ? mentors.find(mentor => mentor.userId === remote.userId && !mentor.revoked && !mentor.deletedAt) || null
+    : mentors.find(mentor => mentor.id === local.session && !mentor.revoked && !mentor.deletedAt) || null
   return { mentors, current, error: useLiveBackend ? remote.mentorError : "" }
 }
 export async function saveMentor(input: MentorInput, id?: string) {
@@ -54,12 +54,18 @@ export async function saveMentor(input: MentorInput, id?: string) {
   if (!isLocalPreview) throw new Error("Local preview unavailable.")
   if (id) {
     const previous = localState.mentors.find(mentor => mentor.id === id)
-    if (!previous) throw new Error("Mentor not found.")
-    if (previous.invitedAt && previous.email !== input.email.trim().toLowerCase()) throw new Error("An invited mentor's email cannot be changed. Revoke this account and add a new address.")
-    publish(localState.mentors.map(mentor => mentor.id === id ? {...mentor, ...input, name: input.name.trim(), email: input.email.trim().toLowerCase(), affiliation: input.affiliation.trim()} : mentor))
+    if (!previous || previous.deletedAt) throw new Error("Restore this mentor before editing their details.")
+    const changedEmail = previous.email !== input.email.trim().toLowerCase()
+    publish(localState.mentors.map(mentor => mentor.id === id ? {...mentor, ...input, name: input.name.trim(), email: input.email.trim().toLowerCase(), affiliation: input.affiliation.trim(), ...(changedEmail ? {userId: null, invitedAt: null, code: undefined} : {})} : mentor), changedEmail && localState.session === id ? null : localState.session)
   } else {
     publish([...localState.mentors, {...input, id: crypto.randomUUID(), name: input.name.trim(), email: input.email.trim().toLowerCase(), affiliation: input.affiliation.trim(), userId: null, invitedAt: null}])
   }
+}
+export async function setMentorDeleted(id: string, deleted: boolean) {
+  if (useLiveBackend) return setMentorDeletedLive(id, deleted)
+  if (!isLocalPreview) throw new Error("Local preview unavailable.")
+  if (!localState.mentors.some(mentor => mentor.id === id)) throw new Error("Mentor not found.")
+  publish(localState.mentors.map(mentor => mentor.id === id ? {...mentor, deletedAt: deleted ? new Date().toISOString() : null} : mentor), deleted && localState.session === id ? null : localState.session)
 }
 export async function importMentors(inputs: MentorInput[]) {
   if (!inputs.length || inputs.length > 100) throw new Error("Import 1 to 100 mentors at a time.")
@@ -82,7 +88,7 @@ export async function inviteMentors(ids: string[]) {
   if (useLiveBackend) return inviteLiveMentors(ids)
   if (!isLocalPreview) throw new Error("Local preview unavailable.")
   const now = Date.now()
-  const next = localState.mentors.map(mentor => ids.includes(mentor.id) && !mentor.revoked
+  const next = localState.mentors.map(mentor => ids.includes(mentor.id) && !mentor.revoked && !mentor.deletedAt
     ? {...mentor, code: generateCode(), invitedAt: now} : mentor)
   publish(next)
   return { sent: 0, failed: 0, drafts: ids.length }
@@ -93,7 +99,7 @@ export function previewMentorCode(id: string) {
 export async function mentorSignIn(email: string, code: string) {
   if (useLiveBackend) return mentorSignInLive(email, code)
   if (!isLocalPreview) return false
-  const mentor = localState.mentors.find(mentor => mentor.email === email.trim().toLowerCase() && mentor.code === code.trim().toUpperCase() && !mentor.revoked)
+  const mentor = localState.mentors.find(mentor => mentor.email === email.trim().toLowerCase() && mentor.code === code.trim().toUpperCase() && !mentor.revoked && !mentor.deletedAt)
   if (!mentor) return false
   publish(localState.mentors, mentor.id)
   return true

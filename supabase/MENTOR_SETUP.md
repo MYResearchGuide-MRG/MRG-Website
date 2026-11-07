@@ -34,3 +34,30 @@ Apply [`202611070002_submission_deadline.sql`](migrations/202611070002_submissio
 The canonical archive URL is now `/#/project-archive`. Old `projectboard`, `researchlibrary` and `research-library` links redirect while preserving the project path. Use the updated email template when deploying.
 
 The student checklist is a completion aid, not a claim that external files have been inspected. Required links, photos and page content are checked locally, and the team must confirm a final manual review. Draft saves remain possible while items are incomplete. Additional materials are optional. The saved page at the deadline is the submission.
+
+## Mentor email changes and recoverable deletion
+
+Applied `202611070003_mentor_account_management.sql` and deployed the updated
+`invite-mentors` function to live MYSSP on 7 November 2026. A rolled-back live
+transaction verified email correction, deletion, restoration and preservation of
+both I-2A/I-2B assignments. All 12 real mentor records and invitations were retained.
+For another environment, apply that migration and redeploy the handler before the frontend.
+
+- **Edit** accepts a new email for invited mentors. Saving detaches the old Auth
+  identity, clears invitation state and preserves the selected project assignments.
+  **Invite** then creates credentials for the new address. Old sessions cannot
+  read private projects, even before their JWT expires.
+- Existing participant, committee or unrelated Auth addresses cannot be reassigned
+  to a mentor. The old Auth identity remains detached for audit purposes. Returning
+  to an already-used address requires an administrator to resolve that Auth record;
+  this flow deliberately does not take over an existing identity.
+- **Delete** removes access immediately and keeps the mentor record and assignments.
+  Choose **Deleted mentors** in the status filter, across all cohorts, to restore.
+  A restored paused account remains paused. Projects and submissions are unaffected.
+- Invitation writes compare the mentor email and access revision, so an in-flight
+  invitation cannot attach the former identity after an email change or deletion.
+  Both client controls and database RPCs reject edits to deleted records.
+
+Validation: SQL role tests cover delete/restore, old-session denial after email
+correction, split assignments, account conflicts and stale invitation linking.
+The invitation handler tests cover stale requests without sending real mail.

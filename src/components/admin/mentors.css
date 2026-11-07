@@ -15,7 +15,7 @@
 .am-table { width: 100%; min-width: 760px; border-collapse: collapse; text-align: left; }
 .am-table th { padding: 12px 14px; border-bottom: 1px solid #2d2d2d; color: #8f8f8f; font-size: 11px; font-weight: 500; }
 .am-table th:first-child,.am-table td:first-child { width: 44px; padding-left: 18px; padding-right: 0; }
-.am-table th:last-child { width: 180px; }
+.am-table th:last-child { width: 220px; }
 .am-table td { padding: 16px 14px; border-bottom: 1px solid #262626; vertical-align: middle; }
 .am-table tr:last-child td { border-bottom: 0; }
 .am-table tbody tr:hover { background: #111; }
@@ -73,3 +73,19 @@
 .am-import-review small { display: block; color: #888; }
 @media (max-width: 700px) { .am-toolbar > * { flex: 1 1 100%; } .am-field-pair { grid-template-columns: 1fr; } .am-dialog { width: calc(100vw - 24px); } .am-selection { flex-wrap: wrap; } .am-confirm-list > div { display: grid; } }
 @media (prefers-reduced-motion: reduce) { .am-root * { scroll-behavior: auto; } }
+
+.am-actions .am-delete:hover { color: #f1aaa3; background: #241514; border-radius: 4px; }
+.am-destructive { color: #f1b5ae !important; border-color: #69433e !important; background: #281b19 !important; }
+.am-email-notice { padding: 12px; border: 1px solid #524a36; border-radius: 6px; color: #d8c9a6; background: #211e17; font-size: 12px; line-height: 1.6; }
+@media (max-width: 1050px) {
+  .am-table { display: block; min-width: 0; }
+  .am-table thead, .am-table tbody { display: block; }
+  .am-table thead tr { display: flex; border-bottom: 1px solid #2d2d2d; }
+  .am-table th { border: 0; }
+  .am-table th:nth-child(n+3) { display: none; }
+  .am-table tbody tr { display: grid; grid-template-columns: 44px minmax(0, 1fr); padding: 12px 0; border-bottom: 1px solid #262626; }
+  .am-table tbody tr:last-child { border-bottom: 0; }
+  .am-table td { grid-column: 2; padding: 4px 14px; border: 0; overflow-wrap: anywhere; }
+  .am-table td:first-child { grid-column: 1; grid-row: 1 / 5; width: auto; }
+  .am-actions { justify-content: flex-start; flex-wrap: wrap; margin-left: -7px; }
+}
