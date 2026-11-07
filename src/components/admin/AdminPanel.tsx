@@ -702,10 +702,10 @@ export default function AdminPanel() {
                 <div>
                   <h2>Mentor access</h2>
                   <p>
-                    Before inviting mentors, apply the mentor database migration,
-                    deploy the invite-mentors function and update the Supabase
-                    access email template. The Mentors tab then manages accounts
-                    and project assignments.
+                    Add or import mentors in the Mentors tab and choose the
+                    projects they supervise. Review the assignments, then send
+                    access codes when ready. Mentors can review assigned hidden
+                    projects without editing student work.
                   </p>
                 </div>
                 <span>{useLiveBackend && backend.ready && !backend.mentorError ? "Connected" : "Setup needed"}</span>

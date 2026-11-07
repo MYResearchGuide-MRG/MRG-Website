@@ -64,8 +64,9 @@ Deno.serve(async req => {
         const prepared = await service.auth.admin.updateUserById(authId!,{password:code,user_metadata:metadata})
         if (prepared.error) { failed++; continue }
         const mailClient = createClient(url,anonKey,{auth:{persistSession:false,autoRefreshToken:false}})
-        const cleanMetadata = {...metadata}
-        delete cleanMetadata.myssp_access_code
+        // Auth merges metadata updates. Null explicitly removes this key;
+        // omitting it would leave the plaintext code on the account.
+        const cleanMetadata = {...metadata,myssp_access_code:null}
         let delivered = false
         try {
           const delivery = await mailClient.auth.resetPasswordForEmail(mentor.email)

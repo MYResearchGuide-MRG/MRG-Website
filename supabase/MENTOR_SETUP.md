@@ -1,6 +1,19 @@
 # Mentor access rollout
 
-The mentor UI is available in the local preview. The live database is unchanged until the committee applies this rollout.
+## Live MYSSP deployment
+
+Completed on 7 November 2026 for project `szyafrbnzfxbephkwubg`:
+
+- Mentor and submission-deadline migrations applied. Do not rerun them on this project.
+- `invite-mentors` deployed with Auth user verification and the committee-role check; legacy gateway JWT verification is disabled in line with `config.toml`.
+- The credential email template now includes mentor sign-in instructions and the Project Archive URL.
+- Both invitation handlers explicitly remove transient access-code metadata after email rendering, including failed deliveries.
+- Live mentor import into both `I-2A` and `I-2B` passed inside a rolled-back transaction. No test mentor, account or invitation was retained.
+- Anonymous mentor-table reads and unauthenticated invitation requests were rejected. The public deadline endpoint returned the expected 2026 cutoff.
+
+No mentor invitations were sent during deployment. SMTP delivery was not exercised in this rollout; send a committee test invitation before a bulk invitation.
+
+## Setup for another environment
 
 1. Run [`202611070001_mentor_access.sql`](migrations/202611070001_mentor_access.sql) in the MYSSP Supabase SQL editor after the earlier migrations.
 2. Deploy the `invite-mentors` Edge Function. It uses the same project URL, service role secret and email setup as `invite-participants`.

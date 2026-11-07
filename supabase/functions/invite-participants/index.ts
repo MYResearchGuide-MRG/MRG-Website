@@ -71,8 +71,8 @@ Deno.serve(async req => {
         })
         if (prepared.error) { failed++; continue }
         const mailClient = createClient(url,anonKey,{auth:{persistSession:false,autoRefreshToken:false}})
-        const cleanMetadata: Record<string,unknown> = {...metadata}
-        delete cleanMetadata.myssp_access_code
+        // Auth merges metadata updates, so explicitly remove the transient key.
+        const cleanMetadata: Record<string,unknown> = {...metadata,myssp_access_code:null}
         let delivered = false
         try {
           const delivery = await mailClient.auth.resetPasswordForEmail(person.email)
