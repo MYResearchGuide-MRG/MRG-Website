@@ -42,7 +42,7 @@ import {
 import { ProjectDetail } from "./ProjectDetail"
 import { paginate } from "./pagination"
 import { overviewError } from "./overview"
-import { libraryHash as root, boardUrl } from "./paths"
+import { libraryHash as root, boardUrl, canonicalArchiveHash, decodeProjectId } from "./paths"
 import "./projectboard.css"
 import { currentProject } from "../admin/demo-access"
 import { isProjectEditable, useProjectEditing } from "../admin/project-editing"
@@ -50,6 +50,7 @@ import { useProjectBoards } from "../admin/project-registry"
 import { useBackend, useLiveBackend, saveLiveDraft } from "../admin/backend"
 import { useLibraryVisibility } from "../admin/library-visibility"
 import { useResearchFields } from "../admin/research-fields"
+import { useSubmissionDeadline } from "./use-submission-deadline"
 import {
   canViewProject,
   visibleProjects,
@@ -532,11 +533,13 @@ function ProjectLibrary({
 export default function Projectboard({
   assignedProjectId,
   isAdmin,
+  mentorProjectIds,
   onSignIn,
   onEditStateChange,
 }: {
   assignedProjectId: string | null
   isAdmin: boolean
+  mentorProjectIds: string[]
   onSignIn: () => void
   onEditStateChange: (state: { dirty: boolean; busy: boolean }) => void
 }) {
@@ -550,15 +553,16 @@ export default function Projectboard({
   const [draft, setDraft] = useState(() =>
     loadDraft(assignedBoard || demoBoard)
   )
-  const path = hash.slice(root.length).split("?")[0]
+  const path = canonicalArchiveHash(hash).slice(root.length).split("?")[0]
   const projectId = path.startsWith("/project/")
-    ? path.slice("/project/".length)
+    ? decodeProjectId(path.slice("/project/".length))
     : null
   const isWorkspace = path === "/workspace"
   const board =
     isWorkspace && signedIn
       ? assignedBoard
       : boards.find((project) => project.id === projectId)
+  const deadline = useSubmissionDeadline(board?.year ?? 0)
   useEffect(() => {
     if (isWorkspace && assignedBoard)
       window.location.hash = boardUrl(assignedBoard.id)
@@ -608,15 +612,16 @@ export default function Projectboard({
             <a href={root}>Return to the project archive</a>
           </main>
         ) : projectId || isWorkspace ? (
-          board && canViewProject(visibility, board.id, assignedProjectId, isAdmin) ? (
+          board && (canViewProject(visibility, board.id, assignedProjectId, isAdmin) || mentorProjectIds.includes(board.id)) ? (
             <ProjectDetail
               key={`${board.id}-${signedIn}`}
               board={board}
-              editable={board.id === assignedProjectId && editingPermissions[board.id] === true}
+              editable={board.id === assignedProjectId && editingPermissions[board.id] === true && !deadline.closed}
+              deadline={deadline}
               owner={board.id === assignedProjectId}
               revision={backend.revisions[board.id] || 0}
               savedDraft={
-                useLiveBackend ? backend.drafts[board.id] || (board.id === assignedProjectId ? newDraft(board) : undefined) : signedIn && board.id === assignedProjectId ? draft : undefined
+                useLiveBackend ? backend.drafts[board.id] || (board.id === assignedProjectId ? newDraft(board) : undefined) : signedIn && board.id === assignedProjectId ? draft : mentorProjectIds.includes(board.id) ? loadDraft(board) : undefined
               }
               onSave={save}
               onEditStateChange={onEditStateChange}

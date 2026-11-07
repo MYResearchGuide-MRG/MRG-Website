@@ -1,12 +1,12 @@
 {{ if .Data.myssp_access_code }}
 <p>Hey,</p>
 
-<p>Your MYSSP project page login credentials are:</p>
+<p>Your MYSSP {{ if .Data.myssp_mentor }}mentor{{ else }}project page{{ end }} login credentials are:</p>
 
 <p>Email: {{ .Email }}<br>
 Access code: <strong>{{ .Data.myssp_access_code }}</strong></p>
 
-<p>Sign in at <a href="https://myssp.myresearchguide.org/#/projectboard">myssp.myresearchguide.org</a>.</p>
+<p>Sign in at <a href="https://myssp.myresearchguide.org/#/project-archive">myssp.myresearchguide.org</a>. {{ if .Data.myssp_mentor }}Choose Mentor sign in to review your assigned projects.{{ end }}</p>
 
 <p>Please do not share your access code with anyone.</p>
 

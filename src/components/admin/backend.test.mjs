@@ -33,6 +33,7 @@ async function fixture() {
     },
     rpc: async (name, args) => {
       if (name === "myssp_is_admin") return { data: false, error: null }
+      if (name === "myssp_submission_deadlines") return { data: [], error: null }
       assert.equal(name, "myssp_save_submission")
       transport.saveCalls++
       if (transport.failSave || args.expected_revision !== transport.revision) return { error: new Error("Rejected") }

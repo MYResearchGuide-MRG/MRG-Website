@@ -40,6 +40,7 @@
   margin: 20px 0 24px;
 }
 .auth-dialog .pb-auth-tabs button {
+  flex: 1;
   min-height: 34px;
   padding: 6px 10px;
   border: 0;

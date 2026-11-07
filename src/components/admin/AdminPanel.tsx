@@ -20,6 +20,7 @@ import {
   ShieldCheck,
   Trash2,
   Users,
+  UsersRound,
   Upload,
 } from "lucide-react"
 import {
@@ -63,14 +64,18 @@ import { ParticipantTable } from "./ParticipantTable"
 import { ParticipantEditor } from "./ParticipantEditor"
 import { ParticipantImport } from "./ParticipantImport"
 import { AdminSelect } from "./AdminSelect"
+import { MentorManagement } from "./MentorManagement"
+import { useMentorAccess } from "./mentor-access"
 import "./workspace.css"
+import { useSubmissionDeadline } from "../projectboard/use-submission-deadline"
 
-type View = "participants" | "projects" | "trash" | "setup"
+type View = "participants" | "mentors" | "projects" | "trash" | "setup"
 export default function AdminPanel() {
   const allBoards = useProjectBoards()
   const cohorts = useCohorts()
   const [selectedYear, setSelectedYear] = useState<number | null>(null)
   const year = selectedYear ?? cohorts[0]?.year ?? 2026
+  const submissionDeadline = useSubmissionDeadline(year)
   const cohort = cohorts.find((c) => c.year === year)
   const boards = useMemo(
     () => allBoards.filter((b) => b.year === year),
@@ -86,6 +91,7 @@ export default function AdminPanel() {
   const visibility = useLibraryVisibility()
   const editingPermissions = useProjectEditing()
   const backend = useBackend()
+  const { mentors } = useMentorAccess()
   const [busy, setBusy] = useState(false)
   const visibleCount = boards.filter((b) => visibility[b.id] === true).length
   const committeeAccess = useCommitteeAccess()
@@ -121,7 +127,7 @@ export default function AdminPanel() {
           ? visibility[board.id] === true
           : projectStatus === "hidden"
             ? visibility[board.id] !== true
-            : editingPermissions[board.id] !== true))
+            : submissionDeadline.closed || editingPermissions[board.id] !== true))
   )
   const [adding, setAdding] = useState(false)
   const [addingSingle, setAddingSingle] = useState(false)
@@ -230,7 +236,7 @@ export default function AdminPanel() {
           <a className="ad-back ad-review-link" href="#/profile/projects">
             Review project pages <ArrowUpRight size={15} />
           </a>
-          <a className="ad-back" href="#/projectboard">
+          <a className="ad-back" href="#/project-archive">
             <span className="ad-library-full">View project archive</span>
             <span className="ad-library-short">Archive</span>
             <ArrowUpRight size={15} />
@@ -271,6 +277,7 @@ export default function AdminPanel() {
             {(
               [
                 { id: "participants", label: "Participants", Icon: Users },
+                { id: "mentors", label: "Mentors", Icon: UsersRound },
                 { id: "projects", label: "Projects", Icon: FolderOpen },
                 ...(useLiveBackend
                   ? [{ id: "trash", label: "Trash", Icon: Trash2 } as const]
@@ -286,6 +293,7 @@ export default function AdminPanel() {
                 <Icon size={17} />
                 {label}
                 {id === "participants" && <span>{cohortPeople.length}</span>}
+                {id === "mentors" && <span>{mentors.filter(mentor => mentor.projectIds.some(id => boards.some(board => board.id === id))).length}</span>}
               </button>
             ))}
           </nav>
@@ -308,6 +316,8 @@ export default function AdminPanel() {
               <h1>
                 {view === "participants"
                   ? "Participants"
+                  : view === "mentors"
+                    ? "Mentors"
                   : view === "projects"
                     ? "Projects"
                     : view === "trash"
@@ -317,6 +327,8 @@ export default function AdminPanel() {
               <p>
                 {view === "participants"
                   ? `Manage accounts, assignments and invitations for ${year}.`
+                  : view === "mentors"
+                    ? `Assign mentors to projects and manage their access for ${year}.`
                   : view === "projects"
                     ? "Add projects, assign teams and control what goes live."
                     : view === "trash"
@@ -404,8 +416,11 @@ export default function AdminPanel() {
               onPreview={setInvitation}
               onAdd={() => setAddingSingle(true)}
             />
+          ) : view === "mentors" ? (
+            <MentorManagement boards={allBoards} year={year} />
           ) : view === "projects" ? (
             <section aria-label="Project visibility">
+              {submissionDeadline.label && <p className="ad-notice">{submissionDeadline.closed ? "Student editing closed" : "Student editing closes"} · {submissionDeadline.label}. The deadline also locks student names and photos. Committee corrections remain available.</p>}
               <div className="ad-project-toolbar">
                 <label className="ad-search">
                   <Search size={16} />
@@ -562,11 +577,12 @@ export default function AdminPanel() {
                         </button>
                         <span className="ad-control-label">Team editing</span>
                         <button
-                          disabled={busy}
+                          disabled={busy || submissionDeadline.closed}
                           className="ad-visibility-switch"
                           role="switch"
-                          aria-checked={editingPermissions[b.id] === true}
+                          aria-checked={!submissionDeadline.closed && editingPermissions[b.id] === true}
                           aria-label={`Allow editing for ${b.code}`}
+                          title={submissionDeadline.closed ? "The cohort submission deadline has passed." : undefined}
                           onClick={() =>
                             changeEditing(
                               [b.id],
@@ -575,7 +591,7 @@ export default function AdminPanel() {
                           }
                         >
                           <span>
-                            {editingPermissions[b.id] === true
+                            {submissionDeadline.closed ? "Deadline passed" : editingPermissions[b.id] === true
                               ? "Allowed"
                               : "Locked"}
                           </span>
@@ -645,7 +661,8 @@ export default function AdminPanel() {
                   <p>
                     Supabase Auth handles sign-in. Database policies let each
                     participant update only their assigned project. Admin
-                    permissions stay on the server.
+                    permissions stay on the server. Mentors can read only their
+                    assigned projects and cannot edit student submissions.
                   </p>
                   <a
                     href="https://supabase.com/docs/guides/auth/passwords"
@@ -673,12 +690,25 @@ export default function AdminPanel() {
                     a committee address before inviting teams.
                   </p>
                   <p>
-                    Each participant receives a private, six-character access
-                    code. It stays valid until the committee issues a
-                    replacement.
+                    Participants and mentors receive separate invitations with
+                    a private six-character access code. A code stays valid
+                    until the committee issues a replacement.
                   </p>
                 </div>
                 <span>Verify SMTP</span>
+              </article>
+              <article>
+                <UsersRound size={23} />
+                <div>
+                  <h2>Mentor access</h2>
+                  <p>
+                    Before inviting mentors, apply the mentor database migration,
+                    deploy the invite-mentors function and update the Supabase
+                    access email template. The Mentors tab then manages accounts
+                    and project assignments.
+                  </p>
+                </div>
+                <span>{useLiveBackend && backend.ready && !backend.mentorError ? "Connected" : "Setup needed"}</span>
               </article>
               <article>
                 <Users size={23} />
@@ -936,7 +966,7 @@ function Invitation({
           {active ? (
             <a
               className="ad-button ad-primary"
-              href="#/projectboard/workspace"
+              href="#/project-archive/workspace"
               onClick={onClose}
             >
               Try participant sign-in <ArrowUpRight size={15} />

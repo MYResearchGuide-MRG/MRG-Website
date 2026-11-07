@@ -88,6 +88,7 @@ export type Draft = {
   paper: string
   video: string
   additionalMaterials?: AdditionalMaterial[]
+  reviewedFingerprint?: string
   savedAt: string | null
 }
 export const draftKey = "myssp-projectboard-preview:draft:v1"
@@ -126,6 +127,7 @@ export function isDraft(
   return (
     v.version === 1 &&
     v.projectId === board.id &&
+    (v.reviewedFingerprint === undefined || (typeof v.reviewedFingerprint === "string" && v.reviewedFingerprint.length <= 32)) &&
     (v.coverImage === undefined || validCoverImage(v.coverImage)) &&
     (v.coverAlt === undefined ||
       (typeof v.coverAlt === "string" && v.coverAlt.length <= 200)) &&

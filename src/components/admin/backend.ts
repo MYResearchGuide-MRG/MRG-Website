@@ -9,6 +9,7 @@ import type { ParticipantDetails } from "./participant-tools"
 import type { Cohort, ProjectInput } from "./cohort-model"
 import type { ResearchField } from "./research-fields-model"
 import { sendInvitationBatches } from "./invitation-batches"
+import type { Mentor, MentorInput } from "./mentor-model"
 
 // Device-only preparation stays available on localhost. Production never uses it.
 export const useLiveBackend = !isLocalPreview || import.meta.env.VITE_ACCESS_MODE === "supabase"
@@ -21,8 +22,10 @@ type State = {
   deletedPeople: Assignment[]; deletedProjects: ProjectRecord[];
   cohorts: Cohort[]; cohortError: string;
   researchFields: ResearchField[]; researchFieldError: string;
+  mentors: Mentor[]; mentorError: string;
+  submissionDeadlines: Record<number, string | null>;
 }
-const empty: State = { ready: false, error: "", isAdmin: false, userId: null, accountEmail: "", accountName: "", accountPhoto: "", people: [], projects: [], drafts: {}, revisions: {}, visibility: {}, editing: {}, boards: [], deletedPeople: [], deletedProjects: [], cohorts: [], cohortError: "", researchFields: [], researchFieldError: "" }
+const empty: State = { ready: false, error: "", isAdmin: false, userId: null, accountEmail: "", accountName: "", accountPhoto: "", people: [], projects: [], drafts: {}, revisions: {}, visibility: {}, editing: {}, boards: [], deletedPeople: [], deletedProjects: [], cohorts: [], cohortError: "", researchFields: [], researchFieldError: "", mentors: [], mentorError: "", submissionDeadlines: {} }
 let state = empty
 const listeners = new Set<() => void>()
 let epoch = 0
@@ -37,12 +40,15 @@ export async function refreshBackend() {
   try {
     const { data: { session } } = await supabase.auth.getSession()
     const userId = session?.user.id || null
-    const [projects, people, drafts, role, fields] = await Promise.all([
+    const [projects, people, drafts, role, fields, mentors, mentorProjects, deadlines] = await Promise.all([
       supabase.from("myssp_projects").select("*").eq("retired", false).order("code"),
       userId ? supabase.from("myssp_participants").select("*") : Promise.resolve({data: [], error: null}),
       supabase.from("myssp_submissions").select("project_id,content,revision"),
       userId ? supabase.rpc("myssp_is_admin") : Promise.resolve({data: false, error: null}),
       supabase.from("myssp_research_fields").select("name,prefix").order("created_at").order("name"),
+      userId ? supabase.from("myssp_mentors").select("id,user_id,name,email,affiliation,revoked,invited_at") : Promise.resolve({data: [], error: null}),
+      userId ? supabase.from("myssp_mentor_projects").select("mentor_id,project_id") : Promise.resolve({data: [], error: null}),
+      supabase.rpc("myssp_submission_deadlines"),
     ])
     if (projects.error || people.error || drafts.error || role.error) throw new Error("Database setup is incomplete or access was denied.")
     // Older deployments remain usable while the cohort migration is being applied.
@@ -56,6 +62,14 @@ export async function refreshBackend() {
     const allProjects = projects.data as ProjectRecord[]
     const records = allProjects.filter(p => !p.deleted_at)
     const allPeople = (people.data || []).map(p => ({id:p.id, userId:p.user_id, name:p.name, email:p.email, projectId:p.project_id, revision:1, revoked:p.revoked, code:null, expiresAt:0, usedAt:null, invitedAt:p.invited_at ? Date.parse(p.invited_at) : null, attempts:0, lockedUntil:0, deletedAt:p.deleted_at, displayProfile:p.display_profile || {}}))
+    const mentorAssignments = new Map<string,string[]>()
+    for (const link of mentorProjects.data || []) mentorAssignments.set(link.mentor_id, [...(mentorAssignments.get(link.mentor_id) || []), link.project_id])
+    const mentorRecords: Mentor[] = (mentors.data || []).map(mentor => ({
+      id: mentor.id, userId: mentor.user_id, name: mentor.name, email: mentor.email,
+      affiliation: mentor.affiliation, revoked: mentor.revoked,
+      invitedAt: mentor.invited_at ? Date.parse(mentor.invited_at) : null,
+      projectIds: mentorAssignments.get(mentor.id) || [],
+    }))
     publish({
       ready: true, error: "", isAdmin: role.data === true, userId,
       accountEmail: session?.user.email || "",
@@ -76,6 +90,9 @@ export async function refreshBackend() {
       cohortError: cohorts.error ? "New cohorts and projects need the cohort database migration. Existing projects are still available." : "",
       researchFields: fields.error ? state.researchFields : fields.data || [],
       researchFieldError: fields.error ? "Research fields could not be loaded. Refresh and try again." : "",
+      mentors: mentorRecords,
+      mentorError: mentors.error || mentorProjects.error ? "Mentor accounts need the mentor database migration. Other access remains available." : "",
+      submissionDeadlines: deadlines.error ? state.submissionDeadlines : Object.fromEntries((deadlines.data || []).map((row: {year:number; closes_at:string|null}) => [row.year, row.closes_at])),
     })
   } catch (error) {
     // A failed refresh is not a sign-out. Preserve the current editor and let
@@ -103,6 +120,19 @@ export async function participantSignIn(email: string, token: string) {
     supabase.rpc("myssp_is_admin"),
   ])
   const allowed = !assignment.error && !role.error && role.data !== true && Boolean(assignment.data?.length)
+  if (!allowed) await supabase.auth.signOut()
+  else await refreshBackend()
+  return allowed
+}
+export async function mentorSignInLive(email: string, token: string) {
+  if (!supabase) return false
+  const {data, error} = await supabase.auth.signInWithPassword({email:email.trim().toLowerCase(),password:token.trim().toUpperCase()})
+  if (error || !data.user) return false
+  const [mentor, role] = await Promise.all([
+    supabase.from("myssp_mentors").select("id").eq("user_id",data.user.id).eq("revoked",false).limit(1),
+    supabase.rpc("myssp_is_admin"),
+  ])
+  const allowed = !mentor.error && !role.error && role.data !== true && Boolean(mentor.data?.length)
   if (!allowed) await supabase.auth.signOut()
   else await refreshBackend()
   return allowed
@@ -178,6 +208,36 @@ export async function inviteLiveParticipants(ids:string[]) {
   } finally {
     await refreshBackend()
   }
+}
+export async function saveLiveMentor(input: MentorInput, id?: string) {
+  if (!supabase || !state.isAdmin) throw new Error("Committee sign-in required.")
+  const { error } = await supabase.rpc("myssp_save_mentor", {
+    mentor_id: id || null, mentor_name: input.name.trim(), mentor_email: input.email.trim().toLowerCase(),
+    mentor_affiliation: input.affiliation.trim(), project_ids: input.projectIds,
+    access_revoked: input.revoked,
+  })
+  if (error) throw new Error(error.code === "PGRST202" ? "Apply the mentor database migration first." : error.message)
+  await refreshBackend()
+}
+export async function importLiveMentors(inputs: MentorInput[]) {
+  if (!supabase || !state.isAdmin) throw new Error("Committee sign-in required.")
+  const { error } = await supabase.rpc("myssp_import_mentors", { rows: inputs.map(input => ({
+    name: input.name.trim(), email: input.email.trim().toLowerCase(), affiliation: input.affiliation.trim(),
+    project_ids: input.projectIds,
+  })) })
+  if (error) throw new Error(error.code === "PGRST202" ? "Apply the mentor database migration first." : "Could not import mentors. Check for duplicate emails and project assignments.")
+  await refreshBackend()
+}
+export async function inviteLiveMentors(ids: string[]) {
+  if (!supabase || !state.isAdmin) throw new Error("Committee sign-in required.")
+  const client = supabase
+  try {
+    return await sendInvitationBatches(ids, async batch => {
+      const {data,error} = await client.functions.invoke("invite-mentors", {body:{ids:batch}})
+      if (error) throw error
+      return data as {sent:number;failed:number}
+    })
+  } finally { await refreshBackend() }
 }
 export async function saveLiveDraft(draft:Draft, expectedRevision:number) {
   if (!supabase || liveProject() !== draft.projectId) return false

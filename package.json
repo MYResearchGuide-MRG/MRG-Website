@@ -10,6 +10,7 @@
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",
+    "preview:local": "node scripts/local-preview.mjs --build",
     "build:legacy": "bash scripts/build-legacy.sh"
   },
   "dependencies": {

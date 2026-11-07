@@ -16,6 +16,8 @@ import { MemberAvatar, ProjectTeam } from "./ProjectTeam"
 import { ProjectMaterials } from "./ProjectMaterials"
 import { materialSpecs, materialError, validAdditionalMaterials } from "./materials"
 import { overviewFields, overviewError } from "./overview"
+import { SubmissionChecklist } from "./SubmissionChecklist"
+import { submissionFingerprint, submissionReviewed, type ChecklistSection } from "./submission-checklist"
 
 const tabs = ["overview", "materials", "team"] as const
 
@@ -73,6 +75,7 @@ export function ProjectDetail({
   editable,
   owner,
   revision,
+  deadline,
 }: {
   board: Board
   savedDraft?: Draft
@@ -81,11 +84,13 @@ export function ProjectDetail({
   editable: boolean
   owner: boolean
   revision: number
+  deadline: { closed: boolean; label: string }
 }) {
   const [tab, setTab] = useState<(typeof tabs)[number]>("overview")
   const [requestedEditing, setEditing] = useState(false)
   const [editRevision, setEditRevision] = useState(revision)
-  const editing = requestedEditing && editable
+  // Keep unsaved text visible for copying if the deadline passes mid-edit.
+  const editing = requestedEditing && owner
   const [draft, setDraft] = useState<Draft>(
     () =>
       savedDraft ?? {
@@ -150,12 +155,12 @@ export function ProjectDetail({
     key: K,
     value: Draft[K]
   ) {
-    if (savePending.current) return
+    if (savePending.current || !editable) return
     setDraft((current) => ({ ...current, [key]: value }))
     setStatus("")
   }
   function updateMember(id: string, changes: Partial<Omit<TeamMemberProfile, "id">>) {
-    if (savePending.current) return
+    if (savePending.current || !editable) return
     setDraft((current) => ({
       ...current,
       teamMembers: (current.teamMembers ?? teamProfiles(board)).map((member) =>
@@ -227,6 +232,8 @@ export function ProjectDetail({
       paper: draft.paper.trim(),
       savedAt: new Date().toISOString(),
     }
+    // Trimming input on save must not invalidate a review made just before it.
+    next.reviewedFingerprint = submissionReviewed(draft) ? submissionFingerprint(next) : ""
     savePending.current = true
     setSaving(true)
     try {
@@ -240,6 +247,20 @@ export function ProjectDetail({
       savePending.current = false
       setSaving(false)
     }
+  }
+
+  function openChecklistSection(section: ChecklistSection) {
+    if (editable && !editing) {
+      setDraft(savedDraft ?? newDraft(board))
+      setEditRevision(revision)
+      setEditing(true)
+      setStatus("")
+    }
+    if (section !== "heading") setTab(section)
+    window.requestAnimationFrame(() => {
+      if (section === "heading") document.getElementById("pb-project-heading")?.scrollIntoView({block:"start"})
+      else { sections.current?.scrollIntoView({block:"start"}); document.getElementById(`pb-tab-${section}`)?.focus({preventScroll:true}) }
+    })
   }
 
   return (
@@ -259,6 +280,7 @@ export function ProjectDetail({
               {uploading
                 ? "Preparing image…"
                 : staleTeam ? "The project or team has changed. Copy any unsaved work, then cancel and edit again to load the latest version."
+                : deadline.closed ? `The submission deadline has passed. Editing is closed.${dirty ? " Copy any unsaved text before leaving." : ""}`
                 : status || (dirty ? "Unsaved changes" : editable ? board.code : "Editing is closed by the committee.")}
             </span>
           </div>
@@ -277,7 +299,7 @@ export function ProjectDetail({
                 >
                   Cancel
                 </button>
-                <button className="pb-button pb-primary" disabled={uploading || saving || staleTeam} onClick={save}>
+                <button className="pb-button pb-primary" disabled={!editable || uploading || saving || staleTeam} onClick={save}>
                   {saving ? "Saving…" : "Save changes"}
                 </button>
               </>
@@ -301,7 +323,8 @@ export function ProjectDetail({
           </div>
         </div>
       )}
-      <header className="pb-detail-heading">
+      {owner && <SubmissionChecklist board={board} draft={content ?? newDraft(board)} editing={editing} editable={editable} deadline={deadline} onOpen={openChecklistSection} onReview={reviewed => update("reviewedFingerprint", reviewed ? submissionFingerprint(draft) : "")} />}
+      <header className="pb-detail-heading" id="pb-project-heading" style={{scrollMarginTop:100}}>
         <div className="pb-detail-intro">
           <div className="pb-tag-row">
             <span className="pb-code">{board.code}</span>
@@ -316,6 +339,7 @@ export function ProjectDetail({
             <label className="pb-field pb-title-field">
               Project title
               <textarea
+                aria-label="Project title"
                 rows={3}
                 value={draft.title}
                 maxLength={240}
@@ -372,7 +396,7 @@ export function ProjectDetail({
                     aria-describedby={`${imageInput}-help`}
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
-                    disabled={uploading}
+                    disabled={uploading || !editable}
                     onChange={async (event) => {
                       const file = event.target.files?.[0]
                       event.target.value = ""
@@ -395,7 +419,7 @@ export function ProjectDetail({
                 {draft.coverImage && (
                   <button
                     className="pb-text-button"
-                    disabled={uploading}
+                    disabled={uploading || !editable}
                     onClick={() => update("coverImage", "")}
                   >
                     Remove image
@@ -544,7 +568,7 @@ export function ProjectDetail({
                   <ProjectTeam
                     members={members}
                     editing={editing}
-                    uploading={uploading}
+                    uploading={uploading || !editable}
                     onChange={updateMember}
                     onPhoto={uploadMemberPhoto}
                   />

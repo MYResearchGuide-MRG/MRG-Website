@@ -3,6 +3,8 @@ import { isLocalPreview } from "./local-preview"
 import { useBackend, getBackend, useLiveBackend, setProjectControl } from "./backend"
 import { getProjectBoards } from "./project-registry"
 import { readVisibility } from "./library-visibility-model"
+import { submissionClosed } from "../projectboard/submission-deadline"
+import { deadlineForYear } from "../projectboard/use-submission-deadline"
 
 // Separate from publication: hidden projects can be editable, published ones locked.
 const key = "myssp-project-editing-v1"
@@ -26,6 +28,8 @@ export function useProjectEditing() {
   return useLiveBackend ? remote.editing : local
 }
 export function isProjectEditable(id: string) {
+  const board = getProjectBoards().find(board => board.id === id)
+  if (!board || submissionClosed(deadlineForYear(board.year))) return false
   if (useLiveBackend) return getBackend().editing[id] === true
   return isLocalPreview && permissions[id] === true
 }

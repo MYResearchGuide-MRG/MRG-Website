@@ -9,6 +9,7 @@ import {
 import { authenticate, isLocalPreview } from "../admin/demo-access"
 import { AdminSignIn } from "../admin/AdminSignIn"
 import { useLiveBackend } from "../admin/backend"
+import { mentorSignIn } from "../admin/mentor-access"
 import "../admin/admin.css"
 import "./projectboard.css"
 import "../admin/auth.css"
@@ -25,14 +26,14 @@ export default function AccessDialog({
   const [email, setEmail] = useState("")
   const [code, setCode] = useState("")
   const [error, setError] = useState("")
-  const [admin, setAdmin] = useState(false)
+  const [mode, setMode] = useState<"participant" | "mentor" | "admin">("participant")
   const [busy, setBusy] = useState(false)
   const titleRef = useRef<HTMLHeadingElement>(null)
   const returnFocus = useRef<HTMLElement | null>(null)
   async function submit(event: FormEvent) {
     event.preventDefault()
     setBusy(true)
-    const accepted = await authenticate(email, code).catch(() => false)
+    const accepted = await (mode === "mentor" ? mentorSignIn(email, code) : authenticate(email, code)).catch(() => false)
     setBusy(false)
     if (!accepted) {
       setError(
@@ -40,7 +41,8 @@ export default function AccessDialog({
       )
       return
     }
-    onEnter()
+    if (mode === "mentor") window.location.hash = "#/mentor"
+    else onEnter()
     onClose()
   }
   return (
@@ -67,7 +69,7 @@ export default function AccessDialog({
           setEmail("")
           setCode("")
           setError("")
-          setAdmin(false)
+          setMode("participant")
         }}
       >
         <div className="pb-auth-body">
@@ -80,29 +82,30 @@ export default function AccessDialog({
               className="pb-auth-logo"
             />
             <DialogTitle ref={titleRef} tabIndex={-1}>
-              {admin ? "Committee sign in" : "Sign in to MYSSP"}
+              {mode === "admin" ? "Committee sign in" : mode === "mentor" ? "Mentor sign in" : "Sign in to MYSSP"}
             </DialogTitle>
             <DialogDescription className="pb-auth-description">
-              {admin
-                ? "Use your committee account."
-                : "Use the email and access code from your invitation."}
+              {mode === "admin" ? "Use your committee account." : "Use the email and access code from your invitation."}
             </DialogDescription>
           </div>
           <div className="pb-auth-tabs" role="group" aria-label="Sign-in type">
-            <button aria-pressed={!admin} onClick={() => setAdmin(false)}>
+            <button aria-pressed={mode === "participant"} onClick={() => { setMode("participant"); setError("") }}>
               Participant
             </button>
+            <button aria-pressed={mode === "mentor"} onClick={() => { setMode("mentor"); setError("") }}>
+              Mentor
+            </button>
             <button
-              aria-pressed={admin}
+              aria-pressed={mode === "admin"}
               onClick={() => {
-                setAdmin(true)
+                setMode("admin")
                 setError("")
               }}
             >
               Admin sign in
             </button>
           </div>
-          {admin ? (
+          {mode === "admin" ? (
             <AdminSignIn
               onSuccess={() => {
                 window.location.hash = "#/admin"

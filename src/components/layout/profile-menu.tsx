@@ -2,13 +2,15 @@ import * as React from "react"
 import { FolderOpen, LayoutDashboard, LogOut, Settings, UserRound } from "lucide-react"
 import { useBackend, useLiveBackend } from "@/components/admin/backend"
 import { useDemoAccess } from "@/components/admin/demo-access"
+import { useMentorAccess } from "@/components/admin/mentor-access"
 
 export function ProfileMenu({ isAdmin, onSignOut }: { isAdmin: boolean; onSignOut: () => void }) {
   const access = useDemoAccess()
   const backend = useBackend()
+  const { current: mentor } = useMentorAccess()
   const person = isAdmin ? undefined : access.people.find(p => useLiveBackend ? p.userId === backend.userId : p.id === access.session?.participantId)
-  const name = isAdmin ? backend.accountName || "Committee account" : person?.displayProfile?.name || person?.name || "My profile"
-  const email = isAdmin ? backend.accountEmail : person?.email || ""
+  const name = isAdmin ? backend.accountName || "Committee account" : mentor?.name || person?.displayProfile?.name || person?.name || "My profile"
+  const email = isAdmin ? backend.accountEmail : mentor?.email || person?.email || ""
   const photo = isAdmin ? backend.accountPhoto : person?.displayProfile?.photo || ""
   const [open, setOpen] = React.useState(false)
   const root = React.useRef<HTMLDivElement>(null)
@@ -28,13 +30,13 @@ export function ProfileMenu({ isAdmin, onSignOut }: { isAdmin: boolean; onSignOu
       {photo ? <img src={photo} alt="" className="size-full object-cover" /> : name.split(/\s+/).slice(0, 2).map(part => part[0]).join("").toUpperCase() || <UserRound size={17} />}
     </button>
     {open && <div role="menu" aria-label="Account" className="animate-in fade-in slide-in-from-top-1 fixed top-[72px] right-3 left-3 z-50 rounded-xl border border-white/15 bg-[#151515] p-2 shadow-[0_20px_55px_rgb(0_0_0/0.55)] duration-150 sm:absolute sm:top-[calc(100%+12px)] sm:right-0 sm:left-auto sm:w-[320px]">
-      <a role="menuitem" href="#/profile" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-lg px-3 py-3 hover:bg-white/[0.06]">
+      <a role="menuitem" href={mentor ? "#/mentor" : "#/profile"} onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-lg px-3 py-3 hover:bg-white/[0.06]">
         <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-[#272727] text-xs">{photo ? <img src={photo} alt="" className="size-full object-cover" /> : name.slice(0, 1).toUpperCase()}</span>
         <span className="min-w-0"><span className="block truncate text-sm font-medium text-white">{name}</span><span className="block truncate text-xs text-zinc-400">{email}</span></span>
       </a>
       <div className="my-1 border-t border-white/10" />
-      <a role="menuitem" href="#/profile/projects" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-zinc-200 hover:bg-white/[0.06]"><FolderOpen size={17} aria-hidden />{isAdmin ? "All projects" : "My project"}</a>
-      <a role="menuitem" href="#/profile/settings" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-zinc-200 hover:bg-white/[0.06]"><Settings size={17} aria-hidden />Account settings</a>
+      <a role="menuitem" href={mentor ? "#/mentor" : "#/profile/projects"} onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-zinc-200 hover:bg-white/[0.06]"><FolderOpen size={17} aria-hidden />{isAdmin ? "All projects" : mentor ? "Mentor projects" : "My project"}</a>
+      {!mentor && <a role="menuitem" href="#/profile/settings" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-zinc-200 hover:bg-white/[0.06]"><Settings size={17} aria-hidden />Account settings</a>}
       {isAdmin && <a role="menuitem" href="#/admin" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-zinc-200 hover:bg-white/[0.06]"><LayoutDashboard size={17} aria-hidden />Admin panel</a>}
       <button role="menuitem" type="button" onClick={() => { setOpen(false); onSignOut() }} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-zinc-200 hover:bg-white/[0.06]"><LogOut size={17} aria-hidden />Sign out</button>
     </div>}

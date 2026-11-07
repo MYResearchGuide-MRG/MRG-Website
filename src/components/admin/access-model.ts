@@ -34,7 +34,7 @@ export const LOCKOUT_DURATION = 15 * 60 * 1000
 export const participantCsvTemplate = 'name,email,project_code\r\nAlex Tan,alex@example.com,A-1\r\nSam Lee,sam@example.com,A-2\r\n'
 
 // Handles spreadsheet TSV and RFC-style quoted CSV, including embedded newlines.
-function importRecords(text: string) {
+export function importRecords(text: string) {
   text = text.replace(/^\uFEFF/, "")
   const firstDelimitedLine = text.split(/\r?\n/).find(line => line.includes("\t") || line.includes(",")) || ""
   const separator = firstDelimitedLine.includes("\t") ? "\t" : ","

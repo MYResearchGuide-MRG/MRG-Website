@@ -18,6 +18,7 @@ import { Resources } from "@/components/sections/resources"
 import { DemoDayPage } from "@/components/sections/demo-day-page"
 import { useRoute } from "@/lib/results"
 import { useDemoDayYear } from "@/lib/demo-day"
+import { signOutMentor, useMentorAccess } from "@/components/admin/mentor-access"
 import { setPreviewCommitteeSession, useCommitteeAccess } from "@/components/admin/committee-session"
 import {
   currentProject,
@@ -34,12 +35,14 @@ const AccessDialog = React.lazy(
   () => import("@/components/projectboard/AccessDialog")
 )
 const ProfilePage = React.lazy(() => import("@/components/profile/ProfilePage"))
+const MentorDashboard = React.lazy(() => import("@/components/mentor/MentorDashboard"))
 
 function App() {
   const route = useRoute()
   const demoDayYear = useDemoDayYear()
   // The same session drives navigation and project permissions on every route.
   const access = useDemoAccess()
+  const { current: mentor } = useMentorAccess()
   const isAdmin = useCommitteeAccess()
   const [, refreshSession] = React.useReducer((n) => n + 1, 0)
   React.useEffect(() => {
@@ -47,7 +50,7 @@ function App() {
     return () => window.clearInterval(id)
   }, [])
   const assignedProjectId = currentProject()
-  const signedIn = Boolean(access.session) || isAdmin
+  const signedIn = Boolean(access.session) || isAdmin || Boolean(mentor)
   const [editState, setEditState] = React.useState({ dirty: false, busy: false })
   const [signOutOpen, setSignOutOpen] = React.useState(false)
   const [signingOut, setSigningOut] = React.useState(false)
@@ -64,6 +67,7 @@ function App() {
     setSignOutError("")
     try {
       await signOutParticipant()
+      signOutMentor()
       setPreviewCommitteeSession(false)
       setSignOutOpen(false)
       // Stay on the current page. Hidden projects become unavailable without
@@ -84,6 +88,8 @@ function App() {
         ? `Committee | ${defaultTitle.current}`
         : route === "profile"
           ? `My profile | ${defaultTitle.current}`
+        : route === "mentor"
+          ? `Mentor projects | ${defaultTitle.current}`
         : route === "projects"
           ? `Projects | ${defaultTitle.current}`
           : route === "projectboard"
@@ -119,7 +125,11 @@ function App() {
         setSignOutOpen(true)
       }} />
 
-      {route === "profile" ? (
+      {route === "mentor" ? (
+        <React.Suspense fallback={<main className="container min-h-[70svh] pt-32" role="status">Loading mentor projects…</main>}>
+          <MentorDashboard onSignIn={signIn} />
+        </React.Suspense>
+      ) : route === "profile" ? (
         <React.Suspense fallback={<main className="container min-h-[70svh] pt-32" role="status">Loading profile…</main>}>
           <ProfilePage isAdmin={isAdmin} onSignIn={signIn} onSignOut={() => setSignOutOpen(true)} />
         </React.Suspense>
@@ -135,6 +145,7 @@ function App() {
             key={`${access.session?.participantId || "public"}-${assignedProjectId}`}
             assignedProjectId={assignedProjectId}
             isAdmin={isAdmin}
+            mentorProjectIds={mentor?.projectIds || []}
             onSignIn={signIn}
             onEditStateChange={setEditState}
           />
@@ -192,7 +203,7 @@ function App() {
             open={accessOpen}
             onClose={() => setAccessOpen(false)}
             onEnter={() => {
-              window.location.hash = "#/projectboard/workspace"
+              window.location.hash = "#/project-archive/workspace"
             }}
           />
         </React.Suspense>

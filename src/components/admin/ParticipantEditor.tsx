@@ -257,7 +257,7 @@ export function ParticipantEditor({
         {person && (
           <div className="ad-editor-secondary">
             <a
-              href={`#/projectboard/project/${person.projectId}`}
+              href={`#/project-archive/project/${person.projectId}`}
               onClick={onClose}
             >
               Open project <ArrowUpRight size={13} />

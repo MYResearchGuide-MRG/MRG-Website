@@ -7,6 +7,7 @@ import { useLibraryVisibility } from "@/components/admin/library-visibility"
 import { useProjectBoards } from "@/components/admin/project-registry"
 import { prepareMemberPhoto } from "@/components/projectboard/project-image"
 import { boardUrl } from "@/components/projectboard/paths"
+import { useSubmissionDeadline } from "@/components/projectboard/use-submission-deadline"
 
 type Section = "projects" | "settings"
 function currentSection(): Section {
@@ -16,10 +17,11 @@ function initials(name: string) {
   return name.trim().split(/\s+/).slice(0, 2).map(part => part[0]).join("").toUpperCase() || "?"
 }
 
-function ProfileSettingsForm({ displayName, email, photo }: {
+function ProfileSettingsForm({ displayName, email, photo, locked }: {
   displayName: string
   email: string
   photo: string
+  locked: boolean
 }) {
   const [name, setName] = React.useState(displayName)
   const [draftPhoto, setDraftPhoto] = React.useState(photo)
@@ -37,7 +39,7 @@ function ProfileSettingsForm({ displayName, email, photo }: {
 
   async function saveProfile(event: React.FormEvent) {
     event.preventDefault()
-    if (saving) return
+    if (saving || locked) return
     setSaving(true); setError(""); setSaved(false)
     try { await saveOwnProfile(name, draftPhoto); setSaved(true) }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Could not save your profile.") }
@@ -45,6 +47,8 @@ function ProfileSettingsForm({ displayName, email, photo }: {
   }
 
   return <form onSubmit={saveProfile} className="mt-8 space-y-6">
+    {locked && <p role="status" className="rounded-md border border-white/15 p-4 text-sm text-zinc-400">The submission deadline has passed. Your name and photo are part of your project submission and are now locked. Contact the committee for corrections.</p>}
+    <fieldset disabled={locked} className="space-y-6 disabled:opacity-60">
     <div className="flex items-center gap-5">
       <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-zinc-900 text-xl">{draftPhoto ? <img src={draftPhoto} alt="Profile photo preview" className="size-full object-cover" /> : initials(name)}</div>
       <div className="flex flex-wrap gap-3"><input ref={fileRef} className="sr-only" type="file" accept="image/jpeg,image/png,image/webp" onChange={event => void choosePhoto(event.target.files?.[0])} aria-label="Upload profile photo" />
@@ -57,6 +61,7 @@ function ProfileSettingsForm({ displayName, email, photo }: {
     {error && <p role="alert" className="text-sm text-red-300">{error}</p>}
     {saved && <p role="status" className="flex items-center gap-2 text-sm text-zinc-300"><Check size={15} aria-hidden /> Profile saved.</p>}
     <button type="submit" disabled={saving || (name.trim() === displayName && draftPhoto === photo)} className="inline-flex items-center gap-2 rounded-md bg-white px-5 py-3 text-sm font-medium text-black transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"><Pencil size={14} aria-hidden />{saving ? "Saving…" : "Save changes"}</button>
+    </fieldset>
   </form>
 }
 
@@ -83,6 +88,7 @@ export default function ProfilePage({ isAdmin, onSignIn, onSignOut }: {
   const email = isAdmin ? backend.accountEmail : person?.email || ""
   const photo = isAdmin ? backend.accountPhoto : person?.displayProfile?.photo || ""
   const assignedBoard = boards.find(b => b.id === person?.projectId)
+  const deadline = useSubmissionDeadline(assignedBoard?.year ?? 0)
 
   if (!signedIn) return <main className="mx-auto flex min-h-[70svh] max-w-xl flex-col items-center justify-center px-6 pt-24 text-center">
     <UserRound className="mb-5 text-zinc-500" size={28} aria-hidden />
@@ -133,7 +139,7 @@ export default function ProfilePage({ isAdmin, onSignIn, onSignOut }: {
     </section> : <section className="max-w-xl pt-10">
       <h2 className="text-2xl font-medium tracking-tight">Account settings</h2>
       <p className="mt-2 text-sm text-zinc-400">Update the name and photo shown on your profile{isAdmin ? "." : " and project team."}</p>
-      <ProfileSettingsForm key={`${backend.userId || person?.id}:${displayName}:${photo.slice(-32)}`} displayName={displayName} email={email} photo={photo} />
+      <ProfileSettingsForm key={`${backend.userId || person?.id}:${displayName}:${photo.slice(-32)}`} displayName={displayName} email={email} photo={photo} locked={!isAdmin && deadline.closed} />
       {!isAdmin && assignedBoard && <a href={boardUrl(assignedBoard.id)} className="mt-10 inline-flex items-center gap-2 border-t border-white/10 pt-6 text-sm text-zinc-400 transition-colors hover:text-white"><FolderOpen size={16} aria-hidden /> Go to your project <ArrowUpRight size={14} aria-hidden /></a>}
     </section>}
   </main>

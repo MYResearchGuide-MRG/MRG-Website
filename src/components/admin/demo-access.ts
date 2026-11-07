@@ -3,6 +3,8 @@ import { getProjectBoards, saveProjectSplit } from "./project-registry"
 import type { ProjectSplit } from "./project-registry-model"
 import { isLocalPreview } from "./local-preview"
 import { useBackend, getBackend, useLiveBackend, importLiveParticipants, changeLiveAssignment, participantSignIn, liveProject, signOutLive, splitLiveProject, saveOwnProfileLive } from "./backend"
+import { deadlineForYear } from "../projectboard/use-submission-deadline"
+import { submissionClosed } from "../projectboard/submission-deadline"
 import { applyProjectSplits } from "./project-registry-model"
 import { saveLiveParticipant } from "./backend"
 import { validateParticipantDetails, type ParticipantDetails } from "./participant-tools"
@@ -174,6 +176,8 @@ export function currentProject(): string | null {
     : null
 }
 export async function saveOwnProfile(name: string, photo: string) {
+  const project = getProjectBoards().find(board => board.id === currentProject())
+  if (project && submissionClosed(deadlineForYear(project.year))) throw new Error("The submission deadline has passed. Contact the committee for corrections.")
   const trimmed = name.trim()
   if (!trimmed || trimmed.length > 100) throw new Error("Enter a name of up to 100 characters.")
   if (photo.length > 350_000 || (photo && !/^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(photo)))

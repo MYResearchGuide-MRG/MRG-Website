@@ -1,6 +1,7 @@
 import * as React from "react"
 import { useReducedMotion } from "motion/react"
 import { parseDemoDayRoute } from "./demo-day"
+import { canonicalArchiveHash, isArchiveHash, libraryHash } from "@/components/projectboard/paths"
 
 /**
  * Selection announcement moment, MYT (UTC+8): the register goes public at
@@ -57,7 +58,7 @@ export const resourcesRouteHash = "#/resources"
 export const awardsRouteHash = "#/awards"
 export const judgesRouteHash = "#/judges"
 export const homeRouteHash = "#/"
-export const projectboardRouteHash = "#/projectboard"
+export const projectboardRouteHash = libraryHash
 export const projectsRouteHash = "#/projects/2026"
 
 /** Catalogue link pre-filtered to one research area: `#/projects/2026?track=Biology`. */
@@ -81,10 +82,7 @@ function isProjectsRoute(hash: string): boolean {
 }
 
 function isProjectboardRoute(hash: string): boolean {
-  return (
-    hash === projectboardRouteHash ||
-    hash.startsWith(`${projectboardRouteHash}/`)
-  )
+  return isArchiveHash(hash)
 }
 
 /**
@@ -116,10 +114,13 @@ export type Route =
   | "home"
   | "admin"
   | "profile"
+  | "mentor"
 
 export function useRoute(): Route {
   const [route, setRoute] = React.useState<Route>(() =>
-    window.location.hash.startsWith("#/profile")
+    window.location.hash === "#/mentor"
+      ? "mentor"
+      : window.location.hash.startsWith("#/profile")
       ? "profile"
       : window.location.hash === "#/admin"
       ? "admin"
@@ -137,11 +138,18 @@ export function useRoute(): Route {
 
   React.useEffect(() => {
     const onChange = () => {
-      const hash = window.location.hash
+      const hash = canonicalArchiveHash(window.location.hash)
+      if (hash !== window.location.hash) {
+        window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${hash}`)
+        window.dispatchEvent(new HashChangeEvent("hashchange"))
+        return
+      }
       const scene = sceneFromHash(hash)
       const demoDay = parseDemoDayRoute(hash)
       if (hash === "#/admin") {
         setRoute("admin")
+      } else if (hash === "#/mentor") {
+        setRoute("mentor")
       } else if (/^#\/profile(?:\/(?:projects|settings))?$/.test(hash)) {
         setRoute("profile")
       } else if (isProjectsRoute(hash)) {
@@ -169,6 +177,7 @@ export function useRoute(): Route {
       window.scrollTo(0, 0)
     }
     window.addEventListener("hashchange", onChange)
+    if (canonicalArchiveHash(window.location.hash) !== window.location.hash) onChange()
     return () => window.removeEventListener("hashchange", onChange)
   }, [])
 
