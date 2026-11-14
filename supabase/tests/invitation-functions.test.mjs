@@ -62,7 +62,7 @@ function fixture(kind, { signedIn = true, admin = true, deliveryFails = false, l
   }
 }
 
-for (const kind of ['mentors', 'participants']) {
+for (const kind of ['mentors', 'judges', 'participants']) {
   test(`${kind}: only verified committee users may invoke invitations`, async () => {
     for (const [options, status] of [[{ signedIn: false }, 401], [{ admin: false }, 403]]) {
       const f = fixture(kind, options)
@@ -86,9 +86,9 @@ for (const kind of ['mentors', 'participants']) {
 }
 
 // An email edit, pause or delete invalidates the invitation's row revision.
-test('mentors: stale invitation cannot attach a login, rotate a code or report delivery', async () => {
+for (const kind of ['mentors', 'judges']) test(`${kind}: stale invitation cannot attach a login, rotate a code or report delivery`, async () => {
   for (const uninvited of [false,true]) {
-    const f = fixture('mentors', {lifecycleChange:true,uninvited})
+    const f = fixture(kind, {lifecycleChange:true,uninvited})
     assert.deepEqual(await (await f.call()).json(), {sent:0,failed:1})
     assert.equal(f.sends(),0)
     assert.equal(f.updates.length,0)
