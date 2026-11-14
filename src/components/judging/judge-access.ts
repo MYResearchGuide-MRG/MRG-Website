@@ -1,8 +1,8 @@
 import { useSyncExternalStore } from "react"
 import { supabase } from "@/lib/supabase"
 import { getProjectBoards } from "../admin/project-registry"
-import { refreshBackend, useLiveBackend } from "../admin/backend"
-import { isLocalPreview } from "../admin/local-preview"
+import { refreshBackend } from "../admin/backend"
+import { judgingPreviewMode, onPreviewChange, previewSessionKey, readPreview, writePreview } from "./judging-preview"
 import { scoreKeys, type FeedbackAnswers, type ScoreKey } from "./form"
 
 export type Judge = {
@@ -41,34 +41,26 @@ export function reviewStatus(review: JudgeReview | undefined): ReviewStatus {
 }
 
 // Device-only preview -----------------------------------------------------------
-// Lets the judging pages be exercised on localhost without the database. One
-// fixed judge account; the lineup is the latest cohort in project-code order.
-// Production never reaches this branch (isLocalPreview is false there).
-const previewMode = isLocalPreview && !useLiveBackend
-const previewJudge: Judge & { code: string } = {
-  id: "preview-judge", cohortYear: 0, name: "Preview Judge",
-  email: "judge@preview.local", affiliation: "Local preview", code: "JUDGE1",
-}
-const previewReviewsKey = "myssp-judge-preview-reviews-v1"
-const previewSessionKey = "myssp-judge-preview-session-v1"
-export const previewJudgeHint = previewMode ? `${previewJudge.email} / ${previewJudge.code}` : ""
+// Mirrors the database rules using the shared preview store (judging-preview.ts),
+// so judges, lineups and switches set in the admin preview apply here.
+const previewMode = judgingPreviewMode
+export const previewJudgeHint = previewMode ? "judge@preview.local / JUDGE1, or a judge you add in the admin preview" : ""
 
-function previewLineup() {
-  const boards = getProjectBoards()
-  const year = Math.max(...boards.map(board => board.year))
-  return boards.filter(board => board.year === year)
-    .sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }))
-    .map(board => board.id)
+function previewSessionJudge() {
+  const id = sessionStorage.getItem(previewSessionKey)
+  return readPreview().judges.find(judge => judge.id === id && !judge.revoked && !judge.deletedAt) || null
 }
 function loadPreview() {
   if (!previewMode) return
-  let reviews: Record<string, JudgeReview> = {}
-  try { reviews = JSON.parse(localStorage.getItem(previewReviewsKey) || "{}") } catch { /* start empty */ }
-  const signedIn = sessionStorage.getItem(previewSessionKey) === previewJudge.id
+  const data = readPreview()
+  const found = previewSessionJudge()
+  const active = new Set(getProjectBoards().map(board => board.id))
   publish({
-    ready: true, error: "", judgingOpen: true, reviews,
-    judge: signedIn ? previewJudge : null,
-    lineup: signedIn ? previewLineup() : [],
+    ready: true, error: "",
+    judge: found && { id: found.id, cohortYear: found.cohortYear, name: found.name, email: found.email, affiliation: found.affiliation },
+    lineup: found ? (data.lineups[found.cohortYear] || []).filter(id => active.has(id)) : [],
+    reviews: found ? data.reviews[found.id] || {} : {},
+    judgingOpen: Boolean(found && data.switches[found.cohortYear]?.judgingOpen),
   })
 }
 
@@ -130,7 +122,10 @@ export async function saveReview(projectId: string, answers: FeedbackAnswers, su
   const now = new Date().toISOString()
   let submittedAt: string | null
   if (previewMode) {
+    loadPreview() // pick up committee changes made in another tab
     if (!state.judge) throw new Error("Sign in as a judge to save.")
+    if (!state.lineup.includes(projectId)) throw new Error("This project is no longer in your lineup.")
+    if (!state.judgingOpen) throw new Error("Judging is closed. Your last saved answers are kept.")
     submittedAt = previous?.submittedAt || (submit ? now : null)
   } else {
     if (!supabase) throw new Error("Sign-in is not configured yet.")
@@ -147,7 +142,10 @@ export async function saveReview(projectId: string, answers: FeedbackAnswers, su
   }
   const review: JudgeReview = { ...answers, projectId, submittedAt, updatedAt: now }
   const reviews = { ...state.reviews, [projectId]: review }
-  if (previewMode) localStorage.setItem(previewReviewsKey, JSON.stringify(reviews))
+  if (previewMode && state.judge) {
+    const data = readPreview()
+    writePreview({ ...data, reviews: { ...data.reviews, [state.judge.id]: reviews } })
+  }
   epoch++ // a refresh already in flight must not overwrite this confirmed save
   publish({ ...state, reviews })
   return review
@@ -155,9 +153,10 @@ export async function saveReview(projectId: string, answers: FeedbackAnswers, su
 
 export async function judgeSignIn(email: string, code: string) {
   if (previewMode) {
-    const ok = email.trim().toLowerCase() === previewJudge.email && code.trim().toUpperCase() === previewJudge.code
-    if (ok) { sessionStorage.setItem(previewSessionKey, previewJudge.id); loadPreview() }
-    return ok
+    const found = readPreview().judges.find(judge => judge.email === email.trim().toLowerCase()
+      && judge.code === code.trim().toUpperCase() && !judge.revoked && !judge.deletedAt)
+    if (found) { sessionStorage.setItem(previewSessionKey, found.id); loadPreview() }
+    return Boolean(found)
   }
   if (!supabase) return false
   const { data, error } = await supabase.auth.signInWithPassword({
@@ -181,7 +180,7 @@ export function signOutJudge() {
 }
 
 if (typeof window !== "undefined") {
-  if (previewMode) loadPreview()
+  if (previewMode) { loadPreview(); onPreviewChange(loadPreview) }
   else if (supabase) {
     supabase.auth.onAuthStateChange(event => {
       if (event === "SIGNED_OUT") { epoch++; publish({ ...empty, ready: true }) }

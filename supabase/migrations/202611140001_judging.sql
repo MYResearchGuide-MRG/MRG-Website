@@ -319,6 +319,18 @@ end $$;
 revoke all on function public.myssp_save_judge_feedback(text,jsonb,boolean) from public;
 grant execute on function public.myssp_save_judge_feedback(text,jsonb,boolean) to authenticated;
 
+-- Committee only: removes one review entirely, e.g. a test submission. Reviews
+-- otherwise stay permanently once submitted.
+create function public.myssp_discard_judge_feedback(target_judge uuid, project text) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.myssp_is_admin() then raise exception 'Admin required' using errcode = '42501'; end if;
+  delete from public.myssp_judge_feedback f where f.judge_id = target_judge and f.project_id = project;
+  if not found then raise exception 'Review not found'; end if;
+end $$;
+revoke all on function public.myssp_discard_judge_feedback(uuid,text) from public;
+grant execute on function public.myssp_discard_judge_feedback(uuid,text) to authenticated;
+
 -- The only way a team sees feedback: after release, every submitted review
 -- (whatever later happens to the judge's account), as per-criterion averages
 -- plus remarks in random order.

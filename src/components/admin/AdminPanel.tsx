@@ -10,6 +10,7 @@ import {
   Eye,
   EyeOff,
   FolderOpen,
+  Gavel,
   GitFork,
   LockKeyhole,
   Mail,
@@ -66,10 +67,11 @@ import { ParticipantImport } from "./ParticipantImport"
 import { AdminSelect } from "./AdminSelect"
 import { MentorManagement } from "./MentorManagement"
 import { useMentorAccess } from "./mentor-access"
+import { JudgingAdmin } from "../judging/JudgingAdmin"
 import "./workspace.css"
 import { useSubmissionDeadline } from "../projectboard/use-submission-deadline"
 
-type View = "participants" | "mentors" | "projects" | "trash" | "setup"
+type View = "participants" | "mentors" | "judging" | "projects" | "trash" | "setup"
 export default function AdminPanel() {
   const allBoards = useProjectBoards()
   const cohorts = useCohorts()
@@ -278,6 +280,7 @@ export default function AdminPanel() {
               [
                 { id: "participants", label: "Participants", Icon: Users },
                 { id: "mentors", label: "Mentors", Icon: UsersRound },
+                { id: "judging", label: "Judging", Icon: Gavel },
                 { id: "projects", label: "Projects", Icon: FolderOpen },
                 ...(useLiveBackend
                   ? [{ id: "trash", label: "Trash", Icon: Trash2 } as const]
@@ -318,6 +321,8 @@ export default function AdminPanel() {
                   ? "Participants"
                   : view === "mentors"
                     ? "Mentors"
+                  : view === "judging"
+                    ? "Judging"
                   : view === "projects"
                     ? "Projects"
                     : view === "trash"
@@ -329,6 +334,8 @@ export default function AdminPanel() {
                   ? `Manage accounts, assignments and invitations for ${year}.`
                   : view === "mentors"
                     ? `Assign mentors to projects and manage their access for ${year}.`
+                  : view === "judging"
+                    ? `Judges, Demo Day lineup and feedback for ${year}.`
                   : view === "projects"
                     ? "Add projects, assign teams and control what goes live."
                     : view === "trash"
@@ -418,6 +425,8 @@ export default function AdminPanel() {
             />
           ) : view === "mentors" ? (
             <MentorManagement boards={allBoards} year={year} />
+          ) : view === "judging" ? (
+            <JudgingAdmin boards={boards} year={year} />
           ) : view === "projects" ? (
             <section aria-label="Project visibility">
               {submissionDeadline.label && <p className="ad-notice">{submissionDeadline.closed ? "Student editing closed" : "Student editing closes"} · {submissionDeadline.label}. The deadline also locks student names and photos. Committee corrections remain available.</p>}

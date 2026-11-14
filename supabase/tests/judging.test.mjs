@@ -193,4 +193,12 @@ test("teams see only anonymised averages and remarks, only after release", async
   assert.deepEqual([...afterDelete.remarks].sort(), ["Remark A", "Remark B"])
   await db.exec("reset role")
   await assert.rejects(() => db.query("delete from myssp_judges where id=$1", [b]), /foreign key/)
+
+  // Only the committee can discard a review, e.g. a test submission.
+  await as("authenticated", student)
+  await assert.rejects(() => db.query("select myssp_discard_judge_feedback($1,'one')", [a]), /Admin required/)
+  await as("authenticated", admin)
+  await db.query("select myssp_discard_judge_feedback($1,'one')", [a])
+  await assert.rejects(() => db.query("select myssp_discard_judge_feedback($1,'one')", [a]), /Review not found/)
+  assert.deepEqual((await feedback(student)).remarks, ["Remark B"])
 })
