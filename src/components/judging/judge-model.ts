@@ -1,5 +1,6 @@
 // Pure judging helpers shared by the committee panel and its tests.
 import { judgingSections, judgeKindLabels, scoreKeys, SCORE_MAX, type JudgeKind, type ScoreKey } from "./form"
+import { importRecords } from "../admin/access-model"
 
 export type CommitteeJudge = {
   id: string
@@ -14,6 +15,35 @@ export type CommitteeJudge = {
   deletedAt: string | null
 }
 export type JudgeInput = Pick<CommitteeJudge, "name" | "email" | "affiliation" | "kind" | "revoked" | "cohortYear">
+export type JudgeImportRow = JudgeInput & { line: number; error: string }
+
+export const judgeCsvTemplate =
+  "name,email,affiliation,judge_type\r\nDr. Example,judge@example.com,Example University,main\r\n"
+
+export function parseJudgeCsv(text: string, cohortYear: number, existing: readonly CommitteeJudge[]): JudgeImportRow[] {
+  const records = importRecords(text)
+  const headers = records[0]?.cells.map(cell => cell.toLowerCase().replace(/[\s_-]+/g, "")) || []
+  const required = ["name", "email", "affiliation", "judgetype"]
+  if (!required.every(key => headers.includes(key))) {
+    return text.trim() ? [{ line: 1, name: "", email: "", affiliation: "", kind: "main", revoked: false, cohortYear, error: "Use the template headers: name,email,affiliation,judge_type." }] : []
+  }
+  const seen = new Set(existing.map(judge => judge.email.toLowerCase()))
+  return records.slice(1).map(record => {
+    const value = (key: string) => record.cells[headers.indexOf(key)]?.trim() || ""
+    const kindValue = value("judgetype").toLowerCase().replace(/[\s_-]+/g, "")
+    const row: JudgeImportRow = {
+      line: record.line, name: value("name"), email: value("email").toLowerCase(),
+      affiliation: value("affiliation"), kind: kindValue === "special" || kindValue === "specialawardjudge" ? "special" : "main",
+      revoked: false, cohortYear, error: "",
+    }
+    if (record.malformed || record.cells.length !== headers.length) row.error = "Check this CSV row and its quotation marks."
+    else if (!value("judgetype") || !["main", "special", "special award judge"].includes(value("judgetype").toLowerCase())) row.error = "Judge type must be main or special."
+    else row.error = judgeInputError(row, existing)
+    if (!row.error && seen.has(row.email)) row.error = "This email appears more than once or is already in the judge list."
+    seen.add(row.email)
+    return row
+  })
+}
 export type JudgingSwitches = { judgingOpen: boolean; feedbackReleased: boolean }
 export const closedSwitches: JudgingSwitches = { judgingOpen: false, feedbackReleased: false }
 

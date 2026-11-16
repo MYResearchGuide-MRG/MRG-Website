@@ -120,6 +120,19 @@ export async function saveJudge(input: JudgeInput, id?: string) {
   await refreshCommitteeJudging()
 }
 
+export async function importJudges(inputs: JudgeInput[]) {
+  if (judgingPreviewMode) {
+    const data = readPreview()
+    writePreview({ ...data, judges: [...data.judges, ...inputs.map(input => ({ ...input, id: crypto.randomUUID(), userId: null, invitedAt: null, deletedAt: null }))] })
+    return
+  }
+  const { error } = await requireAdmin().rpc("myssp_import_judges", {
+    rows: inputs.map(input => ({ name: input.name.trim(), email: input.email.trim().toLowerCase(), affiliation: input.affiliation.trim(), cohort_year: input.cohortYear, kind: input.kind })),
+  })
+  if (error) throw failure(error, "Could not import judges. Check for duplicate emails and judge types.")
+  await refreshCommitteeJudging()
+}
+
 export async function setJudgeDeleted(id: string, deleted: boolean) {
   if (judgingPreviewMode) {
     const data = readPreview()

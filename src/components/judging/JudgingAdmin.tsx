@@ -1,5 +1,5 @@
-import { Fragment, useMemo, useState, type FormEvent } from "react"
-import { ArrowDown, ArrowUp, Check, ChevronDown, ChevronRight, CircleDashed, Download, Gavel, GripVertical, Lock, Mail, PencilLine, Pencil, Plus, RotateCcw, Search, Trash2, X } from "lucide-react"
+import { Fragment, useMemo, useState, type ChangeEvent, type FormEvent } from "react"
+import { ArrowDown, ArrowUp, Check, ChevronDown, ChevronRight, CircleDashed, Download, Gavel, GripVertical, Lock, Mail, PencilLine, Pencil, Plus, RotateCcw, Search, Trash2, Upload, X } from "lucide-react"
 import { Reorder, useDragControls, useReducedMotion } from "motion/react"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import type { Board } from "../projectboard/data"
@@ -7,11 +7,11 @@ import { useLiveBackend } from "../admin/backend"
 import { useCohorts } from "../admin/project-registry"
 import { judgeKindLabels, scoreKeys, type JudgeKind } from "./form"
 import {
-  criterionLabels, feedbackCsv, judgeInputError, MAX_TOTAL, projectResult, rankResults, reviewTotal,
+  criterionLabels, feedbackCsv, judgeCsvTemplate, judgeInputError, MAX_TOTAL, parseJudgeCsv, projectResult, rankResults, reviewTotal,
   type CommitteeJudge, type CommitteeReview, type JudgeInput,
 } from "./judge-model"
 import {
-  discardReview, inviteJudges, previewJudgeCode, saveJudge, setJudgeDeleted, setLineup, setSwitches,
+  discardReview, importJudges, inviteJudges, previewJudgeCode, saveJudge, setJudgeDeleted, setLineup, setSwitches,
   switchesFor, useCommitteeJudging,
 } from "./judging-admin"
 import "../admin/mentors.css"
@@ -133,6 +133,7 @@ function JudgeManagement({ year, reviews, lineupSize, onNotice }: { year: number
   const [query, setQuery] = useState("")
   const [filter, setFilter] = useState<"cohort" | "all" | "deleted">("cohort")
   const [editing, setEditing] = useState<CommitteeJudge | "new" | null>(null)
+  const [importOpen, setImportOpen] = useState(false)
   const [deleting, setDeleting] = useState<CommitteeJudge | null>(null)
   const [selected, setSelected] = useState<string[]>([])
   const [confirmIds, setConfirmIds] = useState<string[]>([])
@@ -170,6 +171,7 @@ function JudgeManagement({ year, reviews, lineupSize, onNotice }: { year: number
       <label className="am-search"><Search size={16} aria-hidden /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search name, email or affiliation" aria-label="Search judges" /></label>
       <select aria-label="Filter judges" value={filter} onChange={event => setFilter(event.target.value as typeof filter)}><option value="cohort">{year} judges</option><option value="all">All cohorts</option><option value="deleted">Deleted judges</option></select>
       <button className="ad-button ad-primary" onClick={() => setEditing("new")}><Plus size={15} aria-hidden /> Add judge</button>
+      <button className="ad-button" onClick={() => setImportOpen(true)}><Upload size={15} aria-hidden /> Import CSV</button>
     </div>
     {selectedHere.length > 0 && <div className="am-selection"><span>{selectedHere.length} selected</span><button className="ad-button" disabled={busy} onClick={() => setConfirmIds(selectedHere.map(judge => judge.id))}><Mail size={15} aria-hidden /> Send access codes</button><button onClick={() => setSelected([])}>Clear</button></div>}
     <div className="am-table-wrap">
@@ -193,6 +195,7 @@ function JudgeManagement({ year, reviews, lineupSize, onNotice }: { year: number
     </div>
     {editing && <JudgeEditor key={editing === "new" ? "new" : editing.id} judge={editing === "new" ? undefined : editing} year={year} existing={judges} onClose={() => setEditing(null)}
       onSaved={emailChanged => { onNotice(editing === "new" ? "Judge added. Send their access code when ready." : emailChanged ? "Email updated. Send a new access code; the previous login no longer works." : "Judge details saved."); setEditing(null) }} />}
+    {importOpen && <JudgeImport year={year} existing={judges} onClose={() => setImportOpen(false)} onImported={count => { setImportOpen(false); onNotice(`${count} judges added. Review the list before sending access codes.`) }} />}
     {deleting && <JudgeDeleteDialog judge={deleting} onClose={() => setDeleting(null)}
       onSaved={() => { onNotice(deleting.deletedAt ? "Judge restored." : "Judge deleted. Their sign-in no longer works; submitted reviews are kept."); setSelected(ids => ids.filter(id => id !== deleting.id)); setDeleting(null) }} />}
     {confirmIds.length > 0 && <Dialog open onOpenChange={open => { if (!open) setConfirmIds([]) }}><DialogContent className="ad-modal am-dialog">
@@ -207,6 +210,41 @@ function JudgeManagement({ year, reviews, lineupSize, onNotice }: { year: number
       <div className="ad-modal-actions"><button className="ad-button ad-primary" onClick={() => setPreviewId(null)}>Done</button></div>
     </DialogContent></Dialog>}
   </>
+}
+
+function JudgeImport({ year, existing, onClose, onImported }: { year: number; existing: CommitteeJudge[]; onClose: () => void; onImported: (count: number) => void }) {
+  const [text, setText] = useState("")
+  const [filename, setFilename] = useState("")
+  const [error, setError] = useState("")
+  const [busy, setBusy] = useState(false)
+  const rows = useMemo(() => parseJudgeCsv(text, year, existing), [text, year, existing])
+  const errors = rows.filter(row => row.error)
+  async function readFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]; event.target.value = ""
+    if (!file) return
+    if (!/\.(csv|tsv)$/i.test(file.name) || file.size > 1_048_576) { setError("Choose a CSV or TSV file smaller than 1 MB."); return }
+    setText(await file.text()); setFilename(file.name); setError("")
+  }
+  function download() {
+    const url = URL.createObjectURL(new Blob([judgeCsvTemplate], { type: "text/csv;charset=utf-8" }))
+    const anchor = document.createElement("a"); anchor.href = url; anchor.download = "myssp-judges-template.csv"; anchor.click(); URL.revokeObjectURL(url)
+  }
+  async function commit() {
+    if (!rows.length || errors.length || rows.length > 100 || busy) return
+    setBusy(true); setError("")
+    try { await importJudges(rows); onImported(rows.length) }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Could not import judges.") }
+    finally { setBusy(false) }
+  }
+  return <Dialog open onOpenChange={open => { if (!open && !busy) onClose() }}><DialogContent className="ad-modal am-dialog am-import">
+    <DialogTitle>Import judges</DialogTitle><DialogDescription>Use one row per judge. Review every row before adding them to the {year} cohort.</DialogDescription>
+    <div className="am-import-tools"><label className="ad-button"><Upload size={15} aria-hidden />{filename || "Choose CSV file"}<input type="file" accept=".csv,.tsv" className="sr-only" onChange={event => void readFile(event)} /></label><button className="ad-button" onClick={download}><Download size={15} aria-hidden /> CSV template</button></div>
+    <p className="am-hint">Columns: <code>name,email,affiliation,judge_type</code>. Judge type must be <code>main</code> or <code>special</code>.</p>
+    <textarea aria-label="Paste judge CSV rows" rows={5} spellCheck={false} value={text} onChange={event => { setText(event.target.value); setFilename(""); setError("") }} placeholder={judgeCsvTemplate.replaceAll("\r", "")} />
+    {rows.length > 0 && <div className="am-import-review"><strong>{rows.length} row{rows.length === 1 ? "" : "s"}</strong><span>{errors.length ? `${errors.length} need changes` : "Ready to import"}</span><div>{rows.slice(0, 100).map(row => <p key={row.line}><span>{row.name || `Row ${row.line}`}<small>{row.email}</small></span><span>{row.error || (row.kind === "special" ? "Special award judge" : "Main judge")}</span></p>)}</div></div>}
+    {rows.length > 100 && <p className="ad-error" role="alert">Import up to 100 judges at a time.</p>}{error && <p className="ad-error" role="alert">{error}</p>}
+    <div className="ad-modal-actions"><button className="ad-button" disabled={busy} onClick={onClose}>Cancel</button><button className="ad-button ad-primary" disabled={busy || !rows.length || rows.length > 100 || errors.length > 0} onClick={() => void commit()}>{busy ? "Importing…" : `Import ${rows.length || ""} judge${rows.length === 1 ? "" : "s"}`}</button></div>
+  </DialogContent></Dialog>
 }
 
 function JudgeEditor({ judge, year, existing, onClose, onSaved }: { judge?: CommitteeJudge; year: number; existing: CommitteeJudge[]; onClose: () => void; onSaved: (emailChanged: boolean) => void }) {

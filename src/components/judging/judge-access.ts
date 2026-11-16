@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabase"
 import { getProjectBoards } from "../admin/project-registry"
 import { refreshBackend } from "../admin/backend"
 import { judgingPreviewMode, onPreviewChange, previewSessionKey, readPreview, writePreview } from "./judging-preview"
-import { scoreKeys, sectionRemarks, type FeedbackAnswers, type ScoreKey } from "./form"
+import { scoreKeys, type FeedbackAnswers, type ScoreKey } from "./form"
 
 export type Judge = {
   id: string

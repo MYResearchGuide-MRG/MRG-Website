@@ -3,11 +3,14 @@ import { readFileSync } from "node:fs"
 import { stripTypeScriptTypes } from "node:module"
 import { test } from "node:test"
 
-// judge-model imports form.ts; load both as data: modules with the import rewritten.
+// judge-model imports form.ts and the CSV parser; load them as data modules with imports rewritten.
 const form = readFileSync(new URL("./form.ts", import.meta.url), "utf8")
 const formUrl = `data:text/javascript,${encodeURIComponent(stripTypeScriptTypes(form))}`
+const access = readFileSync(new URL("../admin/access-model.ts", import.meta.url), "utf8")
+const accessUrl = `data:text/javascript,${encodeURIComponent(stripTypeScriptTypes(access))}`
 const model = readFileSync(new URL("./judge-model.ts", import.meta.url), "utf8")
   .replace(`from "./form"`, `from "${formUrl}"`)
+  .replace(`from "../admin/access-model"`, `from "${accessUrl}"`)
 const { feedbackCsv, judgeInputError, MAX_TOTAL, projectResult, rankResults, reviewTotal } = await import(
   `data:text/javascript,${encodeURIComponent(stripTypeScriptTypes(model))}`
 )
