@@ -78,7 +78,15 @@ function ReviewCard({ review, number }: { review: TeamReview; number: number }) 
         </dl>
       </div>)}
     </div>
-    <h4 className="pf-remarks-heading">Remarks</h4>
-    <p className="pf-remark">{review.remarks}</p>
+    <div className="pf-remarks">
+      <div>
+        <h4 className="pf-remarks-heading">Review of Research Execution & Quality</h4>
+        <p className="pf-remark">{review.researchRemarks}</p>
+      </div>
+      <div>
+        <h4 className="pf-remarks-heading">Review of Live Presentation & Q&A</h4>
+        <p className="pf-remark">{review.presentationRemarks}</p>
+      </div>
+    </div>
   </li>
 }

@@ -406,7 +406,10 @@ function Results({ year, lineup, judges, allJudges, reviews, onNotice }: { year:
                     <span className={review.submittedAt ? "jd-ok" : "jd-muted"}>{review.submittedAt ? `Submitted · ${reviewTotal(review)}/${MAX_TOTAL}` : "Draft, not counted"}</span>
                     <button className="jd-discard" onClick={() => setDiscarding(review)}><Trash2 size={13} aria-hidden /> Discard</button></div>
                   <p className="jd-scores">{scoreKeys.map(key => <span key={key} title={criterionLabels[key]}>{review[key] ?? "–"}</span>)}</p>
-                  {review.remarks ? <p className="jd-remark">{review.remarks}</p> : <p className="jd-muted">No remark yet.</p>}
+                  <div className="jd-review-remarks">
+                    <p><strong>Research review:</strong> {review.researchRemarks || "No review yet."}</p>
+                    <p><strong>Presentation review:</strong> {review.presentationRemarks || "No review yet."}</p>
+                  </div>
                 </div>)}
               </div> : <p className="jd-muted jd-detail">No reviews for this project yet.</p>}
             </td></tr>}

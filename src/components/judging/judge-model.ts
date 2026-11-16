@@ -21,7 +21,8 @@ export const closedSwitches: JudgingSwitches = { judgingOpen: false, feedbackRel
 export type CommitteeReview = Record<ScoreKey, number | null> & {
   judgeId: string
   projectId: string
-  remarks: string
+  researchRemarks: string
+  presentationRemarks: string
   submittedAt: string | null
   updatedAt: string
 }
@@ -104,7 +105,7 @@ export function feedbackCsv(
   reviews: readonly CommitteeReview[],
 ): string {
   const header = ["Position", "Project code", "Project title", "Judge", "Judge email", "Judge type", "Status",
-    ...scoreKeys.map(key => criterionLabels[key]), `Total (/${MAX_TOTAL})`, "Remarks", "Submitted at"]
+    ...scoreKeys.map(key => criterionLabels[key]), `Total (/${MAX_TOTAL})`, "Research review", "Presentation review", "Submitted at"]
   const rows: (string | number | null)[][] = []
   lineup.forEach((project, index) => {
     const projectReviews = reviews.filter(review => review.projectId === project.id)
@@ -114,7 +115,7 @@ export function feedbackCsv(
       index + 1, project.code, project.title, judge?.name || "Unknown judge", judge?.email || "",
       judge ? judgeKindLabels[judge.kind ?? "main"] : "",
       review.submittedAt ? "Submitted" : "Draft",
-      ...scoreKeys.map(key => review[key]), reviewTotal(review), review.remarks, review.submittedAt,
+    ...scoreKeys.map(key => review[key]), reviewTotal(review), review.researchRemarks, review.presentationRemarks, review.submittedAt,
     ])
   })
   return [header, ...rows].map(row => row.map(csvCell).join(",")).join("\r\n") + "\r\n"

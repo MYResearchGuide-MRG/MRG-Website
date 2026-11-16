@@ -48,7 +48,7 @@ function fromPreview() {
 if (judgingPreviewMode) onPreviewChange(() => { if (state.ready) fromPreview() })
 
 type JudgeRow = { id: string; user_id: string | null; cohort_year: number; name: string; email: string; affiliation: string; kind: JudgeKind; revoked: boolean; invited_at: string | null; deleted_at: string | null }
-type FeedbackRow = Record<ScoreKey, number | null> & { judge_id: string; project_id: string; remarks: string; submitted_at: string | null; updated_at: string }
+type FeedbackRow = Record<ScoreKey, number | null> & { judge_id: string; project_id: string; research_remarks: string; presentation_remarks: string; submitted_at: string | null; updated_at: string }
 
 let epoch = 0
 export async function refreshCommitteeJudging() {
@@ -80,7 +80,7 @@ export async function refreshCommitteeJudging() {
       .map(row => [row.year, { judgingOpen: row.judging_open, feedbackReleased: row.feedback_released }])),
     reviews: (feedback.data as FeedbackRow[]).map(row => ({
       ...(Object.fromEntries(scoreKeys.map(key => [key, row[key]])) as Record<ScoreKey, number | null>),
-      judgeId: row.judge_id, projectId: row.project_id, remarks: row.remarks,
+      judgeId: row.judge_id, projectId: row.project_id, researchRemarks: row.research_remarks, presentationRemarks: row.presentation_remarks,
       submittedAt: row.submitted_at, updatedAt: row.updated_at,
     })),
   })

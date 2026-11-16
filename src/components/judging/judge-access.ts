@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabase"
 import { getProjectBoards } from "../admin/project-registry"
 import { refreshBackend } from "../admin/backend"
 import { judgingPreviewMode, onPreviewChange, previewSessionKey, readPreview, writePreview } from "./judging-preview"
-import { scoreKeys, type FeedbackAnswers, type ScoreKey } from "./form"
+import { scoreKeys, sectionRemarks, type FeedbackAnswers, type ScoreKey } from "./form"
 
 export type Judge = {
   id: string
@@ -69,12 +69,13 @@ function loadPreview() {
 
 // Live database -------------------------------------------------------------------
 type FeedbackRow = Record<ScoreKey, number | null> & {
-  project_id: string; remarks: string; submitted_at: string | null; updated_at: string
+  project_id: string; research_remarks: string; presentation_remarks: string; submitted_at: string | null; updated_at: string
 }
 function fromRow(row: FeedbackRow): JudgeReview {
   return {
     ...(Object.fromEntries(scoreKeys.map(key => [key, row[key]])) as Record<ScoreKey, number | null>),
-    remarks: row.remarks, projectId: row.project_id,
+    researchRemarks: row.research_remarks, presentationRemarks: row.presentation_remarks,
+    projectId: row.project_id,
     submittedAt: row.submitted_at, updatedAt: row.updated_at,
   }
 }

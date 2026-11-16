@@ -42,6 +42,8 @@
 .pf-value span { color: var(--pb-muted); font-size: 11px; font-weight: 400; }
 
 .pf-remarks-heading { margin-top: 20px; margin-bottom: 8px; }
+.pf-remarks { display: grid; gap: 18px; }
+.pf-remarks .pf-remarks-heading { margin-top: 0; }
 .pf-remark {
   padding-left: 14px;
   border-left: 2px solid #3a3a3a;

@@ -24,6 +24,14 @@ export const SCORE_MIN = 1
 export const SCORE_MAX = 5
 export const REMARKS_MAX = 5000
 
+export const scoreLabels: Record<number, string> = {
+  1: "Needs major improvement",
+  2: "Needs improvement",
+  3: "Meets expectations",
+  4: "Strong",
+  5: "Exceptional",
+}
+
 export const judgingSections: FormSection[] = [
   {
     title: "Research Execution & Quality",
@@ -49,42 +57,67 @@ export const judgingSections: FormSection[] = [
   },
 ]
 
-export const remarksLabel = "Remarks on Overall Presentation"
-export const remarksHint =
-  "Brief comments, what went well, ways for improvement, or anything you'd like to point out. Shown to the team anonymously after results are announced."
+export const sectionRemarks = [
+  {
+    key: "researchRemarks",
+    label: "Review of Research Execution & Quality",
+    hint: "What was done well, what could be improved, or anything specific about the team’s research execution. This review is confidential during judging and shown to the team anonymously after results are announced.",
+  },
+  {
+    key: "presentationRemarks",
+    label: "Review of Live Presentation & Q&A",
+    hint: "What was done well, what could be improved, or anything specific about the presentation and Q&A. This review is confidential during judging and shown to the team anonymously after results are announced.",
+  },
+] as const
+export type SectionRemarksKey = (typeof sectionRemarks)[number]["key"]
 
-export const scoreKeys: ScoreKey[] = judgingSections.flatMap(section =>
-  section.criteria.map(criterion => criterion.key)
+export const scoreKeys: ScoreKey[] = judgingSections.flatMap((section) =>
+  section.criteria.map((criterion) => criterion.key)
 )
 
 export type Scores = Record<ScoreKey, number | null>
-export type FeedbackAnswers = Scores & { remarks: string }
+export type FeedbackAnswers = Scores & Record<SectionRemarksKey, string>
 
 export function emptyAnswers(): FeedbackAnswers {
   return {
-    ...(Object.fromEntries(scoreKeys.map(key => [key, null])) as Scores),
-    remarks: "",
+    ...(Object.fromEntries(scoreKeys.map((key) => [key, null])) as Scores),
+    researchRemarks: "",
+    presentationRemarks: "",
   }
 }
 
 export function validScore(value: unknown): value is number {
-  return Number.isInteger(value) && (value as number) >= SCORE_MIN && (value as number) <= SCORE_MAX
+  return (
+    Number.isInteger(value) &&
+    (value as number) >= SCORE_MIN &&
+    (value as number) <= SCORE_MAX
+  )
 }
 
 /** Labels of everything still needed before the review can be submitted. */
 export function missingAnswers(answers: FeedbackAnswers): string[] {
-  const missing = judgingSections.flatMap(section =>
-    section.criteria.filter(c => !validScore(answers[c.key])).map(c => c.label)
+  const missing = judgingSections.flatMap((section) =>
+    section.criteria
+      .filter((c) => !validScore(answers[c.key]))
+      .map((c) => c.label)
   )
-  if (!answers.remarks.trim()) missing.push(remarksLabel)
+  sectionRemarks.forEach(({ key, label }) => {
+    if (!answers[key].trim()) missing.push(label)
+  })
   return missing
 }
 
 export type JudgeKind = "main" | "special"
-export const judgeKindLabels: Record<JudgeKind, string> = { main: "Main judge", special: "Special award judge" }
+export const judgeKindLabels: Record<JudgeKind, string> = {
+  main: "Main judge",
+  special: "Special award judge",
+}
 
 /** One submitted review as a team sees it: every score and the remark, labelled only by judge type. */
-export type TeamReview = Record<ScoreKey, number> & { kind: JudgeKind; remarks: string }
+export type TeamReview = Record<ScoreKey, number> & Record<SectionRemarksKey, string> & {
+  kind: JudgeKind
+}
 
 /** What a team receives after release: each submitted review, anonymous and in random order. */
-export type ReleasedFeedback = { released: false } | { released: true; reviews: TeamReview[] }
+export type ReleasedFeedback =
+  { released: false } | { released: true; reviews: TeamReview[] }

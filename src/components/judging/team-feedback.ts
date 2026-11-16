@@ -24,7 +24,7 @@ export function previewFeedback(projectId: string, year: number): ReleasedFeedba
     if (!review?.submittedAt) return []
     const kind = data.judges.find(judge => judge.id === judgeId)?.kind ?? "main"
     const scores = Object.fromEntries(scoreKeys.map(key => [key, review[key] ?? 0])) as Record<ScoreKey, number>
-    return [{ ...scores, kind, remarks: review.remarks }]
+    return [{ ...scores, kind, researchRemarks: review.researchRemarks, presentationRemarks: review.presentationRemarks }]
   })
   return { released: true, reviews: shuffle(reviews) }
 }

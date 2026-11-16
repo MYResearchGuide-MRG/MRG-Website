@@ -7,7 +7,7 @@ export default function FeedbackLiveNotice({ judgingOpen }: { judgingOpen: boole
     <div>
       <p className="font-medium text-sky-100">Feedback is live to teams</p>
       <p className="mt-1 text-zinc-300">
-        Teams can now see the average of each score and every submitted remark on their project page, without your name.
+        Teams can now see the average of each score and both section reviews on their project page, without your name.
         {judgingOpen && " Judging is still open, so any change you submit now shows to the team straight away."}
       </p>
     </div>

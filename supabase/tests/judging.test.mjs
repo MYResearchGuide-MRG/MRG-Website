@@ -13,6 +13,7 @@ const migrations = [
   "202611140001_judging.sql",
   "202611160001_lock_judging_lineup.sql",
   "202611160002_judge_kind_and_review_feedback.sql",
+  "202611160003_section_reviews.sql",
 ]
 
 const admin = "00000000-0000-0000-0000-000000000001"
@@ -23,7 +24,8 @@ const otherStudent = "00000000-0000-0000-0000-000000000006"
 
 const full = (score, remarks) => ({
   data_collection: score, analysis: score, findings_validity: score, structure: score,
-  clarity: score, qa_depth: score, visual_aids: score, time_management: score, remarks,
+  clarity: score, qa_depth: score, visual_aids: score, time_management: score,
+  research_remarks: remarks, presentation_remarks: remarks,
 })
 
 async function setup() {
@@ -189,11 +191,11 @@ test("teams see every submitted review in full, labelled by judge type, only aft
   await db.query("select myssp_set_judging_state(2026,false,true)")
 
   const released = await feedback(student)
-  const byRemark = reviews => Object.fromEntries(reviews.map(review => [review.remarks, review]))
+  const byRemark = reviews => Object.fromEntries(reviews.map(review => [review.researchRemarks, review]))
   assert.equal(released.released, true)
   assert.equal(released.reviews.length, 2)
-  assert.deepEqual(byRemark(released.reviews)["Remark A"], { kind: "main", ...full(2, "Remark A") })
-  assert.deepEqual(byRemark(released.reviews)["Remark B"], { kind: "special", ...full(5, "Remark B"), clarity: 4 })
+  assert.deepEqual(byRemark(released.reviews)["Remark A"], { kind: "main", data_collection: 2, analysis: 2, findings_validity: 2, structure: 2, clarity: 2, qa_depth: 2, visual_aids: 2, time_management: 2, researchRemarks: "Remark A", presentationRemarks: "Remark A" })
+  assert.deepEqual(byRemark(released.reviews)["Remark B"], { kind: "special", data_collection: 5, analysis: 5, findings_validity: 5, structure: 5, clarity: 4, qa_depth: 5, visual_aids: 5, time_management: 5, researchRemarks: "Remark B", presentationRemarks: "Remark B" })
   assert.ok(!("averages" in released))
   for (const id of [a, b, "A", "B"]) assert.ok(!JSON.stringify(released).includes(`"${id}"`))
 
@@ -205,7 +207,7 @@ test("teams see every submitted review in full, labelled by judge type, only aft
   await as("authenticated", admin)
   await db.query("select myssp_set_judge_deleted($1,true)", [b])
   const afterDelete = await feedback(student)
-  assert.deepEqual(afterDelete.reviews.map(review => review.remarks).sort(), ["Remark A", "Remark B"])
+  assert.deepEqual(afterDelete.reviews.map(review => review.researchRemarks).sort(), ["Remark A", "Remark B"])
   await db.exec("reset role")
   await assert.rejects(() => db.query("delete from myssp_judges where id=$1", [b]), /foreign key/)
 
@@ -215,5 +217,5 @@ test("teams see every submitted review in full, labelled by judge type, only aft
   await as("authenticated", admin)
   await db.query("select myssp_discard_judge_feedback($1,'one')", [a])
   await assert.rejects(() => db.query("select myssp_discard_judge_feedback($1,'one')", [a]), /Review not found/)
-  assert.deepEqual((await feedback(student)).reviews.map(review => review.remarks), ["Remark B"])
+  assert.deepEqual((await feedback(student)).reviews.map(review => review.researchRemarks), ["Remark B"])
 })

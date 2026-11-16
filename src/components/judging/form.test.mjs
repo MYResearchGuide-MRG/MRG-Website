@@ -18,14 +18,18 @@ test("every form score is a database column and vice versa", () => {
   assert.deepEqual(columns, scoreKeys)
 })
 
-test("a review is complete only with every score and a remark", () => {
+test("a review is complete only with every score and both section reviews", () => {
   const answers = emptyAnswers()
-  assert.equal(missingAnswers(answers).length, 9)
+  assert.equal(missingAnswers(answers).length, 10)
   for (const key of scoreKeys) answers[key] = 4
-  assert.deepEqual(missingAnswers(answers), ["Remarks on Overall Presentation"])
-  answers.remarks = "  "
-  assert.equal(missingAnswers(answers).length, 1)
-  answers.remarks = "Clear and well paced."
+  assert.deepEqual(missingAnswers(answers), [
+    "Review of Research Execution & Quality",
+    "Review of Live Presentation & Q&A",
+  ])
+  answers.researchRemarks = "  "
+  assert.equal(missingAnswers(answers).length, 2)
+  answers.researchRemarks = "Strong research execution."
+  answers.presentationRemarks = "Clear and well paced."
   assert.deepEqual(missingAnswers(answers), [])
   assert.equal(validScore(0), false)
   assert.equal(validScore(2.5), false)
