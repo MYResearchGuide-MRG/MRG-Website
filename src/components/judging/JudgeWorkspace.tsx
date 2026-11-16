@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react"
 import { ArrowRight, LockKeyhole } from "lucide-react"
+import FeedbackLiveNotice from "./FeedbackLiveNotice"
 import { useBackend } from "../admin/backend"
 import { teamProfiles, type Board } from "../projectboard/data"
 import { reviewStatus, useJudgeAccess } from "./judge-access"
@@ -32,7 +33,7 @@ export default function JudgeWorkspace({ onSignIn }: { onSignIn: () => void }) {
 }
 
 function Lineup() {
-  const { judge, reviews, judgingOpen, error } = useJudgeAccess()
+  const { judge, reviews, judgingOpen, feedbackReleased, error } = useJudgeAccess()
   const boards = useLineupBoards()
   const backend = useBackend()
   const submitted = boards.filter(board => reviewStatus(reviews[board.id]) === "submitted").length
@@ -45,9 +46,10 @@ function Lineup() {
       <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
         <span className="font-medium">{judge?.name}</span>
         {judge?.affiliation && <span className="text-zinc-500">{judge.affiliation}</span>}
-        <span className={judgingOpen ? "text-emerald-300" : "text-zinc-400"}>{judgingOpen ? "Judging is open" : "Judging is not open yet"}</span>
+        <span className={judgingOpen ? "text-emerald-300" : "text-zinc-400"}>{judgingOpen ? "Judging is open" : feedbackReleased ? "Judging is closed" : "Judging is not open yet"}</span>
       </div>
-      {!judgingOpen && <p className="mt-3 max-w-2xl text-sm text-zinc-400">You can look through the projects now. The feedback form unlocks when the committee opens judging on Demo Day.</p>}
+      {feedbackReleased && <FeedbackLiveNotice judgingOpen={judgingOpen} />}
+      {!judgingOpen && !feedbackReleased && <p className="mt-3 max-w-2xl text-sm text-zinc-400">You can look through the projects now. The feedback form unlocks when the committee opens judging on Demo Day.</p>}
       {(error || backend.error) && <p className="mt-3 text-sm text-red-300" role="alert">{error || backend.error} Showing the last loaded lineup.</p>}
     </header>
 

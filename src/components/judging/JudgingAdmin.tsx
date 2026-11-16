@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState, type FormEvent } from "react"
-import { ArrowDown, ArrowUp, Check, ChevronDown, ChevronRight, CircleDashed, Download, Gavel, GripVertical, Mail, PencilLine, Pencil, Plus, RotateCcw, Search, Trash2, X } from "lucide-react"
+import { ArrowDown, ArrowUp, Check, ChevronDown, ChevronRight, CircleDashed, Download, Gavel, GripVertical, Lock, Mail, PencilLine, Pencil, Plus, RotateCcw, Search, Trash2, X } from "lucide-react"
 import { Reorder, useDragControls, useReducedMotion } from "motion/react"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import type { Board } from "../projectboard/data"
@@ -28,6 +28,7 @@ export function JudgingAdmin({ boards, year }: { boards: Board[]; year: number }
   const cohortJudges = data.judges.filter(judge => judge.cohortYear === year && !judge.deletedAt)
   const lineupIds = new Set(lineup.map(board => board.id))
   const cohortReviews = data.reviews.filter(review => lineupIds.has(review.projectId))
+  const lineupLocked = switchesFor(data, year).judgingOpen
 
   return <section className="am-root jd-root" aria-label="Judging">
     {data.error && <p className="ad-notice" role="status">{data.error}</p>}
@@ -35,10 +36,12 @@ export function JudgingAdmin({ boards, year }: { boards: Board[]; year: number }
     <JudgingSwitches year={year} reviews={cohortReviews} judges={cohortJudges.filter(judge => !judge.revoked)} lineupSize={lineup.length} onNotice={setNotice} />
     <div className="jd-tabs" role="tablist" aria-label="Judging sections">
       {([["judges", `Judges · ${cohortJudges.length}`], ["lineup", `Lineup · ${lineup.length}`], ["results", "Progress & results"]] as const).map(([id, label]) =>
-        <button key={id} role="tab" aria-selected={section === id} onClick={() => setSection(id)}>{label}</button>)}
+        <button key={id} role="tab" aria-selected={section === id} onClick={() => setSection(id)}>
+          {label}{id === "lineup" && lineupLocked && <Lock size={12} className="jd-tab-lock" aria-label="locked" />}
+        </button>)}
     </div>
     {section === "judges" ? <JudgeManagement year={year} reviews={cohortReviews} lineupSize={lineup.length} onNotice={setNotice} />
-      : section === "lineup" ? <LineupEditor key={`${year}:${(data.lineups[year] || []).join()}`} year={year} boards={boards} saved={data.lineups[year] || []} reviews={cohortReviews} onNotice={setNotice} />
+      : section === "lineup" ? <LineupEditor key={`${year}:${(data.lineups[year] || []).join()}`} locked={lineupLocked} year={year} boards={boards} saved={data.lineups[year] || []} reviews={cohortReviews} onNotice={setNotice} />
       : <Results year={year} lineup={lineup} judges={cohortJudges} allJudges={data.judges} reviews={cohortReviews} onNotice={setNotice} />}
   </section>
 }
@@ -47,14 +50,14 @@ export function JudgingAdmin({ boards, year }: { boards: Board[]; year: number }
 function JudgingSwitches({ year, reviews, judges, lineupSize, onNotice }: { year: number; reviews: CommitteeReview[]; judges: CommitteeJudge[]; lineupSize: number; onNotice: (text: string) => void }) {
   const data = useCommitteeJudging()
   const current = switchesFor(data, year)
-  const [confirm, setConfirm] = useState<"release" | null>(null)
+  const [confirm, setConfirm] = useState<"open-judging" | "release" | "close-judging" | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
   const submitted = reviews.filter(review => review.submittedAt).length
   const drafts = reviews.length - submitted
-  async function change(next: typeof current, message: string) {
+  async function change(next: typeof current, message: string, then: typeof confirm = null) {
     setBusy(true); setError("")
-    try { await setSwitches(year, next); onNotice(message); setConfirm(null) }
+    try { await setSwitches(year, next); onNotice(message); setConfirm(then) }
     catch (cause) { setError(errorText(cause, "Could not change judging status.")) }
     finally { setBusy(false) }
   }
@@ -62,7 +65,9 @@ function JudgingSwitches({ year, reviews, judges, lineupSize, onNotice }: { year
     <div className="jd-switch-card">
       <div><strong>Judging</strong><p>{current.judgingOpen ? "Judges can save and submit feedback." : "Judges can view their lineup but cannot save feedback."}</p></div>
       <Switch label="Judging open" checked={current.judgingOpen} disabled={busy}
-        onChange={() => void change({ ...current, judgingOpen: !current.judgingOpen }, current.judgingOpen ? "Judging closed. Judges can no longer change feedback." : "Judging opened. Judges can now save and submit feedback.")} />
+        onChange={() => current.judgingOpen
+          ? void change({ ...current, judgingOpen: false }, "Judging closed. Judges can no longer change feedback. The lineup can be edited again.")
+          : setConfirm("open-judging")} />
     </div>
     <div className="jd-switch-card">
       <div><strong>Feedback to teams</strong><p>{current.feedbackReleased ? "Teams can see averaged scores and anonymous remarks." : "Hidden from teams until you release it after the results announcement."}</p></div>
@@ -72,18 +77,43 @@ function JudgingSwitches({ year, reviews, judges, lineupSize, onNotice }: { year
           : setConfirm("release")} />
     </div>
     {error && <p className="ad-error" role="alert">{error}</p>}
-    {confirm && <Dialog open onOpenChange={open => { if (!open && !busy) setConfirm(null) }}><DialogContent className="ad-modal am-dialog">
+    {confirm === "open-judging" && <Dialog open onOpenChange={open => { if (!open && !busy) setConfirm(null) }}><DialogContent className="ad-modal am-dialog">
+      <DialogTitle>Open judging?</DialogTitle>
+      <DialogDescription>Judges will be able to save and submit feedback on every project in the lineup.</DialogDescription>
+      <ul className="jd-checklist">
+        {lineupSize === 0
+          ? <li className="jd-warn">The lineup is empty. Add projects in the Lineup tab before opening judging.</li>
+          : <li>{lineupSize} project{lineupSize === 1 ? "" : "s"} in the lineup, {judges.length} active judge{judges.length === 1 ? "" : "s"}.</li>}
+        <li>The lineup locks while judging is open: no adding, removing or reordering projects. Close judging to change it.</li>
+      </ul>
+      {error && <p className="ad-error" role="alert">{error}</p>}
+      <div className="ad-modal-actions"><button className="ad-button" disabled={busy} onClick={() => setConfirm(null)}>Cancel</button>
+        <button className="ad-button ad-primary" disabled={busy || lineupSize === 0} onClick={() => void change({ ...current, judgingOpen: true }, "Judging opened. Judges can now save and submit feedback. The lineup is locked.")}>{busy ? "Opening…" : "Open judging and lock lineup"}</button></div>
+    </DialogContent></Dialog>}
+    {confirm === "release" && <Dialog open onOpenChange={open => { if (!open && !busy) setConfirm(null) }}><DialogContent className="ad-modal am-dialog">
       <DialogTitle>Release feedback to teams?</DialogTitle>
       <DialogDescription>Each team will see the average of every criterion and the submitted remarks in random order. Judges’ names and individual scores stay hidden.</DialogDescription>
       <ul className="jd-checklist">
         <li>{submitted} submitted review{submitted === 1 ? "" : "s"} across {lineupSize} project{lineupSize === 1 ? "" : "s"} ({judges.length * lineupSize} expected).</li>
         {drafts > 0 && <li className="jd-warn">{drafts} draft{drafts === 1 ? " is" : "s are"} not submitted and won’t be shown.</li>}
-        {current.judgingOpen && <li className="jd-warn">Judging is still open. Close it first so feedback can’t change after release.</li>}
+        {current.judgingOpen && <li className="jd-warn">Judging is still open. You’ll be asked next whether to close it, so feedback can’t change after release.</li>}
         <li>Discard any test reviews before releasing. Released reviews stay visible to teams, even if a judge is deleted later.</li>
       </ul>
       {error && <p className="ad-error" role="alert">{error}</p>}
       <div className="ad-modal-actions"><button className="ad-button" disabled={busy} onClick={() => setConfirm(null)}>Cancel</button>
-        <button className="ad-button ad-primary" disabled={busy} onClick={() => void change({ ...current, feedbackReleased: true }, "Feedback released. Teams can now see it on their project page.")}>{busy ? "Releasing…" : "Release feedback"}</button></div>
+        <button className="ad-button ad-primary" disabled={busy} onClick={() => void change({ ...current, feedbackReleased: true }, "Feedback released. Teams can now see it on their project page.", current.judgingOpen ? "close-judging" : null)}>{busy ? "Releasing…" : "Release feedback"}</button></div>
+    </DialogContent></Dialog>}
+    {confirm === "close-judging" && <Dialog open onOpenChange={open => { if (!open && !busy) setConfirm(null) }}><DialogContent className="ad-modal am-dialog">
+      <DialogTitle>Close judging too?</DialogTitle>
+      <DialogDescription>Feedback is now live to teams, but judging is still open. While it’s open, judges can keep editing their reviews and teams will see the changes straight away.</DialogDescription>
+      <ul className="jd-checklist">
+        <li>Closing judging locks every review. Judges can still read what they submitted.</li>
+        {drafts > 0 && <li className="jd-warn">{drafts} draft{drafts === 1 ? " is" : "s are"} not submitted. Closing now means {drafts === 1 ? "it" : "they"} won’t reach the team.</li>}
+        <li>You can reopen judging later from this panel.</li>
+      </ul>
+      {error && <p className="ad-error" role="alert">{error}</p>}
+      <div className="ad-modal-actions"><button className="ad-button" disabled={busy} onClick={() => setConfirm(null)}>Keep judging open</button>
+        <button className="ad-button ad-primary" disabled={busy} onClick={() => void change({ ...current, judgingOpen: false }, "Judging closed. Judges can no longer change feedback.")}>{busy ? "Closing…" : "Close judging"}</button></div>
     </DialogContent></Dialog>}
   </div>
 }
@@ -235,7 +265,7 @@ function JudgeDeleteDialog({ judge, onClose, onSaved }: { judge: CommitteeJudge;
 // Lineup ---------------------------------------------------------------------------------------
 const byCode = (a: Board, b: Board) => a.code.localeCompare(b.code, undefined, { numeric: true })
 
-function LineupEditor({ year, boards, saved, reviews, onNotice }: { year: number; boards: Board[]; saved: string[]; reviews: CommitteeReview[]; onNotice: (text: string) => void }) {
+function LineupEditor({ year, boards, saved, reviews, locked, onNotice }: { year: number; boards: Board[]; saved: string[]; reviews: CommitteeReview[]; locked: boolean; onNotice: (text: string) => void }) {
   const cohortBoards = useMemo(() => boards.filter(board => board.year === year).sort(byCode), [boards, year])
   const [order, setOrder] = useState(() => saved.filter(id => cohortBoards.some(board => board.id === id)))
   const [adding, setAdding] = useState("")
@@ -253,8 +283,28 @@ function LineupEditor({ year, boards, saved, reviews, onNotice }: { year: number
     catch (cause) { setError(errorText(cause, "Could not save the lineup.")) }
     finally { setSaving(false) }
   }
+  if (locked) return <div>
+    <p className="jd-lock-note" role="status"><Lock size={14} aria-hidden />The lineup is locked while judging is open. Close judging to add, remove or reorder projects.</p>
+    <ol className="jd-lineup">
+      {saved.map((id, index) => {
+        const board = cohortBoards.find(item => item.id === id)
+        return board && <li key={id} className="jd-lineup-row jd-locked">
+          <span className="jd-position">{index + 1}</span>
+          <span className="jd-lineup-project"><span className="jd-code">{board.code}</span><span>{board.title}</span></span>
+        </li>
+      })}
+    </ol>
+  </div>
   return <div>
-    <p className="jd-intro">Set the Demo Day presentation order: drag the handle or use the arrows. Judges only see projects in this list, in this order.</p>
+    {/* Sticky, so saving never needs a scroll to the end of a long lineup. */}
+    <div className={`jd-lineup-bar${dirty ? " jd-dirty" : ""}`}>
+      <p className="jd-intro">{dirty ? "Unsaved changes to the lineup." : "The lineup locks once judging opens."}</p>
+      <div className="jd-lineup-save">
+        {!dirty && saved.length > 0 && <span className="jd-muted">Saved</span>}
+        <button className="ad-button" disabled={!dirty || saving} onClick={() => setOrder(saved)}>Undo changes</button>
+        <button className="ad-button ad-primary" disabled={!dirty || saving} onClick={() => void save()}>{saving ? "Saving…" : "Save lineup"}</button>
+      </div>
+    </div>
     {/* Drag by the handle (mouse or touch); the arrow buttons cover keyboard use. */}
     <Reorder.Group as="ol" axis="y" values={order} onReorder={setOrder} className="jd-lineup">
       {order.map((id, index) => {
@@ -275,11 +325,6 @@ function LineupEditor({ year, boards, saved, reviews, onNotice }: { year: number
     </div>}
     {removedWithReviews.length > 0 && <p className="ad-notice">Removing {removedWithReviews.map(id => cohortBoards.find(board => board.id === id)?.code || id).join(", ")} hides it from judges. Feedback already given is kept.</p>}
     {error && <p className="ad-error" role="alert">{error}</p>}
-    <div className="jd-lineup-save">
-      <button className="ad-button" disabled={!dirty || saving} onClick={() => setOrder(saved)}>Undo changes</button>
-      <button className="ad-button ad-primary" disabled={!dirty || saving} onClick={() => void save()}>{saving ? "Saving…" : "Save lineup"}</button>
-      {!dirty && saved.length > 0 && <span className="jd-muted">Saved</span>}
-    </div>
   </div>
 }
 

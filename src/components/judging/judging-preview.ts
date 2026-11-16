@@ -38,7 +38,7 @@ function seed(): PreviewData {
         .sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }))
         .map(board => board.id),
     },
-    switches: { [year]: { judgingOpen: true, feedbackReleased: false } },
+    switches: { [year]: { judgingOpen: false, feedbackReleased: false } },
     reviews: {},
   }
 }

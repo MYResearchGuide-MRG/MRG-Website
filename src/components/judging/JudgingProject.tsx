@@ -11,6 +11,7 @@ import {
 import { getJudgeAccess, reviewStatus, saveReview, useJudgeAccess, type JudgeReview } from "./judge-access"
 import { judgingHash, judgingProjectHash, useLineupBoards, useProjectContent } from "./lineup"
 import StatusBadge from "./StatusBadge"
+import FeedbackLiveNotice from "./FeedbackLiveNotice"
 import "../projectboard/projectboard.css"
 import "./judging.css"
 
@@ -31,7 +32,7 @@ type SaveState =
   | { kind: "error"; message: string }
 
 export default function JudgingProject({ projectId }: { projectId: string }) {
-  const { reviews, judgingOpen } = useJudgeAccess()
+  const { reviews, judgingOpen, feedbackReleased } = useJudgeAccess()
   const boards = useLineupBoards()
   const index = boards.findIndex(board => board.id === projectId)
   const board = boards[index]
@@ -136,6 +137,7 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
         <h2 id="judge-form-heading" className="text-2xl font-medium tracking-tight">Your feedback</h2>
         <SaveStatus state={saveState} open={judgingOpen} />
       </div>
+      {feedbackReleased && <FeedbackLiveNotice judgingOpen={judgingOpen} />}
       {!judgingOpen && <p className="mt-4 rounded-md border border-white/15 bg-white/[0.03] px-4 py-3 text-sm text-zinc-300">
         {saved ? "Judging is closed. Your saved answers are shown below." : "The form unlocks when the committee opens judging on Demo Day."}
       </p>}

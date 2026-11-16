@@ -26,9 +26,11 @@ type State = {
   lineup: string[]
   reviews: Record<string, JudgeReview>
   judgingOpen: boolean
+  /** Teams can see averaged scores and anonymous remarks. */
+  feedbackReleased: boolean
   error: string
 }
-const empty: State = { ready: false, judge: null, lineup: [], reviews: {}, judgingOpen: false, error: "" }
+const empty: State = { ready: false, judge: null, lineup: [], reviews: {}, judgingOpen: false, feedbackReleased: false, error: "" }
 let state: State = empty
 const listeners = new Set<() => void>()
 const subscribe = (fn: () => void) => { listeners.add(fn); return () => { listeners.delete(fn) } }
@@ -61,6 +63,7 @@ function loadPreview() {
     lineup: found ? (data.lineups[found.cohortYear] || []).filter(id => active.has(id)) : [],
     reviews: found ? data.reviews[found.id] || {} : {},
     judgingOpen: Boolean(found && data.switches[found.cohortYear]?.judgingOpen),
+    feedbackReleased: Boolean(found && data.switches[found.cohortYear]?.feedbackReleased),
   })
 }
 
@@ -102,13 +105,14 @@ export async function refreshJudging() {
     ])
     if (lineup.error || feedback.error || judging.error) throw new Error("Could not load your judging lineup.")
     if (ticket !== epoch) return
-    const cohort = (judging.data as { year: number; judging_open: boolean }[])
+    const cohort = (judging.data as { year: number; judging_open: boolean; feedback_released: boolean }[])
       .find(row => row.year === judge.cohortYear)
     publish({
       ready: true, error: "", judge,
       lineup: lineup.data.map(row => row.project_id),
       reviews: Object.fromEntries((feedback.data as FeedbackRow[]).map(row => [row.project_id, fromRow(row)])),
       judgingOpen: Boolean(cohort?.judging_open),
+      feedbackReleased: Boolean(cohort?.feedback_released),
     })
   } catch (error) {
     // Keep the current page and any unsaved answers; the next refresh retries.

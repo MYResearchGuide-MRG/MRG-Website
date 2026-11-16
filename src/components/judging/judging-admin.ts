@@ -154,6 +154,7 @@ export function previewJudgeCode(id: string) {
 export async function setLineup(year: number, projectIds: string[]) {
   if (judgingPreviewMode) {
     const data = readPreview()
+    if (data.switches[year]?.judgingOpen) throw new Error("Close judging before changing the lineup")
     writePreview({ ...data, lineups: { ...data.lineups, [year]: projectIds } })
     return
   }
@@ -165,6 +166,8 @@ export async function setLineup(year: number, projectIds: string[]) {
 export async function setSwitches(year: number, next: JudgingSwitches) {
   if (judgingPreviewMode) {
     const data = readPreview()
+    if (next.judgingOpen && !data.switches[year]?.judgingOpen && !data.lineups[year]?.length)
+      throw new Error("Set the lineup before opening judging")
     writePreview({ ...data, switches: { ...data.switches, [year]: next } })
     return
   }

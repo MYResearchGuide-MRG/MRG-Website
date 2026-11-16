@@ -17,6 +17,7 @@ import { ProjectMaterials } from "./ProjectMaterials"
 import { materialSpecs, materialError, validAdditionalMaterials } from "./materials"
 import { overviewFields, overviewError } from "./overview"
 import { SubmissionChecklist } from "./SubmissionChecklist"
+import { ProjectFeedback } from "./ProjectFeedback"
 import { submissionFingerprint, submissionReviewed, type ChecklistSection } from "./submission-checklist"
 
 const tabs = ["overview", "materials", "team"] as const
@@ -76,6 +77,7 @@ export function ProjectDetail({
   owner,
   revision,
   deadline,
+  feedbackViewer = null,
 }: {
   board: Board
   savedDraft?: Draft
@@ -85,6 +87,8 @@ export function ProjectDetail({
   owner: boolean
   revision: number
   deadline: { closed: boolean; label: string }
+  /** Who may see the judges' feedback block; null hides it entirely. */
+  feedbackViewer?: "team" | "committee" | null
 }) {
   const [tab, setTab] = useState<(typeof tabs)[number]>("overview")
   const [requestedEditing, setEditing] = useState(false)
@@ -593,6 +597,7 @@ export function ProjectDetail({
               )}
             </div>
           </div>
+          {feedbackViewer && !editing && <ProjectFeedback projectId={board.id} year={board.year} viewer={feedbackViewer} />}
         </div>
         <ProjectShare board={board} />
       </div>

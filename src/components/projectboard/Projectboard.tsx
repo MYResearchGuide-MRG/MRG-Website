@@ -619,6 +619,7 @@ export default function Projectboard({
               editable={board.id === assignedProjectId && editingPermissions[board.id] === true && !deadline.closed}
               deadline={deadline}
               owner={board.id === assignedProjectId}
+              feedbackViewer={board.id === assignedProjectId ? "team" : isAdmin ? "committee" : null}
               revision={backend.revisions[board.id] || 0}
               savedDraft={
                 useLiveBackend ? backend.drafts[board.id] || (board.id === assignedProjectId ? newDraft(board) : undefined) : signedIn && board.id === assignedProjectId ? draft : mentorProjectIds.includes(board.id) ? loadDraft(board) : undefined

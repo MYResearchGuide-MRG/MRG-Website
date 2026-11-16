@@ -11,6 +11,7 @@ const migrations = [
   "202611070001_mentor_access.sql",
   "202611070003_mentor_account_management.sql",
   "202611140001_judging.sql",
+  "202611160001_lock_judging_lineup.sql",
 ]
 
 const admin = "00000000-0000-0000-0000-000000000001"
@@ -96,6 +97,15 @@ test("judges read only their cohort's lineup, save their own feedback, and only 
   await as("authenticated", judgeA)
   await assert.rejects(() => db.query("select myssp_save_judge_feedback('one',$1,false)", [{ clarity: 4 }]), /Judging is closed/)
   await as("authenticated", admin)
+  // Judging needs a lineup to open.
+  await db.query("select myssp_set_judging_lineup(2027,$1)", [[]])
+  await assert.rejects(() => db.query("select myssp_set_judging_state(2027,true,false)"), /Set the lineup/)
+  await db.query("select myssp_set_judging_lineup(2027,$1)", [["next"]])
+  await db.query("select myssp_set_judging_state(2026,true,false)")
+  // While judging is open, the lineup is locked.
+  await assert.rejects(() => db.query("select myssp_set_judging_lineup(2026,$1)", [["one", "two"]]), /Close judging before changing the lineup/)
+  // Feedback can still be released or hidden while judging stays open.
+  await db.query("select myssp_set_judging_state(2026,true,true)")
   await db.query("select myssp_set_judging_state(2026,true,false)")
 
   await as("authenticated", judgeA)
@@ -128,6 +138,9 @@ test("judges read only their cohort's lineup, save their own feedback, and only 
   await db.query("select myssp_set_judging_state(2026,false,false)")
   await as("authenticated", judgeA)
   await assert.rejects(() => db.query("select myssp_save_judge_feedback('one',$1,false)", [full(4, "Late")]), /Judging is closed/)
+  // Closing judging unlocks the lineup again.
+  await as("authenticated", admin)
+  await db.query("select myssp_set_judging_lineup(2026,$1)", [["two", "one"]])
 
   // Paused judges lose access immediately.
   await as("authenticated", admin)

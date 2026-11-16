@@ -12,6 +12,10 @@
 .jd-tabs button[aria-selected="true"] { color: #fff; border-bottom-color: #f0f0f0; }
 .jd-tabs button:focus-visible { outline: 2px solid #fff; outline-offset: -2px; border-radius: 4px; }
 
+.jd-tab-lock { display: inline-block; margin-left: 6px; vertical-align: -1px; color: #8a8a8a; }
+.jd-lock-note { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; max-width: 640px; padding: 10px 12px; border: 1px solid #3a3426; border-radius: 6px; background: #17150f; color: #d8c9a6; font-size: 12px; line-height: 1.5; }
+.jd-lock-note svg { flex: none; }
+.jd-lineup li.jd-locked { padding-left: 14px; }
 .jd-intro { margin-bottom: 14px; max-width: 640px; font-size: 12px; line-height: 1.6; color: #9a9a9a; }
 .jd-muted { color: #8a8a8a; font-size: 12px; }
 .jd-ok { color: #acc8a2; font-size: 12px; }
@@ -39,7 +43,14 @@
 .jd-lineup-actions button:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
 .jd-lineup-add { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .jd-lineup-add select { flex: 1 1 260px; min-width: 0; min-height: 38px; padding: 0 10px; border: 1px solid #333; border-radius: 6px; background: #111; color: #ddd; font-size: 12px; }
-.jd-lineup-save { display: flex; align-items: center; gap: 8px; margin-top: 20px; padding-top: 16px; border-top: 1px solid #262626; }
+.jd-lineup-bar {
+  position: sticky; top: 0; z-index: 3;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px;
+  margin-bottom: 12px; padding: 10px 0; background: #121212;
+}
+.jd-lineup-bar .jd-intro { margin-bottom: 0; }
+.jd-lineup-bar.jd-dirty .jd-intro { color: #f0cf8a; }
+.jd-lineup-save { display: flex; align-items: center; gap: 8px; }
 
 /* Results */
 .jd-results-head { align-items: center; }

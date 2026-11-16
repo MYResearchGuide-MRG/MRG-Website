@@ -1,0 +1,53 @@
+/* Judges' feedback block under a project's tabs. Uses the project-board tokens. */
+.pf-root {
+  margin-top: 28px;
+  padding: 24px 28px 28px;
+  border: 1px solid var(--pb-line);
+  border-radius: 5px;
+  background: var(--pb-surface);
+}
+.pf-root h2 { font-size: 18px; font-weight: 550; letter-spacing: -0.01em; }
+.pf-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.pf-badge { padding: 3px 8px; border: 1px solid #524a36; border-radius: 999px; background: #211e17; color: #d8c9a6; font-size: 11px; }
+.pf-note { margin-top: 6px; max-width: 620px; color: var(--pb-muted); font-size: 13px; }
+
+.pf-pending { display: flex; align-items: flex-start; gap: 14px; padding-top: 20px; padding-bottom: 20px; }
+.pf-pending > svg { flex: none; margin-top: 3px; color: var(--pb-muted); }
+.pf-pending h2 { font-size: 15px; }
+
+.pf-scores { display: grid; gap: 22px 40px; margin-top: 22px; }
+@media (min-width: 900px) { .pf-scores { grid-template-columns: 1fr 1fr; } }
+.pf-score-group h3, .pf-remarks-heading {
+  margin-bottom: 10px;
+  color: var(--pb-muted);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.pf-score-group dl { display: grid; gap: 10px; }
+.pf-score { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 14px; }
+.pf-score dt { font-size: 13px; color: var(--pb-white); }
+.pf-score dd { display: flex; align-items: center; gap: 10px; }
+.pf-bar { width: 84px; height: 6px; border-radius: 999px; background: #262626; overflow: hidden; }
+.pf-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--pb-white); }
+.pf-value { min-width: 52px; text-align: right; font-size: 14px; font-weight: 550; font-variant-numeric: tabular-nums; }
+.pf-value span { color: var(--pb-muted); font-size: 11px; font-weight: 400; }
+
+.pf-remarks-heading { margin-top: 28px; }
+.pf-remarks { display: grid; gap: 10px; }
+.pf-remarks li {
+  padding: 14px 16px;
+  border-left: 2px solid #3a3a3a;
+  background: #0d0d0d;
+  border-radius: 0 4px 4px 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  line-height: 1.65;
+  color: #e6e6e6;
+}
+@media (max-width: 640px) {
+  .pf-root { padding: 20px 18px 22px; }
+  .pf-bar { width: 56px; }
+}
