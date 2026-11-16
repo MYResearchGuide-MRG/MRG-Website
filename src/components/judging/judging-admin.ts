@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase"
 import { generateCode } from "../admin/access-model"
 import { getBackend, useBackend } from "../admin/backend"
 import { sendInvitationBatches } from "../admin/invitation-batches"
-import { scoreKeys, type ScoreKey } from "./form"
+import { scoreKeys, type JudgeKind, type ScoreKey } from "./form"
 import { closedSwitches, judgeInputError, type CommitteeJudge, type CommitteeReview, type JudgeInput, type JudgingSwitches } from "./judge-model"
 import { judgingPreviewMode, onPreviewChange, readPreview, writePreview } from "./judging-preview"
 
@@ -47,7 +47,7 @@ function fromPreview() {
 }
 if (judgingPreviewMode) onPreviewChange(() => { if (state.ready) fromPreview() })
 
-type JudgeRow = { id: string; user_id: string | null; cohort_year: number; name: string; email: string; affiliation: string; revoked: boolean; invited_at: string | null; deleted_at: string | null }
+type JudgeRow = { id: string; user_id: string | null; cohort_year: number; name: string; email: string; affiliation: string; kind: JudgeKind; revoked: boolean; invited_at: string | null; deleted_at: string | null }
 type FeedbackRow = Record<ScoreKey, number | null> & { judge_id: string; project_id: string; remarks: string; submitted_at: string | null; updated_at: string }
 
 let epoch = 0
@@ -56,14 +56,14 @@ export async function refreshCommitteeJudging() {
   if (!supabase || !getBackend().isAdmin) return
   const ticket = ++epoch
   const [judges, lineup, feedback, switches] = await Promise.all([
-    supabase.from("myssp_judges").select("id,user_id,cohort_year,name,email,affiliation,revoked,invited_at,deleted_at").order("name"),
+    supabase.from("myssp_judges").select("id,user_id,cohort_year,name,email,affiliation,kind,revoked,invited_at,deleted_at").order("name"),
     supabase.from("myssp_judging_lineup").select("project_id,cohort_year,position").order("position"),
     supabase.from("myssp_judge_feedback").select("*"),
     supabase.rpc("myssp_judging_state"),
   ])
   if (ticket !== epoch) return
   if (judges.error || lineup.error || feedback.error || switches.error) {
-    publish({ ...state, ready: true, error: "Judging needs the judging database migration. Apply 202611140001_judging.sql first." })
+    publish({ ...state, ready: true, error: "Judging needs the judging database migrations. Apply every 2026111* judging migration first." })
     return
   }
   const lineups: Record<number, string[]> = {}
@@ -72,7 +72,7 @@ export async function refreshCommitteeJudging() {
     ready: true, error: "",
     judges: (judges.data as JudgeRow[]).map(row => ({
       id: row.id, userId: row.user_id, cohortYear: row.cohort_year, name: row.name, email: row.email,
-      affiliation: row.affiliation, revoked: row.revoked, deletedAt: row.deleted_at,
+      affiliation: row.affiliation, kind: row.kind, revoked: row.revoked, deletedAt: row.deleted_at,
       invitedAt: row.invited_at ? Date.parse(row.invited_at) : null,
     })),
     lineups,
@@ -114,7 +114,7 @@ export async function saveJudge(input: JudgeInput, id?: string) {
   }
   const { error } = await requireAdmin().rpc("myssp_save_judge", {
     judge_id: id || null, judge_cohort: clean.cohortYear, judge_name: clean.name,
-    judge_email: clean.email, judge_affiliation: clean.affiliation, access_revoked: clean.revoked,
+    judge_email: clean.email, judge_affiliation: clean.affiliation, access_revoked: clean.revoked, judge_kind: clean.kind,
   })
   if (error) throw failure(error, "Could not save this judge.")
   await refreshCommitteeJudging()

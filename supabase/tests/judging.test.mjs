@@ -12,6 +12,7 @@ const migrations = [
   "202611070003_mentor_account_management.sql",
   "202611140001_judging.sql",
   "202611160001_lock_judging_lineup.sql",
+  "202611160002_judge_kind_and_review_feedback.sql",
 ]
 
 const admin = "00000000-0000-0000-0000-000000000001"
@@ -151,11 +152,12 @@ test("judges read only their cohort's lineup, save their own feedback, and only 
   assert.equal(await count("myssp_judging_lineup"), 0)
 })
 
-test("teams see only anonymised averages and remarks, only after release", async () => {
+test("teams see every submitted review in full, labelled by judge type, only after release", async () => {
   const { db, as } = await setup()
   await as("authenticated", admin)
   const a = (await db.query("select myssp_save_judge($1,2026,'A','a2@judge.test','',false) as id", [null])).rows[0].id
-  const b = (await db.query("select myssp_save_judge($1,2026,'B','b2@judge.test','',false) as id", [null])).rows[0].id
+  const b = (await db.query("select myssp_save_judge($1,2026,'B','b2@judge.test','',false,'special') as id", [null])).rows[0].id
+  await assert.rejects(() => db.query("select myssp_save_judge($1,2026,'D','d2@judge.test','',false,'guest')", [null]), /Invalid judge details/)
   const c = (await db.query("select myssp_save_judge($1,2026,'C','c2@judge.test','',false) as id", [null])).rows[0].id
   await db.exec(`reset role;
     insert into auth.users values('00000000-0000-0000-0000-0000000000c1','a2@judge.test'),
@@ -187,23 +189,23 @@ test("teams see only anonymised averages and remarks, only after release", async
   await db.query("select myssp_set_judging_state(2026,false,true)")
 
   const released = await feedback(student)
+  const byRemark = reviews => Object.fromEntries(reviews.map(review => [review.remarks, review]))
   assert.equal(released.released, true)
-  assert.equal(released.reviews, 2)
-  assert.equal(Number(released.averages.data_collection), 3.5)
-  assert.equal(Number(released.averages.clarity), 3)
-  assert.deepEqual([...released.remarks].sort(), ["Remark A", "Remark B"])
-  assert.ok(!JSON.stringify(released).includes(a) && !JSON.stringify(released).includes(b))
+  assert.equal(released.reviews.length, 2)
+  assert.deepEqual(byRemark(released.reviews)["Remark A"], { kind: "main", ...full(2, "Remark A") })
+  assert.deepEqual(byRemark(released.reviews)["Remark B"], { kind: "special", ...full(5, "Remark B"), clarity: 4 })
+  assert.ok(!("averages" in released))
+  for (const id of [a, b, "A", "B"]) assert.ok(!JSON.stringify(released).includes(`"${id}"`))
 
   // Another team's feedback is off limits.
   await assert.rejects(() => feedback(otherStudent, "one"), /Not allowed/)
-  assert.deepEqual(await feedback(otherStudent, "two"), { released: true, reviews: 0, averages: null, remarks: [] })
+  assert.deepEqual(await feedback(otherStudent, "two"), { released: true, reviews: [] })
 
   // Deleting a judge's account in a later year keeps their review for the team.
   await as("authenticated", admin)
   await db.query("select myssp_set_judge_deleted($1,true)", [b])
   const afterDelete = await feedback(student)
-  assert.equal(afterDelete.reviews, 2)
-  assert.deepEqual([...afterDelete.remarks].sort(), ["Remark A", "Remark B"])
+  assert.deepEqual(afterDelete.reviews.map(review => review.remarks).sort(), ["Remark A", "Remark B"])
   await db.exec("reset role")
   await assert.rejects(() => db.query("delete from myssp_judges where id=$1", [b]), /foreign key/)
 
@@ -213,5 +215,5 @@ test("teams see only anonymised averages and remarks, only after release", async
   await as("authenticated", admin)
   await db.query("select myssp_discard_judge_feedback($1,'one')", [a])
   await assert.rejects(() => db.query("select myssp_discard_judge_feedback($1,'one')", [a]), /Review not found/)
-  assert.deepEqual((await feedback(student)).remarks, ["Remark B"])
+  assert.deepEqual((await feedback(student)).reviews.map(review => review.remarks), ["Remark B"])
 })

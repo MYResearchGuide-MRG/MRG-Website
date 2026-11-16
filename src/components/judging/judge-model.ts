@@ -1,5 +1,5 @@
 // Pure judging helpers shared by the committee panel and its tests.
-import { judgingSections, scoreKeys, SCORE_MAX, type ScoreKey } from "./form"
+import { judgingSections, judgeKindLabels, scoreKeys, SCORE_MAX, type JudgeKind, type ScoreKey } from "./form"
 
 export type CommitteeJudge = {
   id: string
@@ -8,11 +8,12 @@ export type CommitteeJudge = {
   name: string
   email: string
   affiliation: string
+  kind: JudgeKind
   revoked: boolean
   invitedAt: number | null
   deletedAt: string | null
 }
-export type JudgeInput = Pick<CommitteeJudge, "name" | "email" | "affiliation" | "revoked" | "cohortYear">
+export type JudgeInput = Pick<CommitteeJudge, "name" | "email" | "affiliation" | "kind" | "revoked" | "cohortYear">
 export type JudgingSwitches = { judgingOpen: boolean; feedbackReleased: boolean }
 export const closedSwitches: JudgingSwitches = { judgingOpen: false, feedbackReleased: false }
 
@@ -102,7 +103,7 @@ export function feedbackCsv(
   judges: readonly CommitteeJudge[],
   reviews: readonly CommitteeReview[],
 ): string {
-  const header = ["Position", "Project code", "Project title", "Judge", "Judge email", "Status",
+  const header = ["Position", "Project code", "Project title", "Judge", "Judge email", "Judge type", "Status",
     ...scoreKeys.map(key => criterionLabels[key]), `Total (/${MAX_TOTAL})`, "Remarks", "Submitted at"]
   const rows: (string | number | null)[][] = []
   lineup.forEach((project, index) => {
@@ -111,6 +112,7 @@ export function feedbackCsv(
       .sort((a, b) => (a.judge?.name || "").localeCompare(b.judge?.name || ""))
     for (const { review, judge } of projectReviews) rows.push([
       index + 1, project.code, project.title, judge?.name || "Unknown judge", judge?.email || "",
+      judge ? judgeKindLabels[judge.kind ?? "main"] : "",
       review.submittedAt ? "Submitted" : "Draft",
       ...scoreKeys.map(key => review[key]), reviewTotal(review), review.remarks, review.submittedAt,
     ])

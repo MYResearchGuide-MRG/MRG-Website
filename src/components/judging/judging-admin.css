@@ -86,3 +86,8 @@
 .jd-remark { margin-top: 8px; max-width: 720px; white-space: pre-wrap; font-size: 12.5px; line-height: 1.6; color: #d6d6d6; }
 
 .jd-code { flex: none; display: inline-block; padding: 2px 6px; border: 1px solid #3a3a3a; border-radius: 4px; color: #e6e6e6; font-size: 11px; line-height: 1.5; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Special award judges are marked wherever the committee sees a judge. */
+.jd-kind { display: inline-block; width: fit-content; padding: 1px 7px; border: 1px solid #4b4364; border-radius: 999px; background: #1c1928; color: #cfc4f0; font-size: 10.5px; font-weight: 500; line-height: 1.6; }
+.am-table td:nth-child(2) .jd-kind { display: inline-block; margin: 4px 0 2px; color: #cfc4f0; font-size: 10.5px; }
+.am-dialog form label.jd-kind-field small { color: #9a9a9a; font-size: 11px; }

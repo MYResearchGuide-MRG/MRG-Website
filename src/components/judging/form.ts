@@ -80,12 +80,11 @@ export function missingAnswers(answers: FeedbackAnswers): string[] {
   return missing
 }
 
-/** What a team receives after release: averages and shuffled remarks only. */
-export type ReleasedFeedback =
-  | { released: false }
-  | {
-      released: true
-      reviews: number
-      averages: Record<ScoreKey, number> | null
-      remarks: string[]
-    }
+export type JudgeKind = "main" | "special"
+export const judgeKindLabels: Record<JudgeKind, string> = { main: "Main judge", special: "Special award judge" }
+
+/** One submitted review as a team sees it: every score and the remark, labelled only by judge type. */
+export type TeamReview = Record<ScoreKey, number> & { kind: JudgeKind; remarks: string }
+
+/** What a team receives after release: each submitted review, anonymous and in random order. */
+export type ReleasedFeedback = { released: false } | { released: true; reviews: TeamReview[] }

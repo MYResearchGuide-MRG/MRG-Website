@@ -55,12 +55,12 @@ test("judge details are validated before saving", () => {
 test("CSV export quotes text and neutralises spreadsheet formulas", () => {
   const csv = feedbackCsv(
     [{ id: "p1", code: "A-1", title: "Trees, graphs" }],
-    [{ id: "a", name: "Prof. A", email: "a@uni.edu" }],
+    [{ id: "a", name: "Prof. A", email: "a@uni.edu", kind: "special" }],
     [review("a", "p1", 4, { remarks: '=HYPERLINK("x") said "great"\nline 2' })],
   )
   const [header, row] = csv.trim().split("\r\n")
-  assert.match(header, /^Position,Project code,Project title,Judge,Judge email,Status,Data Collection and Execution,/)
+  assert.match(header, /^Position,Project code,Project title,Judge,Judge email,Judge type,Status,Data Collection and Execution,/)
   assert.match(header, /Total \(\/40\),Remarks,Submitted at$/)
-  assert.ok(row.startsWith('1,A-1,"Trees, graphs",Prof. A,a@uni.edu,Submitted,4,4,4,4,4,4,4,4,32,'))
+  assert.ok(row.startsWith('1,A-1,"Trees, graphs",Prof. A,a@uni.edu,Special award judge,Submitted,4,4,4,4,4,4,4,4,32,'))
   assert.ok(row.includes(`"'=HYPERLINK(""x"") said ""great""\nline 2"`))
 })

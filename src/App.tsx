@@ -129,7 +129,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <SiteHeader signedIn={signedIn} isAdmin={isAdmin} onSignIn={signIn} onSignOut={() => {
+      <SiteHeader signedIn={signedIn} isAdmin={isAdmin} isJudge={Boolean(judge)} onSignIn={signIn} onSignOut={() => {
         setSignOutError("")
         setSignOutOpen(true)
       }} />

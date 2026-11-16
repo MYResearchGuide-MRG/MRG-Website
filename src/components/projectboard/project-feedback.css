@@ -15,9 +15,16 @@
 .pf-pending > svg { flex: none; margin-top: 3px; color: var(--pb-muted); }
 .pf-pending h2 { font-size: 15px; }
 
-.pf-scores { display: grid; gap: 22px 40px; margin-top: 22px; }
+.pf-reviews { display: grid; gap: 16px; margin-top: 20px; }
+.pf-review { padding: 18px 20px 20px; border: 1px solid #2a2a2a; border-radius: 5px; background: #0d0d0d; }
+.pf-review-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.pf-review-head h3 { font-size: 14px; font-weight: 550; }
+.pf-kind { padding: 2px 8px; border: 1px solid #3a3a3a; border-radius: 999px; color: #d6d6d6; font-size: 11px; line-height: 1.5; }
+.pf-kind-special { border-color: #4b4364; background: #1c1928; color: #cfc4f0; }
+
+.pf-scores { display: grid; gap: 18px 40px; margin-top: 16px; }
 @media (min-width: 900px) { .pf-scores { grid-template-columns: 1fr 1fr; } }
-.pf-score-group h3, .pf-remarks-heading {
+.pf-score-group h4, .pf-remarks-heading {
   margin-bottom: 10px;
   color: var(--pb-muted);
   font-size: 11px;
@@ -34,13 +41,10 @@
 .pf-value { min-width: 52px; text-align: right; font-size: 14px; font-weight: 550; font-variant-numeric: tabular-nums; }
 .pf-value span { color: var(--pb-muted); font-size: 11px; font-weight: 400; }
 
-.pf-remarks-heading { margin-top: 28px; }
-.pf-remarks { display: grid; gap: 10px; }
-.pf-remarks li {
-  padding: 14px 16px;
+.pf-remarks-heading { margin-top: 20px; margin-bottom: 8px; }
+.pf-remark {
+  padding-left: 14px;
   border-left: 2px solid #3a3a3a;
-  background: #0d0d0d;
-  border-radius: 0 4px 4px 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   font-size: 14px;
@@ -49,5 +53,6 @@
 }
 @media (max-width: 640px) {
   .pf-root { padding: 20px 18px 22px; }
+  .pf-review { padding: 16px 14px 18px; }
   .pf-bar { width: 56px; }
 }

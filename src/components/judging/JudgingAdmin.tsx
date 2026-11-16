@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import type { Board } from "../projectboard/data"
 import { useLiveBackend } from "../admin/backend"
 import { useCohorts } from "../admin/project-registry"
-import { scoreKeys } from "./form"
+import { judgeKindLabels, scoreKeys, type JudgeKind } from "./form"
 import {
   criterionLabels, feedbackCsv, judgeInputError, MAX_TOTAL, projectResult, rankResults, reviewTotal,
   type CommitteeJudge, type CommitteeReview, type JudgeInput,
@@ -70,7 +70,7 @@ function JudgingSwitches({ year, reviews, judges, lineupSize, onNotice }: { year
           : setConfirm("open-judging")} />
     </div>
     <div className="jd-switch-card">
-      <div><strong>Feedback to teams</strong><p>{current.feedbackReleased ? "Teams can see averaged scores and anonymous remarks." : "Hidden from teams until you release it after the results announcement."}</p></div>
+      <div><strong>Feedback to teams</strong><p>{current.feedbackReleased ? "Teams can see each anonymous review: every score and remark." : "Hidden from teams until you release it after the results announcement."}</p></div>
       <Switch label="Feedback released" checked={current.feedbackReleased} disabled={busy}
         onChange={() => current.feedbackReleased
           ? void change({ ...current, feedbackReleased: false }, "Feedback hidden from teams again.")
@@ -92,7 +92,7 @@ function JudgingSwitches({ year, reviews, judges, lineupSize, onNotice }: { year
     </DialogContent></Dialog>}
     {confirm === "release" && <Dialog open onOpenChange={open => { if (!open && !busy) setConfirm(null) }}><DialogContent className="ad-modal am-dialog">
       <DialogTitle>Release feedback to teams?</DialogTitle>
-      <DialogDescription>Each team will see the average of every criterion and the submitted remarks in random order. Judges’ names and individual scores stay hidden.</DialogDescription>
+      <DialogDescription>Each team will see every submitted review in full, all eight scores and the remark, in random order. Reviews are labelled only “Main judge” or “Special award judge”; names stay hidden.</DialogDescription>
       <ul className="jd-checklist">
         <li>{submitted} submitted review{submitted === 1 ? "" : "s"} across {lineupSize} project{lineupSize === 1 ? "" : "s"} ({judges.length * lineupSize} expected).</li>
         {drafts > 0 && <li className="jd-warn">{drafts} draft{drafts === 1 ? " is" : "s are"} not submitted and won’t be shown.</li>}
@@ -126,7 +126,7 @@ function Switch({ label, checked, disabled, onChange }: { label: string; checked
 }
 
 // Judges -----------------------------------------------------------------------------------
-const blankJudge = (year: number): JudgeInput => ({ name: "", email: "", affiliation: "", revoked: false, cohortYear: year })
+const blankJudge = (year: number): JudgeInput => ({ name: "", email: "", affiliation: "", kind: "main", revoked: false, cohortYear: year })
 
 function JudgeManagement({ year, reviews, lineupSize, onNotice }: { year: number; reviews: CommitteeReview[]; lineupSize: number; onNotice: (text: string) => void }) {
   const { judges } = useCommitteeJudging()
@@ -178,7 +178,7 @@ function JudgeManagement({ year, reviews, lineupSize, onNotice }: { year: number
           const submitted = reviews.filter(review => review.judgeId === judge.id && review.submittedAt).length
           return <tr key={judge.id}>
             <td><input type="checkbox" aria-label={`Select ${judge.name}`} checked={selected.includes(judge.id)} disabled={judge.revoked || Boolean(judge.deletedAt)} onChange={() => setSelected(selected.includes(judge.id) ? selected.filter(id => id !== judge.id) : [...selected, judge.id])} /></td>
-            <td><strong>{judge.name}</strong><span>{judge.affiliation || "Affiliation not added"}{judge.cohortYear !== year && ` · ${judge.cohortYear} cohort`}</span><span className="am-email">{judge.email}</span></td>
+            <td><strong>{judge.name}</strong>{judge.kind === "special" && <span className="jd-kind">Special award</span>}<span>{judge.affiliation || "Affiliation not added"}{judge.cohortYear !== year && ` · ${judge.cohortYear} cohort`}</span><span className="am-email">{judge.email}</span></td>
             <td className="jd-num">{judge.cohortYear === year ? `${submitted} / ${lineupSize}` : "–"}</td>
             <td><span className={`am-status ${judge.revoked || judge.deletedAt ? "am-status-muted" : ""}`}><i />{judge.deletedAt ? "Deleted" : judge.revoked ? "Paused" : judge.invitedAt ? "Invited" : "Not invited"}</span></td>
             <td><div className="am-actions">{judge.deletedAt
@@ -211,7 +211,7 @@ function JudgeManagement({ year, reviews, lineupSize, onNotice }: { year: number
 
 function JudgeEditor({ judge, year, existing, onClose, onSaved }: { judge?: CommitteeJudge; year: number; existing: CommitteeJudge[]; onClose: () => void; onSaved: (emailChanged: boolean) => void }) {
   const cohorts = useCohorts()
-  const [input, setInput] = useState<JudgeInput>(judge ? { name: judge.name, email: judge.email, affiliation: judge.affiliation, revoked: judge.revoked, cohortYear: judge.cohortYear } : blankJudge(year))
+  const [input, setInput] = useState<JudgeInput>(judge ? { name: judge.name, email: judge.email, affiliation: judge.affiliation, kind: judge.kind, revoked: judge.revoked, cohortYear: judge.cohortYear } : blankJudge(year))
   const [error, setError] = useState("")
   const [saving, setSaving] = useState(false)
   const emailChanged = Boolean(judge && input.email.trim().toLowerCase() !== judge.email)
@@ -235,6 +235,9 @@ function JudgeEditor({ judge, year, existing, onClose, onSaved }: { judge?: Comm
         <label>Judging cohort<select value={input.cohortYear} onChange={event => setInput({ ...input, cohortYear: Number(event.target.value) })}>
           {[...new Set([input.cohortYear, ...cohorts.map(c => c.year)])].sort((a, b) => b - a).map(y => <option key={y} value={y}>{cohorts.find(c => c.year === y)?.name || `MYSSP ${y}`}</option>)}
         </select></label></div>
+      <label className="jd-kind-field">Judge type<select value={input.kind} onChange={event => setInput({ ...input, kind: event.target.value as JudgeKind })}>
+        {(Object.keys(judgeKindLabels) as JudgeKind[]).map(kind => <option key={kind} value={kind}>{judgeKindLabels[kind]}</option>)}
+      </select><small>Teams see this label on each review. Names stay hidden.</small></label>
       {judge && judge.cohortYear !== input.cohortYear && <p className="am-email-notice" role="status">The judge will see the {input.cohortYear} lineup instead. Their {judge.cohortYear} reviews stay with those teams.</p>}
       {judge && <label className="am-pause"><input type="checkbox" checked={input.revoked} onChange={event => setInput({ ...input, revoked: event.target.checked })} /><span><strong>Pause judge access</strong><small>The judge can’t sign in until access is restored. Submitted reviews still count.</small></span></label>}
       {error && <p className="ad-error" role="alert">{error}</p>}
@@ -399,7 +402,7 @@ function Results({ year, lineup, judges, allJudges, reviews, onNotice }: { year:
               {projectReviews.length ? <div className="jd-detail">
                 {result.averages && <p className="jd-averages">{scoreKeys.map(key => <span key={key}>{criterionLabels[key]} <strong>{result.averages![key]}</strong></span>)}</p>}
                 {projectReviews.map(review => <div key={review.judgeId} className="jd-review">
-                  <div className="jd-review-head"><strong>{judgeName(review.judgeId)}</strong>
+                  <div className="jd-review-head"><strong>{judgeName(review.judgeId)}</strong>{allJudges.find(judge => judge.id === review.judgeId)?.kind === "special" && <span className="jd-kind">Special award</span>}
                     <span className={review.submittedAt ? "jd-ok" : "jd-muted"}>{review.submittedAt ? `Submitted · ${reviewTotal(review)}/${MAX_TOTAL}` : "Draft, not counted"}</span>
                     <button className="jd-discard" onClick={() => setDiscarding(review)}><Trash2 size={13} aria-hidden /> Discard</button></div>
                   <p className="jd-scores">{scoreKeys.map(key => <span key={key} title={criterionLabels[key]}>{review[key] ?? "–"}</span>)}</p>

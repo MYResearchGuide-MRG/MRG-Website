@@ -30,7 +30,7 @@ function seed(): PreviewData {
   return {
     judges: [{
       id: "preview-judge", userId: null, cohortYear: year, name: "Preview Judge",
-      email: "judge@preview.local", affiliation: "Local preview", revoked: false,
+      email: "judge@preview.local", affiliation: "Local preview", kind: "main", revoked: false,
       invitedAt: Date.now(), deletedAt: null, code: "JUDGE1",
     }],
     lineups: {
@@ -49,6 +49,8 @@ export function readPreview(): PreviewData {
   try {
     const stored = localStorage.getItem(storageKey)
     cache = stored ? JSON.parse(stored) as PreviewData : seed()
+    // Judges stored before judge types existed are main judges.
+    cache.judges = cache.judges.map(judge => ({ ...judge, kind: judge.kind ?? "main" }))
   } catch { cache = seed() }
   return cache
 }
