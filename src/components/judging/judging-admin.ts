@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase"
 import { generateCode } from "../admin/access-model"
 import { getBackend, useBackend } from "../admin/backend"
 import { sendInvitationBatches } from "../admin/invitation-batches"
-import { scoreKeys, type JudgeKind, type ScoreKey } from "./form"
+import { missingAnswers, scoreKeys, type JudgeKind, type ScoreKey } from "./form"
 import { closedSwitches, judgeInputError, type CommitteeJudge, type CommitteeReview, type JudgeInput, type JudgingSwitches } from "./judge-model"
 import { judgingPreviewMode, onPreviewChange, readPreview, writePreview } from "./judging-preview"
 
@@ -179,9 +179,21 @@ export async function setLineup(year: number, projectIds: string[]) {
 export async function setSwitches(year: number, next: JudgingSwitches) {
   if (judgingPreviewMode) {
     const data = readPreview()
-    if (next.judgingOpen && !data.switches[year]?.judgingOpen && !data.lineups[year]?.length)
+    const wasOpen = Boolean(data.switches[year]?.judgingOpen)
+    if (next.judgingOpen && !wasOpen && !data.lineups[year]?.length)
       throw new Error("Set the lineup before opening judging")
-    writePreview({ ...data, switches: { ...data.switches, [year]: next } })
+    // Closing judging submits every complete draft, matching the database.
+    let reviews = data.reviews
+    if (wasOpen && !next.judgingOpen) {
+      const lineup = new Set(data.lineups[year] || [])
+      const now = new Date().toISOString()
+      reviews = Object.fromEntries(Object.entries(data.reviews).map(([judgeId, byProject]) => [judgeId,
+        Object.fromEntries(Object.entries(byProject).map(([projectId, review]) => [projectId,
+          !review.submittedAt && lineup.has(projectId) && !missingAnswers(review).length
+            ? { ...review, submittedAt: now } : review])),
+      ]))
+    }
+    writePreview({ ...data, reviews, switches: { ...data.switches, [year]: next } })
     return
   }
   const { error } = await requireAdmin().rpc("myssp_set_judging_state", {

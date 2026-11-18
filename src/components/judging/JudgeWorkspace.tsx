@@ -1,9 +1,30 @@
-import { useSyncExternalStore } from "react"
-import { ArrowRight, LockKeyhole } from "lucide-react"
+import { useState, useSyncExternalStore } from "react"
+import {
+  ArrowRight,
+  ArrowUpRight,
+  ChevronRight,
+  Clock,
+  FileText,
+  LockKeyhole,
+  ShieldCheck,
+} from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import action from "@/components/ui/action-motion.module.css"
+import { RUBRIC_URL } from "./form"
 import FeedbackLiveNotice from "./FeedbackLiveNotice"
 import { useBackend } from "../admin/backend"
 import { teamProfiles, type Board } from "../projectboard/data"
-import { reviewStatus, useJudgeAccess } from "./judge-access"
+import {
+  reviewComplete,
+  reviewStatus,
+  submitAllReviews,
+  useJudgeAccess,
+} from "./judge-access"
 import {
   judgingProjectHash,
   useLineupBoards,
@@ -37,9 +58,13 @@ export default function JudgeWorkspace({ onSignIn }: { onSignIn: () => void }) {
   if (!access.judge)
     return (
       <main className="mx-auto flex min-h-[70svh] max-w-xl flex-col items-center justify-center px-6 pt-24 text-center">
-        <LockKeyhole size={28} className="mb-5 text-zinc-500" aria-hidden />
-        <h1 className="text-3xl font-semibold tracking-tight">Judge access</h1>
-        <p className="mt-3 text-sm text-zinc-400">
+        <LockKeyhole
+          size={28}
+          className="mb-5 text-muted-foreground"
+          aria-hidden
+        />
+        <h1 className="judge-heading">Judge access</h1>
+        <p className="mt-4 text-sm text-muted-foreground">
           Sign in with the judge access code sent by the committee to see the
           Demo Day lineup.
         </p>
@@ -48,10 +73,7 @@ export default function JudgeWorkspace({ onSignIn }: { onSignIn: () => void }) {
             {access.error}
           </p>
         )}
-        <button
-          onClick={onSignIn}
-          className="mt-7 rounded-md bg-white px-5 py-3 text-sm font-medium text-black hover:bg-zinc-200"
-        >
+        <button onClick={onSignIn} className="btn-light mt-8">
           Sign in as judge
         </button>
       </main>
@@ -61,102 +83,285 @@ export default function JudgeWorkspace({ onSignIn }: { onSignIn: () => void }) {
 }
 
 function Lineup() {
-  const { judge, reviews, judgingOpen, feedbackReleased, error } =
-    useJudgeAccess()
+  const { reviews, judgingOpen, feedbackReleased, error } = useJudgeAccess()
   const boards = useLineupBoards()
   const backend = useBackend()
-  const submitted = boards.filter(
-    (board) => reviewStatus(reviews[board.id]) === "submitted"
+  const ready = boards.filter((board) =>
+    reviewComplete(reviews[board.id])
   ).length
-  const next = boards.find(
-    (board) => reviewStatus(reviews[board.id]) !== "submitted"
-  )
+  const allSubmitted =
+    boards.length > 0 &&
+    boards.every((board) => reviewStatus(reviews[board.id]) === "submitted")
+  const [confirmSubmit, setConfirmSubmit] = useState(false)
+  const [acknowledged, setAcknowledged] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState("")
+  // Reviews are submitted together, so "next" is the first team still missing answers.
+  const next = boards.find((board) => !reviewComplete(reviews[board.id]))
   const nextIndex = next ? boards.indexOf(next) : -1
+  const nextContent = useProjectContent(next ?? boards[0])
+  const statusLabel = judgingOpen
+    ? "Judging is open"
+    : feedbackReleased
+      ? "Judging is closed"
+      : "Judging opens on Demo Day"
   return (
-    <main className="mx-auto min-h-[72svh] w-full max-w-[960px] px-5 pt-32 pb-28 sm:px-8 sm:pt-40">
-      <section className="judge-briefing">
-        <header>
-          <p className="mb-3 text-sm text-zinc-400">MYSSP 2026 Demo Day</p>
-          <h1 className="text-3xl font-medium tracking-tight sm:text-4xl">
-            Presentation Scores
-          </h1>
-          <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-            <span className="font-medium">{judge?.name}</span>
-            {judge?.affiliation && (
-              <span className="text-zinc-500">{judge.affiliation}</span>
-            )}
-            <span
-              className={judgingOpen ? "text-emerald-300" : "text-zinc-400"}
-            >
-              {judgingOpen
-                ? "Judging is open"
-                : feedbackReleased
-                  ? "Judging is closed"
-                  : "Judging is not open yet"}
-            </span>
-          </div>
-          {feedbackReleased && <FeedbackLiveNotice judgingOpen={judgingOpen} />}
-          {!judgingOpen && !feedbackReleased && (
-            <p className="mt-3 max-w-2xl text-sm text-zinc-400">
-              You can look through the projects now. The feedback form unlocks
-              when the committee opens judging on Demo Day.
-            </p>
-          )}
-          {(error || backend.error) && (
-            <p className="mt-3 text-sm text-red-300" role="alert">
-              {error || backend.error} Showing the last loaded lineup.
-            </p>
-          )}
-        </header>
-
-        <JudgeNotes />
-      </section>
-
-      {boards.length > 0 && (
-        <section
-          className="flex flex-wrap items-center justify-between gap-5 border-b border-white/10 py-7"
-          aria-label="Progress"
-        >
-          <div>
-            <p className="text-sm text-zinc-400">Reviews submitted</p>
-            <p className="mt-1 text-2xl font-medium tabular-nums">
-              {submitted}{" "}
-              <span className="text-zinc-500">/ {boards.length}</span>
-            </p>
-          </div>
-          {next ? (
-            <a
-              href={judgingProjectHash(next.id)}
-              className="inline-flex items-center gap-3 rounded-md bg-white px-5 py-3 text-sm font-medium text-black hover:bg-zinc-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-            >
-              <span>
-                Next up: <span className="tabular-nums">{nextIndex + 1}.</span>{" "}
-                {next.code}
-              </span>
-              <ArrowRight size={16} aria-hidden />
-            </a>
-          ) : (
-            <p className="text-sm text-emerald-300">
-              All reviews submitted. Thank you!
-            </p>
-          )}
-        </section>
-      )}
-
-      {boards.length ? (
-        <ol className="divide-y divide-white/10">
-          {boards.map((board, index) => (
-            <LineupRow key={board.id} board={board} index={index} />
-          ))}
-        </ol>
-      ) : (
-        <div className="py-16 text-center">
-          <h2 className="text-lg font-medium">The lineup isn’t ready yet</h2>
-          <p className="mt-2 text-sm text-zinc-400">
-            The committee will publish the presentation order before Demo Day.
-            Check back soon.
-          </p>
+    <main className="min-h-[72svh] pb-20">
+      <header className="content-container pt-[calc(70px+3rem)] pb-2 sm:pt-[calc(70px+4.5rem)]">
+        <p className="mb-3 text-sm text-muted-foreground">
+          MYSSP 2026 Demo Day
+        </p>
+        <h1 className="judge-heading">Presentation Scores</h1>
+        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+          <span
+            className={`judge-tag ${judgingOpen ? "judge-tag-secondary-success" : "judge-tag-soft-default"}`}
+          >
+            <span className="judge-tag-dot" aria-hidden />
+            {statusLabel}
+          </span>
         </div>
+        {feedbackReleased && <FeedbackLiveNotice judgingOpen={judgingOpen} />}
+        {(error || backend.error) && (
+          <p className="mt-3 text-sm text-red-300" role="alert">
+            {error || backend.error} Showing the last loaded lineup.
+          </p>
+        )}
+      </header>
+
+      <div className="content-container">
+        <div className="section-y">
+          <JudgeNotes />
+        </div>
+
+        {boards.length > 0 && (
+          <section className="section-y" aria-labelledby="progress-heading">
+            <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+              <div>
+                <h2 id="progress-heading" className="judge-heading">
+                  Your progress
+                </h2>
+                <p className="mt-3 text-muted-foreground">
+                  <span className="font-display text-2xl text-foreground tabular-nums">
+                    {ready}
+                    <span className="text-muted-foreground">
+                      {" "}
+                      / {boards.length}
+                    </span>
+                  </span>
+                  <span className="ml-2 text-sm">
+                    reviews {allSubmitted ? "submitted" : "complete"}
+                  </span>
+                </p>
+              </div>
+              {judgingOpen && (
+                <p className="text-sm text-muted-foreground">
+                  <Clock
+                    size={14}
+                    className="-mt-0.5 mr-1.5 inline"
+                    aria-hidden
+                  />
+                  Closes{" "}
+                  <span className="text-foreground">
+                    Sat 21 Nov, 5:00 PM MYT
+                  </span>
+                </p>
+              )}
+            </div>
+
+            <ol className="judge-progress-bar" aria-hidden>
+              {boards.map((board) => (
+                <li
+                  key={board.id}
+                  data-state={
+                    reviewStatus(reviews[board.id]) === "submitted"
+                      ? "submitted"
+                      : reviewComplete(reviews[board.id])
+                        ? "complete"
+                        : reviews[board.id]
+                          ? "draft"
+                          : "empty"
+                  }
+                />
+              ))}
+            </ol>
+
+            {judgingOpen && !allSubmitted && (
+              <p className="judge-autosubmit-note">
+                <Clock size={16} className="flex-none" aria-hidden />
+                <span>
+                  <strong>When judging closes,</strong> any reviews you made
+                  will be submitted automatically.
+                </span>
+              </p>
+            )}
+
+            {(allSubmitted || judgingOpen || !next) && (
+              <div className="judge-progress-next">
+                {allSubmitted ? (
+                  <p className="flex items-center gap-2 text-sm text-emerald-300">
+                    <LockKeyhole size={16} aria-hidden /> All reviews submitted
+                    and locked. Thank you!
+                  </p>
+                ) : next ? (
+                  <>
+                    <div className="min-w-0 flex-1 basis-64">
+                      <p className="text-sm text-muted-foreground">Next up</p>
+                      <p className="mt-1 line-clamp-2 font-display text-lg leading-snug text-foreground">
+                        <span className="tabular-nums">{nextIndex + 1}.</span>{" "}
+                        {next.code} {nextContent?.title || next.title}
+                      </p>
+                    </div>
+                    <a
+                      href={judgingProjectHash(next.id)}
+                      className={`judge-primary-button ${action.light}`}
+                    >
+                      {reviews[next.id] ? "Continue review" : "Start review"}
+                      <ArrowRight size={16} aria-hidden />
+                    </a>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-muted-foreground">
+                      Every team has a complete review. Submitting is final, so
+                      check your answers before you submit.
+                    </p>
+                    {judgingOpen && (
+                      <button
+                        type="button"
+                        disabled={submitting}
+                        onClick={() => {
+                          setSubmitError("")
+                          setAcknowledged(false)
+                          setConfirmSubmit(true)
+                        }}
+                        className={`judge-primary-button ${action.light}`}
+                      >
+                        <LockKeyhole size={16} aria-hidden /> Submit all reviews
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
+            {!judgingOpen && !feedbackReleased && (
+              <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+                You can look through the projects now. The feedback form unlocks
+                when the committee opens judging on Demo Day.
+              </p>
+            )}
+          </section>
+        )}
+
+        {boards.length ? (
+          <section aria-labelledby="lineup-heading" className="section-y">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+              <h2 id="lineup-heading" className="judge-heading">
+                Presentation order
+              </h2>
+              <p className="text-sm text-muted-foreground tabular-nums">
+                {boards.length} team{boards.length === 1 ? "" : "s"}
+              </p>
+            </div>
+            <ol className="panel mt-8 divide-y divide-border overflow-hidden">
+              {boards.map((board, index) => (
+                <LineupRow
+                  key={board.id}
+                  board={board}
+                  index={index}
+                  isNext={judgingOpen && board.id === next?.id && !allSubmitted}
+                />
+              ))}
+            </ol>
+          </section>
+        ) : (
+          <div className="section-y">
+            <div className="panel px-6 py-16 text-center">
+              <h2 className="display-md">The lineup isn’t ready yet</h2>
+              <p className="mt-3 text-sm text-muted-foreground">
+                The committee will publish the presentation order before Demo
+                Day. Check back soon.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {confirmSubmit && (
+        <Dialog
+          open
+          onOpenChange={(open) => {
+            if (!open && !submitting) setConfirmSubmit(false)
+          }}
+        >
+          <DialogContent className="judge-dialog" showClose={!submitting}>
+            <DialogTitle className="display-md pr-10">
+              Submit all {boards.length} reviews? This can’t be undone.
+            </DialogTitle>
+            <DialogDescription className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              Submitting sends your final reviews to the committee.
+            </DialogDescription>
+            <ul className="judge-final-list">
+              <li>You can’t take back any review once it is submitted.</li>
+              <li>You can’t change any score or comment afterwards.</li>
+              <li>
+                Your reviews count towards the results exactly as submitted.
+              </li>
+            </ul>
+            <label className="judge-final-ack">
+              <input
+                type="checkbox"
+                checked={acknowledged}
+                disabled={submitting}
+                onChange={(event) => setAcknowledged(event.target.checked)}
+              />
+              <span>
+                I’ve checked every score and comment, and I understand my
+                reviews can’t be changed after I submit.
+              </span>
+            </label>
+            {submitError && (
+              <p role="alert" className="mt-4 text-sm text-red-300">
+                {submitError}
+              </p>
+            )}
+            <div className="judge-dialog-actions">
+              <button
+                type="button"
+                className="judge-secondary-button inline-flex"
+                disabled={submitting}
+                onClick={() => setConfirmSubmit(false)}
+              >
+                Keep reviewing
+              </button>
+              <button
+                type="button"
+                className={`judge-primary-button ${action.light}`}
+                disabled={!acknowledged || submitting}
+                onClick={() =>
+                  void (async () => {
+                    setSubmitting(true)
+                    setSubmitError("")
+                    try {
+                      await submitAllReviews()
+                      setConfirmSubmit(false)
+                    } catch (error) {
+                      setSubmitError(
+                        error instanceof Error
+                          ? error.message
+                          : "Could not submit all reviews."
+                      )
+                    } finally {
+                      setSubmitting(false)
+                    }
+                  })()
+                }
+              >
+                {submitting ? "Submitting…" : "Submit final reviews"}
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </main>
   )
@@ -164,82 +369,138 @@ function Lineup() {
 
 function JudgeNotes() {
   return (
-    <aside className="judge-notes" aria-labelledby="judge-notes-heading">
-      <h2 id="judge-notes-heading">Judge notes</h2>
-      <ul>
-        <li>
-          All team members are expected to have contributed meaningfully and at
-          an <strong>equal level</strong>. Judges may direct Q&amp;A questions
-          to any member.
-        </li>
-        <li>
-          Distinguish between limitations a team is aware of and has addressed,
-          and gaps they have not identified. The former should{" "}
-          <strong>not significantly penalise a team</strong>.
-        </li>
-        <li>
-          Record scores for each section <strong>independently</strong> before
-          judges confer. Final team scores will be determined after collecting
-          each judge’s score.
-        </li>
-        <li>
-          The research question and methodology are excluded from the rubric
-          because they are based on the assigned project mentor’s scope. Assess
-          how well the team <strong>executed and communicated</strong> their
-          work.
-        </li>
-      </ul>
-      <p className="judge-notes-rubric">
-        Keep the{" "}
-        <a
-          href="https://docs.google.com/document/d/1n3VA7un4CZ7THHeRjW_6qN6YSI0C3-lmlL3f3mR8Tz4/edit?tab=t.0"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Official Judging Rubrics for MYSSP 2026
-        </a>{" "}
-        open while scoring. Refer to sections 1 and 2.
-      </p>
-      <p className="judge-notes-important">
-        <strong>Your feedback is anonymous to teams:</strong> your name will
-        not be shown. Feedback stays confidential during judging and is shared
-        with teams only after results are announced.
-      </p>
-    </aside>
+    <section className="judge-notes" aria-labelledby="judge-notes-title">
+      <h2 id="judge-notes-title" className="judge-heading">
+        Judge notes
+      </h2>
+      <div className="judge-notes-body">
+        <ol>
+          <li>
+            All team members are expected to have contributed meaningfully and
+            at an <strong>equal level</strong>. Judges may direct Q&amp;A
+            questions to any member.
+          </li>
+          <li>
+            Distinguish between limitations a team is aware of and has
+            addressed, and gaps they have not identified. The former should{" "}
+            <strong>not significantly penalise a team</strong>.
+          </li>
+          <li>
+            Record scores for each section <strong>independently</strong> before
+            judges confer. Final team scores will be determined after collecting
+            each judge’s score.
+          </li>
+          <li>
+            The research question and methodology are excluded from the rubric
+            because they are based on the assigned project mentor’s scope.
+            Assess how well the team <strong>executed and communicated</strong>{" "}
+            their work, scoring against sections 1 and 2 of the{" "}
+            <a
+              href={RUBRIC_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="judge-notes-link"
+            >
+              Official Judging Rubrics
+              <ArrowUpRight size={14} aria-hidden />
+              <span className="sr-only"> (opens in a new tab)</span>
+            </a>
+            .
+          </li>
+        </ol>
+        <div className="judge-notes-footer">
+          <div className="judge-notes-rubric">
+            <FileText size={16} aria-hidden />
+            <span>
+              <span className="block font-medium text-foreground">
+                Official Judging Rubrics
+              </span>
+              <span className="block text-muted-foreground">
+                Score against sections 1 and 2. Keep it open while scoring.
+              </span>
+            </span>
+            <a
+              href={RUBRIC_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Open the Official Judging Rubrics (opens in a new tab)"
+              className={`btn-light judge-notes-rubric-open ${action.light}`}
+            >
+              Open
+              <ArrowUpRight size={15} aria-hidden />
+            </a>
+          </div>
+          <p className="judge-notes-important">
+            <ShieldCheck
+              size={16}
+              className="flex-none text-foreground"
+              aria-hidden
+            />
+            <span>
+              <strong className="block font-medium text-foreground">
+                Your feedback is anonymous to teams.
+              </strong>
+              Your name is hidden, and teams see feedback only after result
+              announcement.
+            </span>
+          </p>
+        </div>
+      </div>
+    </section>
   )
 }
 
-function LineupRow({ board, index }: { board: Board; index: number }) {
-  const { reviews } = useJudgeAccess()
+function LineupRow({
+  board,
+  index,
+  isNext,
+}: {
+  board: Board
+  index: number
+  isNext: boolean
+}) {
+  const { reviews, judgingOpen, feedbackReleased } = useJudgeAccess()
   const content = useProjectContent(board)
   const team = content?.teamMembers || teamProfiles(board)
   return (
     <li>
       <a
         href={judgingProjectHash(board.id)}
-        className="group grid grid-cols-[2.5rem_minmax(0,1fr)] items-start gap-x-4 gap-y-3 py-6 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white sm:grid-cols-[2.5rem_minmax(0,1fr)_auto] sm:items-center"
+        aria-current={isNext ? "step" : undefined}
+        className="judge-lineup-row group grid grid-cols-[2.5rem_minmax(0,1fr)] items-start gap-x-4 gap-y-3 px-5 py-5 transition-colors hover:bg-white/[0.03] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-white sm:grid-cols-[2.5rem_minmax(0,1fr)_auto_1rem] sm:items-center sm:px-6"
       >
-        <span className="pt-0.5 text-lg font-medium text-zinc-500 tabular-nums">
-          {index + 1}
+        <span className="judge-lineup-index">
+          {String(index + 1).padStart(2, "0")}
         </span>
         <span className="min-w-0">
-          <span className="mb-1.5 flex items-center gap-3 text-xs text-zinc-400">
-            <span className="rounded border border-white/20 px-2 py-0.5 text-zinc-200">
+          <span className="mb-1.5 flex items-center gap-3 text-xs text-muted-foreground">
+            <span className="judge-tag judge-tag-secondary-default">
               {board.code}
             </span>
             <span>{board.track}</span>
+            {isNext && (
+              <span className="judge-tag judge-tag-soft-accent">Next up</span>
+            )}
           </span>
-          <span className="block text-lg leading-snug font-medium tracking-tight group-hover:underline">
-            {content?.title || board.title}
+          <span className="block font-display text-lg leading-snug">
+            <span className="link-wipe">{content?.title || board.title}</span>
           </span>
-          <span className="mt-1 block text-sm text-zinc-400">
+          <span className="mt-1 block text-sm text-muted-foreground">
             {team.map((person) => person.name).join(", ") ||
               "Team to be confirmed"}
           </span>
         </span>
         <span className="col-start-2 sm:col-start-auto">
-          <StatusBadge status={reviewStatus(reviews[board.id])} />
+          <StatusBadge
+            status={reviewStatus(reviews[board.id])}
+            closed={!judgingOpen && feedbackReleased}
+          />
         </span>
+        <ChevronRight
+          size={16}
+          className="hidden text-muted-foreground/60 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground sm:block"
+          aria-hidden
+        />
       </a>
     </li>
   )

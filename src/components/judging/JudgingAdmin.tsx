@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import type { Board } from "../projectboard/data"
 import { useLiveBackend } from "../admin/backend"
 import { useCohorts } from "../admin/project-registry"
-import { judgeKindLabels, scoreKeys, type JudgeKind } from "./form"
+import { judgeKindLabels, missingAnswers, scoreKeys, type JudgeKind } from "./form"
 import {
   criterionLabels, feedbackCsv, judgeCsvTemplate, judgeInputError, MAX_TOTAL, parseJudgeCsv, projectResult, rankResults, reviewTotal,
   type CommitteeJudge, type CommitteeReview, type JudgeInput,
@@ -55,6 +55,9 @@ function JudgingSwitches({ year, reviews, judges, lineupSize, onNotice }: { year
   const [error, setError] = useState("")
   const submitted = reviews.filter(review => review.submittedAt).length
   const drafts = reviews.length - submitted
+  // Closing judging submits complete drafts automatically; only incomplete ones are lost.
+  const incompleteDrafts = reviews.filter(review => !review.submittedAt && missingAnswers(review).length).length
+  const completeDrafts = drafts - incompleteDrafts
   async function change(next: typeof current, message: string, then: typeof confirm = null) {
     setBusy(true); setError("")
     try { await setSwitches(year, next); onNotice(message); setConfirm(then) }
@@ -105,10 +108,11 @@ function JudgingSwitches({ year, reviews, judges, lineupSize, onNotice }: { year
     </DialogContent></Dialog>}
     {confirm === "close-judging" && <Dialog open onOpenChange={open => { if (!open && !busy) setConfirm(null) }}><DialogContent className="ad-modal am-dialog">
       <DialogTitle>Close judging too?</DialogTitle>
-      <DialogDescription>Feedback is now live to teams, but judging is still open. While it’s open, judges can keep editing their reviews and teams will see the changes straight away.</DialogDescription>
+      <DialogDescription>Feedback is now live to teams, but judging is still open. While it’s open, judges can still save drafts and submit reviews, and teams see each review as soon as it is submitted.</DialogDescription>
       <ul className="jd-checklist">
         <li>Closing judging locks every review. Judges can still read what they submitted.</li>
-        {drafts > 0 && <li className="jd-warn">{drafts} draft{drafts === 1 ? " is" : "s are"} not submitted. Closing now means {drafts === 1 ? "it" : "they"} won’t reach the team.</li>}
+        {completeDrafts > 0 && <li>{completeDrafts} complete draft{completeDrafts === 1 ? " is" : "s are"} not submitted yet. Closing judging submits {completeDrafts === 1 ? "it" : "them"} automatically.</li>}
+        {incompleteDrafts > 0 && <li className="jd-warn">{incompleteDrafts} draft{incompleteDrafts === 1 ? " is" : "s are"} incomplete. Closing now means {incompleteDrafts === 1 ? "it" : "they"} won’t reach the team.</li>}
         <li>You can reopen judging later from this panel.</li>
       </ul>
       {error && <p className="ad-error" role="alert">{error}</p>}

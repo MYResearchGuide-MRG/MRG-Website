@@ -51,6 +51,19 @@ export function readPreview(): PreviewData {
     cache = stored ? JSON.parse(stored) as PreviewData : seed()
     // Judges stored before judge types existed are main judges.
     cache.judges = cache.judges.map(judge => ({ ...judge, kind: judge.kind ?? "main" }))
+    // Reviews stored before section-specific remarks only have `remarks`;
+    // copy it into both sections, as the database migration did.
+    cache.reviews = Object.fromEntries(Object.entries(cache.reviews || {}).map(([judgeId, byProject]) => [judgeId,
+      Object.fromEntries(Object.entries(byProject).map(([projectId, review]) => {
+        const legacy = (review as { remarks?: unknown }).remarks
+        const fallback = typeof legacy === "string" ? legacy : ""
+        return [projectId, {
+          ...review,
+          researchRemarks: typeof review.researchRemarks === "string" ? review.researchRemarks : fallback,
+          presentationRemarks: typeof review.presentationRemarks === "string" ? review.presentationRemarks : fallback,
+        }]
+      })),
+    ]))
   } catch { cache = seed() }
   return cache
 }

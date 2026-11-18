@@ -23,6 +23,9 @@ export type FormSection = {
 export const SCORE_MIN = 1
 export const SCORE_MAX = 5
 export const REMARKS_MAX = 5000
+/** Official Judging Rubrics; its sections 1 and 2 match the two scoring sections. */
+export const RUBRIC_URL =
+  "https://docs.google.com/document/d/1n3VA7un4CZ7THHeRjW_6qN6YSI0C3-lmlL3f3mR8Tz4/edit?tab=t.0"
 
 export const scoreLabels: Record<number, string> = {
   1: "Needs major improvement",

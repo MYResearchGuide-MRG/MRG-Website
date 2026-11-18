@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabase"
 import { getProjectBoards } from "../admin/project-registry"
 import { refreshBackend } from "../admin/backend"
 import { judgingPreviewMode, onPreviewChange, previewSessionKey, readPreview, writePreview } from "./judging-preview"
-import { scoreKeys, type FeedbackAnswers, type ScoreKey } from "./form"
+import { missingAnswers, scoreKeys, type FeedbackAnswers, type ScoreKey } from "./form"
 
 export type Judge = {
   id: string
@@ -40,6 +40,18 @@ export const useJudgeAccess = () => useSyncExternalStore(subscribe, getJudgeAcce
 
 export function reviewStatus(review: JudgeReview | undefined): ReviewStatus {
   return !review ? "not-started" : review.submittedAt ? "submitted" : "draft"
+}
+
+export function answersFromReview(review: JudgeReview): FeedbackAnswers {
+  return {
+    ...(Object.fromEntries(scoreKeys.map(key => [key, review[key]])) as Record<ScoreKey, number | null>),
+    researchRemarks: review.researchRemarks,
+    presentationRemarks: review.presentationRemarks,
+  }
+}
+
+export function reviewComplete(review: JudgeReview | undefined) {
+  return Boolean(review && missingAnswers(answersFromReview(review)).length === 0)
 }
 
 // Device-only preview -----------------------------------------------------------
@@ -131,13 +143,16 @@ export async function saveReview(projectId: string, answers: FeedbackAnswers, su
     if (!state.judge) throw new Error("Sign in as a judge to save.")
     if (!state.lineup.includes(projectId)) throw new Error("This project is no longer in your lineup.")
     if (!state.judgingOpen) throw new Error("Judging is closed. Your last saved answers are kept.")
-    submittedAt = previous?.submittedAt || (submit ? now : null)
+    if (previous?.submittedAt) throw new Error("This review has already been submitted and can no longer be changed.")
+    if (submit && missingAnswers(answers).length) throw new Error("Answer every score and add a remark.")
+    submittedAt = submit ? now : null
   } else {
     if (!supabase) throw new Error("Sign-in is not configured yet.")
     const { data, error } = await supabase.rpc("myssp_save_judge_feedback", {
       project: projectId, answers, submit,
     })
     if (error) {
+      if (error.message.includes("already submitted")) throw new Error("This review has already been submitted and can no longer be changed.")
       if (error.message.includes("closed")) throw new Error("Judging is closed. Your last saved answers are kept.")
       if (error.message.includes("Answer every score")) throw new Error("Answer every score and add a remark.")
       if (error.message.includes("lineup") || error.code === "42501") throw new Error("This project is no longer in your lineup.")
@@ -154,6 +169,19 @@ export async function saveReview(projectId: string, answers: FeedbackAnswers, su
   epoch++ // a refresh already in flight must not overwrite this confirmed save
   publish({ ...state, reviews })
   return review
+}
+
+/** Finalises every complete review in the judge's lineup in presentation order. */
+export async function submitAllReviews() {
+  const current = getJudgeAccess()
+  const incomplete = current.lineup.filter(projectId => !reviewComplete(current.reviews[projectId]))
+  if (incomplete.length) throw new Error("Complete every team's review before submitting all reviews.")
+  for (const projectId of current.lineup) {
+    if (!current.reviews[projectId]?.submittedAt) {
+      await saveReview(projectId, answersFromReview(current.reviews[projectId]), true)
+    }
+  }
+  return current.lineup.length
 }
 
 export async function judgeSignIn(email: string, code: string) {

@@ -1,4 +1,4 @@
-import { Check, CircleDashed, PencilLine } from "lucide-react"
+import { Check, CircleDashed, Minus, PencilLine } from "lucide-react"
 import type { ReviewStatus } from "./judge-access"
 
 const statusLabel: Record<ReviewStatus, string> = {
@@ -6,13 +6,17 @@ const statusLabel: Record<ReviewStatus, string> = {
   draft: "Draft saved",
   submitted: "Submitted",
 }
-export default function StatusBadge({ status }: { status: ReviewStatus }) {
+/** `closed`: judging has ended, so an untouched project reads "Not reviewed", not "Not started". */
+export default function StatusBadge({ status, closed = false }: { status: ReviewStatus; closed?: boolean }) {
+  if (closed && status === "not-started")
+    return <span className="judge-tag judge-tag-soft-default">
+      <Minus size={13} aria-hidden />Not reviewed
+    </span>
   const Icon = status === "submitted" ? Check : status === "draft" ? PencilLine : CircleDashed
-  const tone = status === "submitted"
-    ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200"
-    : status === "draft" ? "border-amber-300/40 bg-amber-300/10 text-amber-100"
-    : "border-white/15 text-zinc-400"
-  return <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${tone}`}>
+  const tone = status === "submitted" ? "judge-tag-soft-success"
+    : status === "draft" ? "judge-tag-soft-warning"
+    : "judge-tag-soft-default"
+  return <span className={`judge-tag ${tone}`}>
     <Icon size={13} aria-hidden />{statusLabel[status]}
   </span>
 }

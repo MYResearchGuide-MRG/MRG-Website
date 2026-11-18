@@ -4,23 +4,25 @@ import {
   ArrowRight,
   ArrowUpRight,
   Check,
+  FileText,
   LoaderCircle,
   ShieldCheck,
-  TriangleAlert,
 } from "lucide-react"
+import action from "@/components/ui/action-motion.module.css"
 import { OverviewContent } from "../projectboard/OverviewEditor"
 import { teamProfiles, type Board, type Draft } from "../projectboard/data"
 import { projectShareUrl } from "../projectboard/paths"
 import {
   emptyAnswers,
   judgingSections,
-  missingAnswers,
   REMARKS_MAX,
+  RUBRIC_URL,
   sectionRemarks,
   scoreKeys,
   scoreLabels,
   SCORE_MAX,
   SCORE_MIN,
+  validScore,
   type FeedbackAnswers,
   type ScoreKey,
 } from "./form"
@@ -38,7 +40,6 @@ import {
   useProjectContent,
 } from "./lineup"
 import StatusBadge from "./StatusBadge"
-import FeedbackLiveNotice from "./FeedbackLiveNotice"
 import "../projectboard/projectboard.css"
 import "./judging.css"
 
@@ -59,11 +60,6 @@ function answersOf(review: JudgeReview | undefined): FeedbackAnswers {
     presentationRemarks: review.presentationRemarks,
   }
 }
-const time = (iso: string) =>
-  new Date(iso).toLocaleTimeString("en-MY", {
-    hour: "numeric",
-    minute: "2-digit",
-  })
 
 type SaveState =
   | { kind: "idle" }
@@ -84,8 +80,6 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
   const [saveState, setSaveState] = useState<SaveState>(() =>
     saved ? { kind: "saved", at: saved.updatedAt } : { kind: "idle" }
   )
-  const [showMissing, setShowMissing] = useState(false)
-  const [justSubmitted, setJustSubmitted] = useState(false)
   const answersRef = useRef(answers)
   const dirty = useRef(false)
   const queue = useRef<Promise<unknown>>(Promise.resolve())
@@ -97,16 +91,10 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
       const run = async () => {
         const snapshot = answersRef.current
         if (!submit && !dirty.current) return true
-        if (
-          getJudgeAccess().reviews[projectId]?.submittedAt &&
-          missingAnswers(snapshot).length
-        ) {
-          setSaveState({
-            kind: "error",
-            message:
-              "Submitted reviews must stay complete. Fill in every field to save this change.",
-          })
-          return false
+        // Submitted reviews are final; there is nothing left to save.
+        if (getJudgeAccess().reviews[projectId]?.submittedAt) {
+          dirty.current = false
+          return true
         }
         setSaveState({ kind: "saving" })
         try {
@@ -133,9 +121,8 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
     answersRef.current = next
     dirty.current = true
     setAnswers(next)
-    setJustSubmitted(false)
     window.clearTimeout(timer.current)
-    if (judgingOpen)
+    if (judgingOpen && !submitted)
       timer.current = window.setTimeout(() => void persist(false), AUTOSAVE_MS)
   }
 
@@ -165,30 +152,18 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
     window.location.hash = hash
   }
 
-  async function submit() {
-    const missing = missingAnswers(answers)
-    if (missing.length) {
-      setShowMissing(true)
-      const first = scoreKeys.find((key) => answers[key] === null)
-      document.getElementById(fieldId(first ?? sectionRemarks[0].key))?.focus()
-      return
-    }
-    window.clearTimeout(timer.current)
-    if (await persist(true)) setJustSubmitted(true)
-  }
-
   if (!board)
     return (
       <main className="mx-auto min-h-[70svh] max-w-xl px-6 pt-40 text-center">
-        <h1 className="text-2xl font-medium">
+        <h1 className="display-md">
           This project isn’t in your lineup
         </h1>
-        <p className="mt-3 text-sm text-zinc-400">
+        <p className="mt-3 text-sm text-muted-foreground">
           The committee may have changed the presentation order.
         </p>
         <a
           href={judgingHash}
-          className="mt-7 inline-flex items-center gap-2 rounded-md border border-white/25 px-4 py-2.5 text-sm hover:border-white/60"
+          className="btn-dark mt-7"
         >
           <ArrowLeft size={16} aria-hidden /> Back to lineup
         </a>
@@ -197,15 +172,23 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
 
   const previous = boards[index - 1]
   const next = boards[index + 1]
-  const missing = showMissing
-    ? new Set(missingAnswers(answers))
-    : new Set<string>()
   const status = reviewStatus(saved)
+  const missing = missingKeys(answers)
+  const total = scoreKeys.length + sectionRemarks.length
+  const answered = total - missing.length
+
+  function jumpToMissing() {
+    const key = missing[0]
+    if (!key) return
+    const el = document.getElementById(fieldId(key))
+    el?.closest("[data-judge-field]")?.scrollIntoView({ behavior: "smooth", block: "center" })
+    el?.focus({ preventScroll: true })
+  }
 
   return (
-    <main className="judge-page mx-auto w-full max-w-[860px] px-5 pt-28 pb-28 sm:px-8 sm:pt-32">
+    <main className="judge-page mx-auto w-full max-w-[1040px] px-6 pt-[calc(70px+2.5rem)] pb-16">
       <nav
-        className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4 text-sm"
+        className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-5 text-sm"
         aria-label="Lineup navigation"
       >
         <a
@@ -214,11 +197,11 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
             event.preventDefault()
             void go(judgingHash)
           }}
-          className="inline-flex items-center gap-2 text-zinc-300 hover:text-white"
+          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft size={16} aria-hidden /> Lineup
         </a>
-        <span className="text-zinc-400 tabular-nums">
+        <span className="text-muted-foreground tabular-nums">
           Project {index + 1} of {boards.length}
         </span>
         <span className="flex gap-2">
@@ -227,199 +210,269 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
         </span>
       </nav>
 
-      <ProjectSummary board={board} content={content} status={status} />
+      <ProjectSummary
+        board={board}
+        content={content}
+        status={status}
+        closed={!judgingOpen && feedbackReleased}
+      />
 
       <section
         aria-labelledby="judge-form-heading"
-        className="mt-12 border-t border-white/15 pt-10"
+        className="mt-14 border-t border-border pt-12"
       >
-        <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <h2
             id="judge-form-heading"
-            className="text-2xl font-medium tracking-tight"
+            className="judge-heading"
           >
             Your feedback
           </h2>
-          <SaveStatus state={saveState} open={judgingOpen} />
+          {!judgingOpen && (
+            <span className="judge-tag judge-tag-soft-default" role="status">
+              <span className="judge-tag-dot" aria-hidden />
+              {saved || feedbackReleased ? "Judging is closed" : "Opens on Demo Day"}
+            </span>
+          )}
         </div>
-        <aside className="mt-4 flex items-start gap-3 rounded-md border border-emerald-400/35 bg-emerald-400/[0.08] px-4 py-3 text-sm text-zinc-300">
-          <ShieldCheck size={17} className="mt-0.5 flex-none text-emerald-300" aria-hidden />
-          <div>
-            <p className="font-semibold text-emerald-100">Your feedback is anonymous to teams</p>
-            <p className="mt-1">Your name will not be shown. Your feedback stays confidential during judging and is shared with teams only after results are announced.</p>
-          </div>
-        </aside>
-        {feedbackReleased && <FeedbackLiveNotice judgingOpen={judgingOpen} />}
-        {!judgingOpen && (
-          <p className="mt-4 rounded-md border border-white/15 bg-white/[0.03] px-4 py-3 text-sm text-zinc-300">
-            {saved
-              ? "Judging is closed. Your saved answers are shown below."
-              : "The form unlocks when the committee opens judging on Demo Day."}
-          </p>
-        )}
+        <p className="mt-4 flex items-start gap-2 text-sm text-muted-foreground">
+          <ShieldCheck size={16} className="mt-0.5 flex-none text-foreground" aria-hidden />
+          <span>
+            <span className="font-medium text-foreground">Your feedback is anonymous to teams.</span>{" "}
+            Your name is hidden, and teams see feedback only after result announcement.
+          </span>
+        </p>
         {submitted && judgingOpen && (
-          <p className="mt-4 text-sm text-zinc-400">
-            Submitted. You can still change your answers while judging is open;
-            changes save automatically.
+          <p className="mt-4 flex items-start gap-2 rounded-lg border border-emerald-400/30 bg-emerald-400/[0.06] px-4 py-3 text-sm text-foreground">
+            <Check size={16} className="mt-0.5 flex-none text-emerald-300" aria-hidden />
+            Submitted. Your answers are final and can no longer be changed.
           </p>
         )}
         <fieldset
-          disabled={!judgingOpen}
-          className="mt-8 space-y-12 disabled:opacity-60"
+          disabled={!judgingOpen || submitted}
+          className="mt-8 space-y-6 disabled:opacity-60"
         >
-          {judgingSections.map((section, sectionIndex) => (
-            <section
-              key={section.title}
-              aria-labelledby={`judge-section-${sectionIndex}`}
-            >
-              <h3
-                id={`judge-section-${sectionIndex}`}
-                className="text-lg font-medium"
+          {judgingSections.map((section, sectionIndex) => {
+            const review = sectionRemarks[sectionIndex]
+            const sectionKeys = [
+              ...section.criteria.map((criterion) => criterion.key),
+              review.key,
+            ]
+            const sectionDone = sectionKeys.filter(
+              (key) => !missing.includes(key)
+            ).length
+            return (
+              <section
+                key={section.title}
+                className="judge-section"
+                aria-labelledby={`judge-section-${sectionIndex}`}
               >
-                Section {sectionIndex + 1}: {section.title}
-              </h3>
-              <p className="mt-2 max-w-[680px] text-sm leading-relaxed text-zinc-400">
-                {section.description}
-              </p>
-              <div className="mt-6 divide-y divide-white/10 border-y border-white/10">
-                {section.criteria.map((criterion) => {
-                  const value = answers[criterion.key]
-                  const invalid = missing.has(criterion.label)
-                  return (
-                    <fieldset
-                      key={criterion.key}
-                      className="grid gap-4 py-7"
-                      aria-invalid={invalid || undefined}
-                    >
-                      <legend className="contents">
-                        <span className="text-[15px] font-medium">
-                          {criterion.label}
-                          {invalid && (
-                            <span className="ml-2 text-xs font-normal text-red-300">
-                              Required
-                            </span>
-                          )}
-                        </span>
-                      </legend>
-                      <div className="judge-rating">
-                        <span className="judge-rating-end judge-rating-low">
-                          Poor
-                        </span>
-                        <div
-                          className="judge-scale"
-                          role="radiogroup"
-                          aria-label={criterion.label}
-                        >
-                          {scores.map((score) => (
-                            <label key={score} className="judge-score">
-                              <input
-                                type="radio"
-                                name={criterion.key}
-                                value={score}
-                                checked={value === score}
-                                aria-label={`${score}: ${scoreLabels[score]}`}
-                                id={
-                                  score === SCORE_MIN
-                                    ? fieldId(criterion.key)
-                                    : undefined
-                                }
-                                onChange={() =>
-                                  change({
-                                    ...answersRef.current,
-                                    [criterion.key]: score,
-                                  })
-                                }
-                              />
-                              <span className="judge-score-circle">
-                                {score}
-                              </span>
-                            </label>
-                          ))}
-                        </div>
-                        <span className="judge-rating-end judge-rating-high">
-                          Excellent
-                        </span>
-                      </div>
-                    </fieldset>
-                  )
-                })}
-              </div>
-              {(() => {
-                const review = sectionRemarks[sectionIndex]
-                const { key, label, hint } = review
-                return (
-                  <div className="mt-8">
-                    <label htmlFor={fieldId(key)} className="block text-lg font-medium">
-                      {label}
-                      {missing.has(label) && (
-                        <span className="ml-2 text-xs font-normal text-red-300">Required</span>
-                      )}
-                    </label>
-                    <p className="mt-2 text-sm text-zinc-400">{hint}</p>
-                    <textarea
-                      id={fieldId(key)}
-                      value={answers[key]}
-                      maxLength={REMARKS_MAX}
-                      rows={6}
-                      onChange={(event) => change({ ...answersRef.current, [key]: event.target.value })}
-                      className="mt-4 w-full resize-y rounded-md border border-white/20 bg-black/40 px-4 py-3 text-[15px] leading-relaxed outline-none placeholder:text-zinc-600 focus:border-white/60"
-                      placeholder="Write your review…"
-                    />
-                    <p className="mt-1 text-right text-xs text-zinc-500 tabular-nums">
-                      {answers[key].length.toLocaleString()} / {REMARKS_MAX.toLocaleString()}
+                <header className="judge-section-header">
+                  <div className="min-w-0">
+                    <p className="label-micro text-muted-foreground">
+                      Section {sectionIndex + 1}
                     </p>
+                    <h3
+                      id={`judge-section-${sectionIndex}`}
+                      className="display-md mt-3"
+                    >
+                      {section.title}
+                    </h3>
+                    <p className="mt-3 max-w-[640px] text-sm leading-relaxed text-muted-foreground">
+                      {section.description}
+                    </p>
+                    <a
+                      href={RUBRIC_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="judge-section-rubric"
+                    >
+                      <FileText size={14} aria-hidden />
+                      Rubric · Section {sectionIndex + 1}
+                      <ArrowUpRight size={14} aria-hidden />
+                      <span className="sr-only"> (opens in a new tab)</span>
+                    </a>
                   </div>
-                )
-              })()}
-            </section>
-          ))}
+                  <span
+                    className={`judge-tag judge-section-count ${sectionDone === sectionKeys.length ? "judge-tag-soft-success" : "judge-tag-soft-default"}`}
+                  >
+                    {sectionDone === sectionKeys.length && (
+                      <Check size={13} aria-hidden />
+                    )}
+                    {sectionDone} / {sectionKeys.length}
+                  </span>
+                </header>
+
+                <div className="judge-criteria">
+                  <div className="judge-criteria-scale-head" aria-hidden>
+                    <span className="judge-rating-low">Poor</span>
+                    <span className="judge-rating-high">Excellent</span>
+                  </div>
+                  {section.criteria.map((criterion) => {
+                    const value = answers[criterion.key]
+                    return (
+                      <fieldset
+                        key={criterion.key}
+                        className="judge-criterion"
+                        data-judge-field
+                      >
+                        <legend className="contents">
+                          <span className="judge-criterion-label">
+                            <span className="block text-[15px] font-medium">
+                              {criterion.label}
+                            </span>
+                          </span>
+                        </legend>
+                        <div className="judge-rating">
+                          <span className="judge-rating-end judge-rating-low">
+                            Poor
+                          </span>
+                          <div
+                            className="judge-scale"
+                            role="radiogroup"
+                            aria-label={criterion.label}
+                          >
+                            {scores.map((score) => (
+                              <label
+                                key={score}
+                                className="judge-score"
+                                title={scoreLabels[score]}
+                              >
+                                <input
+                                  type="radio"
+                                  name={criterion.key}
+                                  value={score}
+                                  checked={value === score}
+                                  aria-label={`${score}: ${scoreLabels[score]}`}
+                                  id={
+                                    score === SCORE_MIN
+                                      ? fieldId(criterion.key)
+                                      : undefined
+                                  }
+                                  onChange={() =>
+                                    change({
+                                      ...answersRef.current,
+                                      [criterion.key]: score,
+                                    })
+                                  }
+                                />
+                                <span className="judge-score-circle">
+                                  {score}
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                          <span className="judge-rating-end judge-rating-high">
+                            Excellent
+                          </span>
+                        </div>
+                      </fieldset>
+                    )
+                  })}
+                </div>
+
+                <div className="judge-remarks" data-judge-field>
+                  <label
+                    htmlFor={fieldId(review.key)}
+                    className="block text-[15px] font-medium"
+                  >
+                    {review.label}
+                  </label>
+                  <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                    {review.hint}
+                  </p>
+                  <textarea
+                    id={fieldId(review.key)}
+                    value={answers[review.key]}
+                    maxLength={REMARKS_MAX}
+                    rows={6}
+                    onChange={(event) =>
+                      change({
+                        ...answersRef.current,
+                        [review.key]: event.target.value,
+                      })
+                    }
+                    className="mt-3 w-full resize-y rounded-lg border border-border bg-background px-4 py-3 text-[15px] leading-relaxed outline-none placeholder:text-muted-foreground/60 focus:border-[#777]"
+                    placeholder="Write your review…"
+                  />
+                  <p className="mt-1 text-right text-xs text-muted-foreground tabular-nums">
+                    {answers[review.key].length.toLocaleString()} /{" "}
+                    {REMARKS_MAX.toLocaleString()}
+                  </p>
+                </div>
+              </section>
+            )
+          })}
         </fieldset>
 
-        {showMissing && missing.size > 0 && (
-          <p
-            role="alert"
-            className="mt-6 flex items-start gap-2 text-sm text-red-300"
-          >
-            <TriangleAlert size={16} className="mt-0.5 shrink-0" aria-hidden />
-            Still needed: {[...missing].join(", ")}.
-          </p>
-        )}
+      </section>
 
-        <div className="mt-8 flex flex-wrap items-center gap-4 border-t border-white/10 pt-6">
-          {judgingOpen && !submitted && (
+      <div className="judge-actionbar" role="region" aria-label="Review progress">
+        <div className="judge-actionbar-inner">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+              {submitted ? (
+                <span className="inline-flex items-center gap-1.5 font-medium text-emerald-300">
+                  <Check size={15} aria-hidden /> Submitted
+                </span>
+              ) : missing.length === 0 ? (
+                <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
+                  <Check size={15} aria-hidden /> Review complete
+                </span>
+              ) : (
+                <span className="font-medium tabular-nums">
+                  {answered} of {total} answered
+                </span>
+              )}
+              {!submitted && <SaveStatus state={saveState} open={judgingOpen} />}
+            </div>
+            <div className="judge-actionbar-progress" aria-hidden>
+              <span style={{ width: `${(answered / total) * 100}%` }} />
+            </div>
+          </div>
+          {judgingOpen && !submitted && missing.length > 0 && (
             <button
-              onClick={() => void submit()}
-              disabled={saveState.kind === "saving"}
-              className="inline-flex items-center gap-2 rounded-md bg-white px-5 py-3 text-sm font-medium text-black hover:bg-zinc-200 disabled:opacity-60"
+              type="button"
+              onClick={jumpToMissing}
+              className="judge-secondary-button hidden sm:inline-flex"
             >
-              Submit review <Check size={16} aria-hidden />
+              Next unanswered
             </button>
           )}
-          {(submitted || !judgingOpen) && next && (
+          {next ? (
             <button
+              type="button"
               onClick={() => void go(judgingProjectHash(next.id))}
-              className={`inline-flex items-center gap-2 rounded-md px-5 py-3 text-sm font-medium ${justSubmitted || submitted ? "bg-white text-black hover:bg-zinc-200" : "border border-white/25 hover:border-white/60"}`}
+              className={`judge-primary-button ${action.light}`}
             >
-              Next: {next.code} <ArrowRight size={16} aria-hidden />
+              <span className="hidden sm:inline">Next team:</span> {next.code}
+              <ArrowRight size={16} aria-hidden />
             </button>
-          )}
-          {(submitted || !judgingOpen) && !next && (
+          ) : (
             <button
+              type="button"
               onClick={() => void go(judgingHash)}
-              className="inline-flex items-center gap-2 rounded-md border border-white/25 px-5 py-3 text-sm hover:border-white/60"
+              className={`judge-primary-button ${action.light}`}
             >
               Back to lineup
             </button>
           )}
-          {justSubmitted && (
-            <span className="text-sm text-emerald-300" role="status">
-              Review submitted.
-            </span>
-          )}
         </div>
-      </section>
+      </div>
     </main>
   )
+}
+
+function missingKeys(answers: FeedbackAnswers) {
+  const keys: (ScoreKey | (typeof sectionRemarks)[number]["key"])[] = []
+  judgingSections.forEach((section, i) => {
+    section.criteria.forEach((criterion) => {
+      if (!validScore(answers[criterion.key])) keys.push(criterion.key)
+    })
+    const remark = sectionRemarks[i].key
+    if (!answers[remark].trim()) keys.push(remark)
+  })
+  return keys
 }
 
 function NavButton({
@@ -443,7 +496,7 @@ function NavButton({
           ? `${label} project: ${board.code}`
           : `No ${label.toLowerCase()} project`
       }
-      className="inline-flex items-center gap-1.5 rounded-md border border-white/20 px-3 py-1.5 hover:border-white/50 disabled:opacity-35 disabled:hover:border-white/20"
+      className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#454545] bg-[rgb(12_12_12/85%)] px-3 hover:border-[#777] hover:bg-[#242424] disabled:opacity-35 disabled:hover:border-[#454545] disabled:hover:bg-[rgb(12_12_12/85%)]"
     >
       {!forward && <Icon size={15} aria-hidden />}
       {board ? board.code : label}
@@ -457,19 +510,14 @@ function SaveStatus({ state, open }: { state: SaveState; open: boolean }) {
   if (state.kind === "saving")
     return (
       <span
-        className="inline-flex items-center gap-1.5 text-sm text-zinc-400"
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground"
         role="status"
       >
         <LoaderCircle size={14} className="animate-spin" aria-hidden />
         Saving…
       </span>
     )
-  if (state.kind === "saved")
-    return (
-      <span className="text-sm text-zinc-400" role="status">
-        Saved {time(state.at)}
-      </span>
-    )
+  if (state.kind === "saved") return null
   if (state.kind === "error")
     return (
       <span className="text-sm text-red-300" role="alert">
@@ -477,7 +525,7 @@ function SaveStatus({ state, open }: { state: SaveState; open: boolean }) {
       </span>
     )
   return (
-    <span className="text-sm text-zinc-500">Answers save automatically</span>
+    <span className="text-sm text-muted-foreground">Saves automatically</span>
   )
 }
 
@@ -485,10 +533,12 @@ function ProjectSummary({
   board,
   content,
   status,
+  closed,
 }: {
   board: Board
   content?: Draft
   status: ReturnType<typeof reviewStatus>
+  closed: boolean
 }) {
   const projectUrl = projectShareUrl(
     board.id,
@@ -497,23 +547,23 @@ function ProjectSummary({
   )
   const participants = content?.teamMembers || teamProfiles(board)
   return (
-    <article className="pt-8">
+    <article className="pt-10">
       <header>
-        <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-400">
-          <span className="rounded border border-white/20 px-2 py-0.5 text-sm text-zinc-100">
+        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+          <span className="judge-tag judge-tag-secondary-default">
             {board.code}
           </span>
           <span>{board.track}</span>
-          <StatusBadge status={status} />
+          <StatusBadge status={status} closed={closed} />
         </div>
-        <h1 className="mt-4 text-3xl leading-tight font-medium tracking-tight sm:text-[2.5rem]">
+        <h1 className="judge-heading mt-5">
           {content?.title || board.title}
         </h1>
       </header>
 
       <dl className="mt-6 grid gap-5 text-sm sm:grid-cols-2">
         <div>
-          <dt className="mb-2 text-xs tracking-wide text-zinc-500 uppercase">
+          <dt className="label-micro mb-3 text-muted-foreground">
             Participants
           </dt>
           <dd>
@@ -523,24 +573,24 @@ function ProjectSummary({
                   <li key={person.id}>
                     <span className="font-medium">{person.name}</span>
                     {person.school && (
-                      <span className="text-zinc-400">, {person.school}</span>
+                      <span className="text-muted-foreground">, {person.school}</span>
                     )}
                   </li>
                 ))
               ) : (
-                <li className="text-zinc-400">Team to be confirmed</li>
+                <li className="text-muted-foreground">Team to be confirmed</li>
               )}
             </ul>
           </dd>
         </div>
         <div>
-          <dt className="mb-2 text-xs tracking-wide text-zinc-500 uppercase">
+          <dt className="label-micro mb-3 text-muted-foreground">
             Mentor
           </dt>
           <dd>
             <span className="font-medium">{board.mentor}</span>
             {board.affiliation && (
-              <span className="block text-zinc-400">{board.affiliation}</span>
+              <span className="block text-muted-foreground">{board.affiliation}</span>
             )}
           </dd>
         </div>
@@ -548,7 +598,7 @@ function ProjectSummary({
 
       <div className="pb-root judge-embed mt-9">
         <section>
-          <h2 className="mb-2 text-xs tracking-wide text-zinc-500 uppercase">
+          <h2 className="label-micro mb-3 text-muted-foreground">
             Abstract
           </h2>
           <OverviewContent text={content?.summary || board.description} />
@@ -557,7 +607,7 @@ function ProjectSummary({
           href={projectUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-8 inline-flex items-center gap-2 rounded-md border border-white/25 px-4 py-2.5 text-sm font-medium hover:border-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          className={`btn-dark mt-8 ${action.dark}`}
         >
           View full project <ArrowUpRight size={16} aria-hidden />
         </a>
