@@ -22,7 +22,12 @@ test("required content and each photo are checked; additional materials remain o
     assert.equal(submissionChecklist(board,{...complete,teamMembers:[{...complete.teamMembers[0],[key]:""}]}).find(item=>item.id==="member-0").done,false,key)
   assert.equal(submissionChecklist(board,{...complete,teamMembers:[]}).find(item=>item.id==="member-0").done,false)
   assert.equal(submissionChecklist(board,{...complete,summary:" Original  brief ",method:"- Original method"}).filter(item=>["summary","method"].includes(item.id)).every(item=>!item.done),true)
-  assert.equal(submissionChecklist(board,{...complete,video:"https://evil.example/watch?v=M7lc1UVf-VE"}).find(item=>item.id==="video").done,false)
+  assert.equal(submissionChecklist(board,{...complete,video:"javascript:alert(1)"}).find(item=>item.id==="video").done,false)
+})
+
+test("materials checklist accepts links that cannot be embedded",()=>{
+  const shared={...complete,video:"https://vimeo.com/123456789",slides:"https://canva.link/xr1tgcwosi65q23",paper:"https://example.com/research.pdf"}
+  assert.ok(submissionChecklist(board,shared).filter(item=>item.section==="materials").every(item=>item.done))
 })
 test("final review expires when required content changes and survives unrelated save metadata",()=>{
   const reviewed={...complete,reviewedFingerprint:submissionFingerprint(complete)}

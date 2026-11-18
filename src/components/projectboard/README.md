@@ -46,14 +46,13 @@ not a live submission or authentication service. Nothing has been deployed.
 The Materials tab displays video, slides, then the PDF write-up. The editor stores
 links only; these files are served by their providers rather than uploaded to Vercel.
 
-- **Video:** a YouTube watch/share link. Use Public or Unlisted and allow embedding.
-  Videos do not autoplay and use the YouTube privacy-enhanced player.
-- **Slides:** the full Canva public view link (`canva.com/design/.../view`).
-  Edit links and `canva.link` shortcuts are rejected. Enable embedding in Canva
-  if required. The original share path is retained and tracking parameters removed.
-- **Write-up:** a PDF uploaded to Google Drive. Use the file's sharing link with
-  General access set to Anyone with the link, Viewer. Folders and Google Docs
-  editing links are not accepted. Drive resource keys are preserved.
+- **Video, slides and write-up:** any HTTP(S) share link is accepted, including
+  short links and editing URLs. Saving and checklist completion do not require
+  a particular provider or an embeddable URL. Students must check sharing access.
+- Recognised YouTube videos, Canva view links and Drive files retain their
+  embedded previews. Other links show the provider and an external **Open** action.
+  YouTube previews use the privacy-enhanced player without autoplay. Canva share
+  paths and Drive resource keys are preserved when constructing previews.
 - **Additional materials:** up to ten editable named web links, with service icons
   for GitHub, Google Drive, YouTube and Canva, or a generic website icon.
 
@@ -66,7 +65,7 @@ before publication. Older drafts without additional links remain compatible.
 Editing shows the final submission rules beside each component: a 2–3 minute,
 1080p minimum video with clear audio, no software logos, restrained effects and
 equal on-camera/voice participation; at most 12 slide pages (10 content plus title
-and thank-you); and the final compiled PDF via Google Drive. A shared note
+and thank-you); and the final compiled PDF. A shared note
 covers one submission per team, official templates, final checks and possible
 publication. Link validation does not verify duration, resolution, slide count,
 file contents or permissions. Drafts may remain incomplete; the prototype still

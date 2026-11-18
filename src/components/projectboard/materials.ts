@@ -8,12 +8,12 @@ export const materialSpecs = [
   {
     key: "video",
     title: "Video presentation",
-    service: "youtube",
-    provider: "YouTube",
-    label: "YouTube video link",
+    service: "web",
+    provider: "Video link",
+    label: "Video link",
     placeholder: "https://www.youtube.com/watch?v=…",
     instruction:
-      "Prepare your video as an MP4, then upload it to YouTube as Public or Unlisted with embedding allowed. Paste the video link here.",
+      "Paste your video’s share link from any host. Make sure anyone with the link can watch it.",
     rules: [
       "2–3 minutes, for a general audience, at a minimum resolution of 1080p. Videos outside this length will not be accepted.",
       "Keep audio clear throughout and minimise background noise.",
@@ -21,38 +21,34 @@ export const materialSpecs = [
       "No software logos may appear anywhere in the video.",
       "All team members must appear on camera and speak, with speaking time equally distributed.",
     ],
-    error: "Use a YouTube video link, such as youtube.com/watch?v=… or youtu.be/….",
   },
   {
     key: "slides",
     title: "Presentation slides",
-    service: "canva",
-    provider: "Canva",
-    label: "Canva public view link",
+    service: "web",
+    provider: "Slides link",
+    label: "Slides link",
     placeholder: "https://www.canva.com/design/…/view",
     instruction:
-      "In Canva, choose Share → Public view link. Paste the full design link, not an edit link or a canva.link shortcut. If needed, enable Share → See all → Embed.",
+      "Paste your slides’ share link from any host. Short links are accepted. Make sure anyone with the link can view them.",
     rules: [
       "No more than 12 pages: 10 pages of main content, plus one title page and one thank-you page.",
       "Use the official Demo Day slides template and follow the presentation guidelines.",
     ],
-    error:
-      "Use the full Canva public view link ending in /view. Edit links and canva.link shortcuts cannot be embedded.",
   },
   {
     key: "paper",
     title: "Research write-up",
-    service: "drive",
-    provider: "Google Drive · PDF",
-    label: "Google Drive PDF link",
+    service: "web",
+    provider: "Write-up link",
+    label: "Write-up link",
     placeholder: "https://drive.google.com/file/d/…/view",
     instruction:
-      "Upload your write-up as a PDF. Set General access to Anyone with the link → Viewer, then copy the file link.",
+      "Paste your write-up’s share link from any host. Make sure anyone with the link can open the final PDF.",
     rules: [
-      "Submit the final compiled PDF, complete and ready for review, through Google Drive.",
+      "Submit the final compiled PDF, complete and ready for review.",
       "Use the official research write-up template and follow the paper guidelines.",
     ],
-    error: "Use a Google Drive file link for your PDF, not a folder or a Google Docs editing link.",
   },
 ] as const
 
@@ -120,9 +116,9 @@ export function materialEmbed(key: MaterialKey, value: string): MaterialEmbed | 
 }
 
 export function materialError(key: MaterialKey, value: string): string | null {
-  if (!value.trim()) return null
-  if (materialEmbed(key, value)) return null
-  return materialSpecs.find((item) => item.key === key)!.error
+  // Saving a link does not require the host to support an embedded preview.
+  if (!value.trim() || webUrl(value)) return null
+  return `Enter a valid http:// or https:// link for ${materialSpecs.find((item) => item.key === key)!.title.toLowerCase()}.`
 }
 
 export function linkService(value: string): { icon: MaterialService; label: string } {
@@ -132,7 +128,7 @@ export function linkService(value: string): { icon: MaterialService; label: stri
   if (host === "drive.google.com") return { icon: "drive", label: "Google Drive" }
   if (["youtube.com", "youtu.be", "m.youtube.com"].includes(host ?? ""))
     return { icon: "youtube", label: "YouTube" }
-  if (host === "canva.com") return { icon: "canva", label: "Canva" }
+  if (host === "canva.com" || host === "canva.link") return { icon: "canva", label: "Canva" }
   return { icon: "web", label: host ?? "Website" }
 }
 

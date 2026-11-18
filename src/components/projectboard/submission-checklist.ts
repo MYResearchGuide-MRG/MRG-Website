@@ -1,5 +1,5 @@
 import type { Board, Draft } from "./data"
-import { materialEmbed } from "./materials"
+import { webUrl } from "./materials"
 import { overviewFields } from "./overview"
 
 export type ChecklistSection = "heading" | "overview" | "materials" | "team"
@@ -24,10 +24,10 @@ export function submissionChecklist(board: Board, draft: Draft): ChecklistItem[]
   }
   if (!board.team.length) items.push({ id: "team", label: "Student team", detail: "Ask the committee to assign your team members.", done: false, section: "team" })
   for (const [key, label, detail] of [
-    ["video", "Video presentation", "YouTube, 2–3 minutes, at least 1080p. Every member must appear and speak."],
-    ["slides", "Presentation slides", "Canva public view link. Up to 12 pages using the official template."],
-    ["paper", "Research write-up", "Final PDF on Google Drive. Anyone with the link must be able to view it."],
-  ] as const) items.push({id:key,label,detail,done:Boolean(materialEmbed(key,draft[key])),section:"materials"})
+    ["video", "Video presentation", "Share a video link: 2–3 minutes, at least 1080p. Every member must appear and speak."],
+    ["slides", "Presentation slides", "Share a slides link. Up to 12 pages using the official template."],
+    ["paper", "Research write-up", "Share the final PDF. Anyone with the link must be able to view it."],
+  ] as const) items.push({id:key,label,detail,done:Boolean(webUrl(draft[key])),section:"materials"})
   return items
 }
 

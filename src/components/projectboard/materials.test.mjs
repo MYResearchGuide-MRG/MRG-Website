@@ -76,7 +76,25 @@ test("Embeds reject lookalike hosts, credentials, HTML and unsafe schemes", () =
     null
   )
   assert.equal(materialError("video", ""), null)
-  assert.ok(materialError("video", "https://example.com/movie.mp4"))
+  assert.equal(materialError("video", "https://example.com/movie.mp4"), null)
+})
+
+test("all material fields accept share, short, edit and other-host links without requiring an embed", () => {
+  for (const key of ["video", "slides", "paper"]) {
+    for (const url of [
+      "https://canva.link/xr1tgcwosi65q23",
+      "https://www.canva.com/design/DAExample/shareToken/edit",
+      "https://docs.google.com/presentation/d/example/edit?usp=sharing",
+      "https://drive.google.com/drive/folders/example_file_id",
+      "https://vimeo.com/123456789",
+      "https://example.com/research.pdf?download=1",
+      "http://example.com/shared-material",
+    ]) assert.equal(materialError(key, url), null, `${key}: ${url}`)
+    for (const invalid of ["not a link", "javascript:alert(1)", "data:text/html,test", "https://user:password@example.com", "<iframe src='https://example.com'></iframe>"]) {
+      assert.ok(materialError(key, invalid), `${key}: ${invalid}`)
+    }
+  }
+  assert.equal(linkService("https://canva.link/xr1tgcwosi65q23").icon, "canva")
 })
 test("Additional materials support ordinary links with bounded, valid named records", () => {
   const link = { id: "one", name: "Code repository", url: "https://github.com/example/research" }

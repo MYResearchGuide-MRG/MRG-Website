@@ -121,7 +121,7 @@ export function ProjectMaterials({
             MYResearchGuide’s official platforms and in programme publications.
           </p>
           <p className="pb-submission-note">
-            Link formats are checked here. Check video length, resolution, slide count, file
+            Check video length, resolution, slide count, file
             contents and sharing permissions before your final submission.
           </p>
         </section>
@@ -130,15 +130,16 @@ export function ProjectMaterials({
         const value = content?.[spec.key] ?? ""
         const embed = materialEmbed(spec.key, value)
         const href = embed?.href ?? webUrl(value)?.href
+        const service = href ? linkService(value) : { icon: spec.service, label: spec.provider }
         return (
           <section key={spec.key} className="pb-media-card" aria-label={spec.title}>
             <div className="pb-media-heading">
               <span className="pb-service-icon">
-                <ServiceIcon service={spec.service} />
+                <ServiceIcon service={service.icon} />
               </span>
               <div>
                 <h3>{spec.title}</h3>
-                <span>{spec.provider}</span>
+                <span>{service.label}</span>
               </div>
               {!editing && href && (
                 <a
@@ -170,7 +171,7 @@ export function ProjectMaterials({
                 <div className={`pb-media-frame pb-media-frame-${spec.key}`}>
                   <iframe
                     src={embed.src}
-                    title={`${spec.title} on ${spec.provider}`}
+                    title={`${spec.title} on ${service.label}`}
                     loading="lazy"
                     referrerPolicy="strict-origin-when-cross-origin"
                     allowFullScreen
@@ -184,15 +185,15 @@ export function ProjectMaterials({
                 <p className="pb-embed-note">
                   Preview not loading?{" "}
                   <a href={href} target="_blank" rel="noopener noreferrer">
-                    Open on {spec.provider.split(" · ")[0]} <ArrowUpRight size={12} />
+                    Open on {service.label} <ArrowUpRight size={12} />
                   </a>
                 </p>
               </>
             ) : (
               <div className="pb-media-empty">
                 <p>
-                  {value.trim()
-                    ? "This link does not support an embedded preview."
+                  {href
+                    ? "Use Open to view this material in a new tab."
                     : "Not added yet"}
                 </p>
               </div>
