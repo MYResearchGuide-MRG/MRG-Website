@@ -134,8 +134,11 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
     return () => {
       window.removeEventListener("beforeunload", warn)
       window.clearTimeout(timer.current)
+      // Leaving another way (back button, header link) must still save the
+      // latest answers; go() already saved them for the in-page links.
+      if (dirty.current && getJudgeAccess().judgingOpen) void persist(false)
     }
-  }, [])
+  }, [persist])
 
   async function go(hash: string) {
     window.clearTimeout(timer.current)

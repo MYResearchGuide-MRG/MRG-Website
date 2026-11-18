@@ -133,6 +133,24 @@ export async function refreshJudging() {
   }
 }
 
+/** The database names the section reviews in snake_case, like its columns. */
+function toDatabaseAnswers(answers: FeedbackAnswers) {
+  return {
+    ...Object.fromEntries(scoreKeys.map(key => [key, answers[key]])),
+    research_remarks: answers.researchRemarks,
+    presentation_remarks: answers.presentationRemarks,
+  }
+}
+
+function saveError(error: { code?: string; message: string }) {
+  if (error.message.includes("already submitted")) return new Error("This review has already been submitted and can no longer be changed.")
+  if (error.message.includes("closed")) return new Error("Judging is closed. Your last saved answers are kept.")
+  if (error.message.includes("Answer every score")) return new Error("Answer every score and add a remark.")
+  if (error.message.includes("Complete every")) return new Error("Complete every team's review before submitting all reviews.")
+  if (error.message.includes("lineup") || error.code === "42501") return new Error("This project is no longer in your lineup.")
+  return new Error("Could not save. Check your connection and try again.")
+}
+
 /** Saves the signed-in judge's review. Returns the stored review. */
 export async function saveReview(projectId: string, answers: FeedbackAnswers, submit: boolean): Promise<JudgeReview> {
   const previous = state.reviews[projectId]
@@ -149,15 +167,9 @@ export async function saveReview(projectId: string, answers: FeedbackAnswers, su
   } else {
     if (!supabase) throw new Error("Sign-in is not configured yet.")
     const { data, error } = await supabase.rpc("myssp_save_judge_feedback", {
-      project: projectId, answers, submit,
+      project: projectId, answers: toDatabaseAnswers(answers), submit,
     })
-    if (error) {
-      if (error.message.includes("already submitted")) throw new Error("This review has already been submitted and can no longer be changed.")
-      if (error.message.includes("closed")) throw new Error("Judging is closed. Your last saved answers are kept.")
-      if (error.message.includes("Answer every score")) throw new Error("Answer every score and add a remark.")
-      if (error.message.includes("lineup") || error.code === "42501") throw new Error("This project is no longer in your lineup.")
-      throw new Error("Could not save. Check your connection and try again.")
-    }
+    if (error) throw saveError(error)
     submittedAt = data as string | null
   }
   const review: JudgeReview = { ...answers, projectId, submittedAt, updatedAt: now }
@@ -171,17 +183,33 @@ export async function saveReview(projectId: string, answers: FeedbackAnswers, su
   return review
 }
 
-/** Finalises every complete review in the judge's lineup in presentation order. */
+/** Submits every review in the judge's lineup together: all of them, or none. */
 export async function submitAllReviews() {
+  if (previewMode) loadPreview() // pick up committee changes made in another tab
   const current = getJudgeAccess()
+  if (!current.judge) throw new Error("Sign in as a judge to submit.")
+  if (!current.judgingOpen) throw new Error("Judging is closed. Your last saved answers are kept.")
   const incomplete = current.lineup.filter(projectId => !reviewComplete(current.reviews[projectId]))
   if (incomplete.length) throw new Error("Complete every team's review before submitting all reviews.")
-  for (const projectId of current.lineup) {
-    if (!current.reviews[projectId]?.submittedAt) {
-      await saveReview(projectId, answersFromReview(current.reviews[projectId]), true)
-    }
+  if (previewMode) {
+    const now = new Date().toISOString()
+    const reviews = Object.fromEntries(Object.entries(current.reviews).map(([projectId, review]) =>
+      [projectId, !review.submittedAt && current.lineup.includes(projectId) ? { ...review, submittedAt: now, updatedAt: now } : review]))
+    const data = readPreview()
+    writePreview({ ...data, reviews: { ...data.reviews, [current.judge.id]: reviews } })
+    epoch++
+    publish({ ...state, reviews })
+    return current.lineup.length
   }
-  return current.lineup.length
+  if (!supabase) throw new Error("Sign-in is not configured yet.")
+  // One database call, so a dropped connection can't leave half the lineup final.
+  const { data, error } = await supabase.rpc("myssp_submit_judge_reviews")
+  if (error) {
+    await refreshJudging()
+    throw saveError(error)
+  }
+  await refreshJudging()
+  return data as number
 }
 
 export async function judgeSignIn(email: string, code: string) {

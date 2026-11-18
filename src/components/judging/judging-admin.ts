@@ -63,7 +63,7 @@ export async function refreshCommitteeJudging() {
   ])
   if (ticket !== epoch) return
   if (judges.error || lineup.error || feedback.error || switches.error) {
-    publish({ ...state, ready: true, error: "Judging needs the judging database migrations. Apply every 2026111* judging migration first." })
+    publish({ ...state, ready: true, error: "Judging needs the judging database migration. Apply 202611140001_judging.sql first." })
     return
   }
   const lineups: Record<number, string[]> = {}
@@ -179,17 +179,20 @@ export async function setLineup(year: number, projectIds: string[]) {
 export async function setSwitches(year: number, next: JudgingSwitches) {
   if (judgingPreviewMode) {
     const data = readPreview()
+    if (next.judgingOpen && next.feedbackReleased) throw new Error("Close judging before releasing feedback")
     const wasOpen = Boolean(data.switches[year]?.judgingOpen)
     if (next.judgingOpen && !wasOpen && !data.lineups[year]?.length)
       throw new Error("Set the lineup before opening judging")
-    // Closing judging submits every complete draft, matching the database.
+    // Closing judging submits every complete draft from the cohort's active
+    // judges, matching the database.
     let reviews = data.reviews
     if (wasOpen && !next.judgingOpen) {
       const lineup = new Set(data.lineups[year] || [])
+      const active = new Set(data.judges.filter(judge => judge.cohortYear === year && !judge.revoked && !judge.deletedAt).map(judge => judge.id))
       const now = new Date().toISOString()
       reviews = Object.fromEntries(Object.entries(data.reviews).map(([judgeId, byProject]) => [judgeId,
         Object.fromEntries(Object.entries(byProject).map(([projectId, review]) => [projectId,
-          !review.submittedAt && lineup.has(projectId) && !missingAnswers(review).length
+          active.has(judgeId) && !review.submittedAt && lineup.has(projectId) && !missingAnswers(review).length
             ? { ...review, submittedAt: now } : review])),
       ]))
     }

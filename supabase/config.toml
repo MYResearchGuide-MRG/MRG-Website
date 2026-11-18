@@ -5,3 +5,7 @@ verify_jwt = false
 [functions.invite-mentors]
 # The handler validates the user with Auth and requires the committee role.
 verify_jwt = false
+
+[functions.invite-judges]
+# The handler validates the user with Auth and requires the committee role.
+verify_jwt = false

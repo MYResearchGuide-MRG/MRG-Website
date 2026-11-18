@@ -50,13 +50,15 @@ export function JudgingAdmin({ boards, year }: { boards: Board[]; year: number }
 function JudgingSwitches({ year, reviews, judges, lineupSize, onNotice }: { year: number; reviews: CommitteeReview[]; judges: CommitteeJudge[]; lineupSize: number; onNotice: (text: string) => void }) {
   const data = useCommitteeJudging()
   const current = switchesFor(data, year)
-  const [confirm, setConfirm] = useState<"open-judging" | "release" | "close-judging" | null>(null)
+  const [confirm, setConfirm] = useState<"open-judging" | "release" | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
   const submitted = reviews.filter(review => review.submittedAt).length
   const drafts = reviews.length - submitted
   // Closing judging submits complete drafts automatically; only incomplete ones are lost.
-  const incompleteDrafts = reviews.filter(review => !review.submittedAt && missingAnswers(review).length).length
+  // Only drafts from active judges are submitted automatically.
+  const activeJudges = new Set(judges.map(judge => judge.id))
+  const incompleteDrafts = reviews.filter(review => !review.submittedAt && (missingAnswers(review).length || !activeJudges.has(review.judgeId))).length
   const completeDrafts = drafts - incompleteDrafts
   async function change(next: typeof current, message: string, then: typeof confirm = null) {
     setBusy(true); setError("")
@@ -88,36 +90,25 @@ function JudgingSwitches({ year, reviews, judges, lineupSize, onNotice }: { year
           ? <li className="jd-warn">The lineup is empty. Add projects in the Lineup tab before opening judging.</li>
           : <li>{lineupSize} project{lineupSize === 1 ? "" : "s"} in the lineup, {judges.length} active judge{judges.length === 1 ? "" : "s"}.</li>}
         <li>The lineup locks while judging is open: no adding, removing or reordering projects. Close judging to change it.</li>
+        {current.feedbackReleased && <li className="jd-warn">Feedback is hidden from teams again while judging is open. Release it again after you close judging.</li>}
       </ul>
       {error && <p className="ad-error" role="alert">{error}</p>}
       <div className="ad-modal-actions"><button className="ad-button" disabled={busy} onClick={() => setConfirm(null)}>Cancel</button>
-        <button className="ad-button ad-primary" disabled={busy || lineupSize === 0} onClick={() => void change({ ...current, judgingOpen: true }, "Judging opened. Judges can now save and submit feedback. The lineup is locked.")}>{busy ? "Opening…" : "Open judging and lock lineup"}</button></div>
+        <button className="ad-button ad-primary" disabled={busy || lineupSize === 0} onClick={() => void change({ judgingOpen: true, feedbackReleased: false }, "Judging opened. Judges can now save and submit feedback. The lineup is locked.")}>{busy ? "Opening…" : "Open judging and lock lineup"}</button></div>
     </DialogContent></Dialog>}
     {confirm === "release" && <Dialog open onOpenChange={open => { if (!open && !busy) setConfirm(null) }}><DialogContent className="ad-modal am-dialog">
-      <DialogTitle>Release feedback to teams?</DialogTitle>
-      <DialogDescription>Each team will see every submitted review in full, all eight scores and the remark, in random order. Reviews are labelled only “Main judge” or “Special award judge”; names stay hidden.</DialogDescription>
+      <DialogTitle>{current.judgingOpen ? "Close judging and release feedback?" : "Release feedback to teams?"}</DialogTitle>
+      <DialogDescription>Each team will see every submitted review in full, all eight scores and both section reviews, in random order. Reviews are labelled only “Main judge” or “Special award judge”; names stay hidden.</DialogDescription>
       <ul className="jd-checklist">
         <li>{submitted} submitted review{submitted === 1 ? "" : "s"} across {lineupSize} project{lineupSize === 1 ? "" : "s"} ({judges.length * lineupSize} expected).</li>
-        {drafts > 0 && <li className="jd-warn">{drafts} draft{drafts === 1 ? " is" : "s are"} not submitted and won’t be shown.</li>}
-        {current.judgingOpen && <li className="jd-warn">Judging is still open. You’ll be asked next whether to close it, so feedback can’t change after release.</li>}
+        {current.judgingOpen && <li>Judging is still open. Releasing closes it first, so no review can change once teams see it.</li>}
+        {current.judgingOpen && completeDrafts > 0 && <li>{completeDrafts} complete draft{completeDrafts === 1 ? " is" : "s are"} not submitted yet. Closing judging submits {completeDrafts === 1 ? "it" : "them"} automatically.</li>}
+        {incompleteDrafts > 0 && <li className="jd-warn">{incompleteDrafts} draft{incompleteDrafts === 1 ? " is" : "s are"} incomplete and won’t reach the team.</li>}
         <li>Discard any test reviews before releasing. Released reviews stay visible to teams, even if a judge is deleted later.</li>
       </ul>
       {error && <p className="ad-error" role="alert">{error}</p>}
       <div className="ad-modal-actions"><button className="ad-button" disabled={busy} onClick={() => setConfirm(null)}>Cancel</button>
-        <button className="ad-button ad-primary" disabled={busy} onClick={() => void change({ ...current, feedbackReleased: true }, "Feedback released. Teams can now see it on their project page.", current.judgingOpen ? "close-judging" : null)}>{busy ? "Releasing…" : "Release feedback"}</button></div>
-    </DialogContent></Dialog>}
-    {confirm === "close-judging" && <Dialog open onOpenChange={open => { if (!open && !busy) setConfirm(null) }}><DialogContent className="ad-modal am-dialog">
-      <DialogTitle>Close judging too?</DialogTitle>
-      <DialogDescription>Feedback is now live to teams, but judging is still open. While it’s open, judges can still save drafts and submit reviews, and teams see each review as soon as it is submitted.</DialogDescription>
-      <ul className="jd-checklist">
-        <li>Closing judging locks every review. Judges can still read what they submitted.</li>
-        {completeDrafts > 0 && <li>{completeDrafts} complete draft{completeDrafts === 1 ? " is" : "s are"} not submitted yet. Closing judging submits {completeDrafts === 1 ? "it" : "them"} automatically.</li>}
-        {incompleteDrafts > 0 && <li className="jd-warn">{incompleteDrafts} draft{incompleteDrafts === 1 ? " is" : "s are"} incomplete. Closing now means {incompleteDrafts === 1 ? "it" : "they"} won’t reach the team.</li>}
-        <li>You can reopen judging later from this panel.</li>
-      </ul>
-      {error && <p className="ad-error" role="alert">{error}</p>}
-      <div className="ad-modal-actions"><button className="ad-button" disabled={busy} onClick={() => setConfirm(null)}>Keep judging open</button>
-        <button className="ad-button ad-primary" disabled={busy} onClick={() => void change({ ...current, judgingOpen: false }, "Judging closed. Judges can no longer change feedback.")}>{busy ? "Closing…" : "Close judging"}</button></div>
+        <button className="ad-button ad-primary" disabled={busy} onClick={() => void change({ judgingOpen: false, feedbackReleased: true }, current.judgingOpen ? "Judging closed and feedback released. Teams can now see it on their project page." : "Feedback released. Teams can now see it on their project page.")}>{busy ? "Releasing…" : current.judgingOpen ? "Close judging and release" : "Release feedback"}</button></div>
     </DialogContent></Dialog>}
   </div>
 }

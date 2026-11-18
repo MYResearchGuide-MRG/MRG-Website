@@ -11,9 +11,6 @@ const migrations = [
   "202611070001_mentor_access.sql",
   "202611070003_mentor_account_management.sql",
   "202611140001_judging.sql",
-  "202611160001_lock_judging_lineup.sql",
-  "202611160002_judge_kind_and_review_feedback.sql",
-  "202611160003_section_reviews.sql",
 ]
 
 const admin = "00000000-0000-0000-0000-000000000001"
@@ -107,25 +104,28 @@ test("judges read only their cohort's lineup, save their own feedback, and only 
   await db.query("select myssp_set_judging_state(2026,true,false)")
   // While judging is open, the lineup is locked.
   await assert.rejects(() => db.query("select myssp_set_judging_lineup(2026,$1)", [["one", "two"]]), /Close judging before changing the lineup/)
-  // Feedback can still be released or hidden while judging stays open.
-  await db.query("select myssp_set_judging_state(2026,true,true)")
+  // Feedback is released only once judging is closed, so it can't change after release.
+  await assert.rejects(() => db.query("select myssp_set_judging_state(2026,true,true)"), /Close judging before releasing/)
   await db.query("select myssp_set_judging_state(2026,true,false)")
 
   await as("authenticated", judgeA)
   // Draft can be partial; submit needs everything.
-  const draft = await db.query("select myssp_save_judge_feedback('one',$1,false) as s", [{ clarity: 4, remarks: "" }])
+  const draft = await db.query("select myssp_save_judge_feedback('one',$1,false) as s", [{ clarity: 4, research_remarks: "" }])
   assert.equal(draft.rows[0].s, null)
   await assert.rejects(() => db.query("select myssp_save_judge_feedback('one',$1,true)", [{ clarity: 4 }]), /Answer every score/)
   await assert.rejects(() => db.query("select myssp_save_judge_feedback('one',$1,false)", [{ clarity: 6 }]), /1 to 5/)
   await assert.rejects(() => db.query("select myssp_save_judge_feedback('one',$1,false)", [{ clarity: 2.5 }]), /1 to 5/)
   await assert.rejects(() => db.query("select myssp_save_judge_feedback('one',$1,false)", [{ judge_id: "x" }]), /Unknown field/)
+  // The client's camelCase names are not database fields.
+  await assert.rejects(() => db.query("select myssp_save_judge_feedback('one',$1,false)", [{ researchRemarks: "x" }]), /Unknown field/)
   for (const project of ["gone", "extra", "next"])
     await assert.rejects(() => db.query(`select myssp_save_judge_feedback('${project}',$1,false)`, [{}]), /not in your lineup/)
   const submitted = await db.query("select myssp_save_judge_feedback('one',$1,true) as s", [full(2, "Struggled on sample size.")])
   assert.ok(submitted.rows[0].s)
-  // Editing after submit is allowed but cannot become incomplete.
-  await assert.rejects(() => db.query("select myssp_save_judge_feedback('one',$1,false)", [{ ...full(3, ""), remarks: "" }]), /Answer every score/)
-  await db.query("select myssp_save_judge_feedback('one',$1,false)", [full(3, "Struggled on sample size.")])
+  // A submitted review is final.
+  await assert.rejects(() => db.query("select myssp_save_judge_feedback('one',$1,false)", [full(3, "Changed my mind.")]), /already submitted/)
+  await assert.rejects(() => db.query("select myssp_save_judge_feedback('one',$1,true)", [full(3, "Changed my mind.")]), /already submitted/)
+  assert.equal((await db.query("select data_collection from myssp_judge_feedback where project_id='one'")).rows[0].data_collection, 2)
 
   await as("authenticated", judgeB)
   await db.query("select myssp_save_judge_feedback('one',$1,true)", [full(5, "Great work!")])
@@ -174,7 +174,7 @@ test("teams see every submitted review in full, labelled by judge type, only aft
   await as("authenticated", "00000000-0000-0000-0000-0000000000c2")
   await db.query("select myssp_save_judge_feedback('one',$1,true)", [{ ...full(5, "Remark B"), clarity: 4 }])
   await as("authenticated", "00000000-0000-0000-0000-0000000000c3")
-  await db.query("select myssp_save_judge_feedback('one',$1,false)", [{ clarity: 1, remarks: "Unsubmitted draft" }])
+  await db.query("select myssp_save_judge_feedback('one',$1,false)", [{ clarity: 1, research_remarks: "Unsubmitted draft" }])
 
   const feedback = async (user, project = "one") => {
     await as("authenticated", user)
@@ -218,4 +218,115 @@ test("teams see every submitted review in full, labelled by judge type, only aft
   await db.query("select myssp_discard_judge_feedback($1,'one')", [a])
   await assert.rejects(() => db.query("select myssp_discard_judge_feedback($1,'one')", [a]), /Review not found/)
   assert.deepEqual((await feedback(student)).reviews.map(review => review.researchRemarks), ["Remark B"])
+})
+
+// Shared fixture for the tests below: judges A (main) and B (special) in 2026,
+// both linked to logins, lineup one,two, judging open.
+async function openJudging() {
+  const ctx = await setup()
+  const { db, as } = ctx
+  const userA = "00000000-0000-0000-0000-0000000000d1", userB = "00000000-0000-0000-0000-0000000000d2"
+  await as("authenticated", admin)
+  const a = (await db.query("select myssp_save_judge($1,2026,'A','a3@judge.test','',false) as id", [null])).rows[0].id
+  const b = (await db.query("select myssp_save_judge($1,2026,'B','b3@judge.test','',false,'special') as id", [null])).rows[0].id
+  await db.exec(`reset role;
+    insert into auth.users values('${userA}','a3@judge.test'),('${userB}','b3@judge.test');
+    update myssp_judges set user_id='${userA}' where id='${a}';
+    update myssp_judges set user_id='${userB}' where id='${b}';`)
+  await as("authenticated", admin)
+  await db.query("select myssp_set_judging_lineup(2026,$1)", [["one", "two"]])
+  await db.query("select myssp_set_judging_state(2026,true,false)")
+  return { ...ctx, a, b, userA, userB }
+}
+const submittedAt = async (db, judge, project) =>
+  (await db.query("select submitted_at from myssp_judge_feedback where judge_id=$1 and project_id=$2", [judge, project])).rows[0]?.submitted_at ?? null
+
+test("closing judging submits complete drafts from active judges only", async () => {
+  const { db, as, a, b, userA, userB } = await openJudging()
+  await as("authenticated", userA)
+  await db.query("select myssp_save_judge_feedback('one',$1,false)", [full(4, "Complete draft")])
+  await db.query("select myssp_save_judge_feedback('two',$1,false)", [{ clarity: 3 }])
+  await as("authenticated", userB)
+  await db.query("select myssp_save_judge_feedback('one',$1,false)", [full(5, "Paused judge draft")])
+
+  await as("authenticated", admin)
+  await db.query("select myssp_save_judge($1,2026,'B','b3@judge.test','',true,'special')", [b])
+  await db.query("select myssp_set_judging_state(2026,false,false)")
+  await db.exec("reset role")
+  assert.ok(await submittedAt(db, a, "one"))
+  assert.equal(await submittedAt(db, a, "two"), null)
+  assert.equal(await submittedAt(db, b, "one"), null)
+
+  // Releasing after close shows only the auto-submitted review.
+  await as("authenticated", admin)
+  await db.query("select myssp_set_judging_state(2026,false,true)")
+  await as("authenticated", student)
+  const released = (await db.query("select myssp_project_feedback('one') as f")).rows[0].f
+  assert.deepEqual(released.reviews.map(review => review.researchRemarks), ["Complete draft"])
+  // Reopening judging requires hiding feedback first.
+  await as("authenticated", admin)
+  await assert.rejects(() => db.query("select myssp_set_judging_state(2026,true,true)"), /Close judging before releasing/)
+})
+
+test("submitting all reviews is all or nothing", async () => {
+  const { db, as, a, userA } = await openJudging()
+  await as("authenticated", userA)
+  await db.query("select myssp_save_judge_feedback('one',$1,false)", [full(4, "Ready")])
+  // 'two' has no review yet: nothing is submitted.
+  await assert.rejects(() => db.query("select myssp_submit_judge_reviews()"), /Complete every team/)
+  await db.query("select myssp_save_judge_feedback('two',$1,false)", [{ ...full(3, "Half"), presentation_remarks: " " }])
+  await assert.rejects(() => db.query("select myssp_submit_judge_reviews()"), /Complete every team/)
+  await db.exec("reset role")
+  assert.equal(await submittedAt(db, a, "one"), null)
+
+  await as("authenticated", userA)
+  await db.query("select myssp_save_judge_feedback('two',$1,false)", [full(3, "Done")])
+  assert.equal((await db.query("select myssp_submit_judge_reviews() as n")).rows[0].n, 2)
+  await db.exec("reset role")
+  assert.ok(await submittedAt(db, a, "one"))
+  assert.ok(await submittedAt(db, a, "two"))
+
+  // Not a judge, or judging closed: refused.
+  await as("authenticated", student)
+  await assert.rejects(() => db.query("select myssp_submit_judge_reviews()"), /Judge access required/)
+  await as("authenticated", admin)
+  await db.query("select myssp_set_judging_state(2026,false,false)")
+  await as("authenticated", userA)
+  await assert.rejects(() => db.query("select myssp_submit_judge_reviews()"), /Judging is closed/)
+})
+
+test("committee imports judges in bulk, all rows or none", async () => {
+  const { db, as } = await setup()
+  const rows = [
+    { name: "One", email: "one@judge.test", affiliation: "Uni", cohort_year: 2026, kind: "main" },
+    { name: "Two", email: "two@judge.test", affiliation: "", cohort_year: 2026, kind: "special" },
+  ]
+  await as("authenticated", student)
+  await assert.rejects(() => db.query("select myssp_import_judges($1)", [rows]), /Admin required/)
+  await as("authenticated", admin)
+  await assert.rejects(() => db.query("select myssp_import_judges($1)", [[]]), /Import 1 to 100/)
+  // A bad row rolls back the whole import.
+  await assert.rejects(() => db.query("select myssp_import_judges($1)", [[...rows, { ...rows[0], email: "s@example.test" }]]), /participant/)
+  assert.equal((await db.query("select count(*)::int as n from myssp_judges")).rows[0].n, 0)
+  assert.equal((await db.query("select myssp_import_judges($1) as n", [rows])).rows[0].n, 2)
+  assert.deepEqual((await db.query("select email, kind from myssp_judges order by email")).rows,
+    [{ email: "one@judge.test", kind: "main" }, { email: "two@judge.test", kind: "special" }])
+})
+
+test("mentors read released feedback for their own projects only", async () => {
+  const { db, as, userA } = await openJudging()
+  const mentorUser = "00000000-0000-0000-0000-0000000000e1"
+  await db.exec(`reset role; insert into auth.users values('${mentorUser}','mentor@example.test');
+    update myssp_mentors set user_id='${mentorUser}' where email='mentor@example.test';
+    insert into myssp_mentor_projects select id,'one' from myssp_mentors where email='mentor@example.test';`)
+  await as("authenticated", userA)
+  await db.query("select myssp_save_judge_feedback('one',$1,true)", [full(4, "For the mentor")])
+  await as("authenticated", mentorUser)
+  assert.deepEqual((await db.query("select myssp_project_feedback('one') as f")).rows[0].f, { released: false })
+  await as("authenticated", admin)
+  await db.query("select myssp_set_judging_state(2026,false,true)")
+  await as("authenticated", mentorUser)
+  const released = (await db.query("select myssp_project_feedback('one') as f")).rows[0].f
+  assert.deepEqual(released.reviews.map(review => review.researchRemarks), ["For the mentor"])
+  await assert.rejects(() => db.query("select myssp_project_feedback('two')"), /Not allowed/)
 })
