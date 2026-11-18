@@ -17,7 +17,7 @@ import { ProjectMaterials } from "./ProjectMaterials"
 import { materialSpecs, materialError, validAdditionalMaterials } from "./materials"
 import { overviewFields, overviewError } from "./overview"
 import { SubmissionChecklist } from "./SubmissionChecklist"
-import { ProjectFeedback } from "./ProjectFeedback"
+import { ProjectFeedback, type FeedbackViewer } from "./ProjectFeedback"
 import { isLocalPreview } from "../admin/local-preview"
 import { submissionFingerprint, submissionReviewed, type ChecklistSection } from "./submission-checklist"
 
@@ -94,7 +94,7 @@ export function ProjectDetail({
   revision: number
   deadline: { closed: boolean; label: string }
   /** Who may see the judges' feedback block; null hides it entirely. */
-  feedbackViewer?: "team" | "committee" | null
+  feedbackViewer?: FeedbackViewer | null
 }) {
   const [tab, setTab] = useState<(typeof tabs)[number]>("overview")
   const [requestedEditing, setEditing] = useState(false)

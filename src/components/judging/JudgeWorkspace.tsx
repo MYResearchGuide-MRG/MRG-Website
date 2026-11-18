@@ -134,7 +134,7 @@ function Lineup() {
         </div>
 
         {boards.length > 0 && (
-          <section className="section-y" aria-labelledby="progress-heading">
+          <section className="section-y pb-0 md:pb-0" aria-labelledby="progress-heading">
             <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
               <div>
                 <h2 id="progress-heading" className="judge-heading">
@@ -254,16 +254,9 @@ function Lineup() {
         )}
 
         {boards.length ? (
-          <section aria-labelledby="lineup-heading" className="section-y">
-            <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
-              <h2 id="lineup-heading" className="judge-heading">
-                Presentation order
-              </h2>
-              <p className="text-sm text-muted-foreground tabular-nums">
-                {boards.length} team{boards.length === 1 ? "" : "s"}
-              </p>
-            </div>
-            <ol className="panel mt-8 divide-y divide-border overflow-hidden">
+          <div className="section-y pt-0 md:pt-0">
+            {/* Continues the progress section: the lineup sits right under it. */}
+            <ol aria-label="Presentation order" className="panel mt-8 divide-y divide-border overflow-hidden">
               {boards.map((board, index) => (
                 <LineupRow
                   key={board.id}
@@ -273,7 +266,7 @@ function Lineup() {
                 />
               ))}
             </ol>
-          </section>
+          </div>
         ) : (
           <div className="section-y">
             <div className="panel px-6 py-16 text-center">

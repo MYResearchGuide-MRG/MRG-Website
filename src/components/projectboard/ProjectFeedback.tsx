@@ -5,18 +5,20 @@ import { loadProjectFeedback, onFeedbackChange } from "../judging/team-feedback"
 import { JudgeAvatar } from "./JudgeAvatar"
 import "./project-feedback.css"
 
+export type FeedbackViewer = "team" | "mentor" | "committee"
+
 type Load = { status: "loading" } | { status: "error"; message: string } | { status: "ready"; feedback: ReleasedFeedback }
 
 /**
  * Judges' feedback at the bottom of a project page, OpenReview-style. Shown to
  * the team on their own project, and to the committee as a preview of the same
- * view. Each review shows every score and its remark, labelled only main or
+ * view. Mentors see the team's view for the projects they mentor. Each review shows every score and its remark, labelled only main or
  * special award judge, in random order. No averages, no names.
  *
  * Sits in the project page's two-column grid and spans both columns, so it
  * runs the full width below the project content and the share card.
  */
-export function ProjectFeedback({ projectId, year, viewer }: { projectId: string; year: number; viewer: "team" | "committee" }) {
+export function ProjectFeedback({ projectId, year, viewer }: { projectId: string; year: number; viewer: FeedbackViewer }) {
   const [state, setState] = useState<Load>({ status: "loading" })
   const [version, setVersion] = useState(0)
   useEffect(() => onFeedbackChange(() => setVersion(v => v + 1)), [])
@@ -40,7 +42,9 @@ export function ProjectFeedback({ projectId, year, viewer }: { projectId: string
       <div>
         <h2 id="pf-heading">Project feedback</h2>
         <p className="pf-note">{viewer === "committee"
-          ? "Not released yet. Teams see this section once you release feedback in the committee panel."
+          ? "Not released yet. Teams and their mentors see this section once you release feedback in the committee panel."
+          : viewer === "mentor"
+          ? "Feedback from the Demo Day judges on this team’s project will appear here after the results are announced."
           : "Feedback from the Demo Day judges will appear here after the results are announced."}</p>
       </div>
     </div>
@@ -50,8 +54,7 @@ export function ProjectFeedback({ projectId, year, viewer }: { projectId: string
   return <section className="pf-root" aria-labelledby="pf-heading">
     <div className="pf-head">
       <h2 id="pf-heading">Project feedback</h2>
-      {viewer === "committee" && <p className="pf-preview-note">Committee preview of the team’s view</p>}
-    </div>
+      {viewer === "committee" && <p className="pf-preview-note">Committee preview of the team’s view</p>}    </div>
     {reviews.length > 0 && <p className="pf-lede">All reviews are anonymous. Judges’ names are not shown.</p>}
     {!reviews.length
       ? <p className="pf-note">No judge feedback was recorded for this project.</p>
