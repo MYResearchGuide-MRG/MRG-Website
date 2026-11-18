@@ -18,9 +18,15 @@ import { materialSpecs, materialError, validAdditionalMaterials } from "./materi
 import { overviewFields, overviewError } from "./overview"
 import { SubmissionChecklist } from "./SubmissionChecklist"
 import { ProjectFeedback } from "./ProjectFeedback"
+import { isLocalPreview } from "../admin/local-preview"
 import { submissionFingerprint, submissionReviewed, type ChecklistSection } from "./submission-checklist"
 
 const tabs = ["overview", "materials", "team"] as const
+
+// Localhost only: a stand-in project image so the page can be judged with a
+// picture in place. Never shown on the deployed site.
+// TODO: remove before merging.
+const DEV_COVER_IMAGE = isLocalPreview ? "/dev/placeholder.jpg" : undefined
 
 function ProjectShare({ board }: { board: Board }) {
   const url = projectShareUrl(board.id, window.location.origin, window.location.pathname)
@@ -375,10 +381,10 @@ export function ProjectDetail({
         </div>
         <div className="pb-detail-visual">
           <div className="pb-project-image-frame">
-            {content?.coverImage ? (
+            {content?.coverImage || DEV_COVER_IMAGE ? (
               <img
-                src={content.coverImage}
-                alt={content.coverAlt || `Project image for ${title}`}
+                src={content?.coverImage || DEV_COVER_IMAGE}
+                alt={content?.coverAlt || `Project image for ${title}`}
               />
             ) : (
               <div className="pb-project-image-placeholder">
@@ -597,9 +603,9 @@ export function ProjectDetail({
               )}
             </div>
           </div>
-          {feedbackViewer && !editing && <ProjectFeedback projectId={board.id} year={board.year} viewer={feedbackViewer} />}
         </div>
         <ProjectShare board={board} />
+        {feedbackViewer && !editing && <ProjectFeedback projectId={board.id} year={board.year} viewer={feedbackViewer} />}
       </div>
     </main>
   )
