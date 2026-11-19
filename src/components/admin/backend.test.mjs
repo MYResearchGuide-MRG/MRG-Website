@@ -9,7 +9,7 @@ const source = stripTypeScriptTypes(readFileSync(new URL("./backend.ts", import.
   .replace('!isLocalPreview || import.meta.env.VITE_ACCESS_MODE === "supabase"', "true")
 let nextFixture = 0
 async function fixture() {
-  const transport = { user: "student", failRead: false, failSignOut: false, failSave: false, revision: 2, title: "Before save", saveCalls: 0, tables: {} }
+  const transport = { user: "student", failRead: false, failSession: false, failSignOut: false, failSave: false, revision: 2, title: "Before save", saveCalls: 0, tables: {} }
   let authChanged
   const response = table => transport.failRead ? { error: new Error("Offline") } : { error: null, data:
     transport.tables[table] ?? (table === "myssp_projects" ? [{ id: "one", code: "A-1", payload: { title: "Project one" }, published: true, editing_enabled: true }] :
@@ -17,7 +17,9 @@ async function fixture() {
     table === "myssp_submissions" ? [{ project_id: "one", content: { projectId: "one", title: transport.title }, revision: transport.revision }] : []) }
   const supabase = {
     auth: {
-      getSession: async () => ({ data: { session: transport.user ? { user: { id: transport.user } } : null } }),
+      getSession: async () => transport.failSession
+        ? { data: { session: null }, error: new Error("Auth temporarily unavailable") }
+        : { data: { session: transport.user ? { user: { id: transport.user } } : null }, error: null },
       onAuthStateChange: callback => { authChanged = callback },
       signOut: async options => {
         assert.equal(options.scope, "local")
@@ -45,7 +47,7 @@ async function fixture() {
   }
   const key = `__mysspBackendFixture${++nextFixture}`
   globalThis[key] = supabase
-  const prefix = `const supabase=globalThis.${key}; const isDraft=()=>true; const useSyncExternalStore=(_,get)=>get(); const window={setTimeout(){},setInterval(){}}; const document={visibilityState:'hidden'};\n`
+  const prefix = `const supabase=globalThis.${key}; const isDraft=()=>true; const useSyncExternalStore=(_,get)=>get(); const window={setTimeout(){},setInterval(){}}; const document={visibilityState:'hidden',addEventListener(){}};\n`
   const api = await import(`data:text/javascript;base64,${Buffer.from(prefix + source).toString("base64")}`)
   delete globalThis[key]
   await api.refreshBackend()
@@ -60,6 +62,30 @@ test("failed refresh preserves the signed-in participant and saved work", async 
   assert.equal(api.liveProject(), "one")
   assert.equal(api.getBackend().drafts.one.title, "Before save")
   assert.ok(api.getBackend().error)
+})
+
+test("temporary auth errors preserve the session, but expiry clears private data even offline", async () => {
+  const { api, transport } = await fixture()
+  transport.failSession = true
+  await api.refreshBackend()
+  assert.equal(api.getBackend().userId, "student")
+  assert.equal(api.liveProject(), "one")
+  transport.failSession = false
+  transport.user = null
+  transport.failRead = true
+  await api.refreshBackend()
+  assert.equal(api.getBackend().userId, null)
+  assert.deepEqual(api.getBackend().drafts, {})
+  assert.deepEqual(api.getBackend().people, [])
+})
+
+test("restoring a revoked participant session does not restore project access", async () => {
+  const { api, transport } = await fixture()
+  transport.tables = { myssp_participants: [], myssp_projects: [], myssp_submissions: [] }
+  await api.refreshBackend()
+  assert.equal(api.getBackend().userId, "student")
+  assert.equal(api.liveProject(), null)
+  assert.deepEqual(api.getBackend().drafts, {})
 })
 
 test("mentor view keeps both split pages and drops the retired parent assignment", async () => {

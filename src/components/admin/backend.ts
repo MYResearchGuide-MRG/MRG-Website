@@ -38,8 +38,13 @@ export async function refreshBackend() {
   if (!useLiveBackend || !supabase) return
   const ticket = ++epoch
   try {
-    const { data: { session } } = await supabase.auth.getSession()
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    if (sessionError) throw sessionError
+    if (ticket !== epoch) return
     const userId = session?.user.id || null
+    // Expiry/storage clearing must remove private cached data even if the next
+    // public-data request fails. A temporary refresh error above is not logout.
+    if (state.userId && state.userId !== userId) publish(empty)
     const [projects, people, drafts, role, fields, mentors, mentorProjects, deadlines] = await Promise.all([
       supabase.from("myssp_projects").select("*").eq("retired", false).order("code"),
       userId ? supabase.from("myssp_participants").select("*") : Promise.resolve({data: [], error: null}),
@@ -303,4 +308,7 @@ if (useLiveBackend && supabase) {
   })
   void refreshBackend()
   window.setInterval(() => { if (document.visibilityState === "visible") void refreshBackend() }, 30000)
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") void refreshBackend()
+  })
 }

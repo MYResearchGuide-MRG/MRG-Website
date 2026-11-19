@@ -92,6 +92,7 @@ export function AdminSignIn({
             <ArrowRight size={16} />
           )}
         </button>
+        <p className="auth-session-note">Stay signed in on this browser for 30 days.</p>
       </form>
       {isLocalPreview && !useLiveBackend && onDevice && (
         <button className="ad-device-link" onClick={() => {

@@ -62,6 +62,10 @@ The schema, seed, roster, admin role, Auth settings, and Edge Function are alrea
 
 ## Implementation and limits
 
+Participant, mentor and committee sign-ins are remembered in the same browser for 30 days. Supabase persists and refreshes its session tokens; passwords and access codes are never saved by the app. A new successful sign-in starts a new window, while automatic token refreshes do not extend it. Existing saved sessions receive a 30-day window when first opened after this update. Sign out removes the saved session across tabs. Returning to an open tab rechecks session state and permissions.
+
+This is a browser persistence limit, not a change to Supabase's server-side session settings or database permissions. Revoked/deleted assignments and editing deadlines still apply on every request. Clearing site data, private browsing, blocked browser storage or a server-invalidated session can require signing in earlier. Use the same site address and browser; localhost and the production site have separate storage. The isolated offline workspace keeps its existing tab-only preview behavior.
+
 Database RLS restricts public reads to published projects and participants to their active assignment. Account emails are visible only to that account and committee admins. Participants cannot change codes, assignments, visibility, editing controls or admin roles. Saves recheck permissions server-side and reject stale revisions to prevent teammate overwrites.
 
 Publishing exposes project/team presentation, not account email records. External YouTube, Canva and Drive URLs remain external: hiding a page does not make externally hosted materials private. Existing public mentor briefs and finalist names remain site content.

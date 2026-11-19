@@ -174,6 +174,7 @@ export default function AccessDialog({
                   <ArrowRight size={16} />
                 )}
               </button>
+              <p className="auth-session-note">Stay signed in on this browser for 30 days.</p>
             </form>
           )}
           <p className="pb-auth-help">
