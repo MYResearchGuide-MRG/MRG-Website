@@ -10,7 +10,7 @@ const source = stripTypeScriptTypes(readFileSync(new URL("./backend.ts", import.
   .replace('!isLocalPreview || import.meta.env.VITE_ACCESS_MODE === "supabase"', "true")
 let nextFixture = 0
 async function fixture(loadContent = true) {
-  const transport = { user: "student", failRead: false, failSession: false, failSignOut: false, failSave: false, revision: 2, title: "Before save", saveCalls: 0, tables: {}, queries: [], snapshots: 0, largeRecords: 0 }
+  const transport = { user: "student", isAdmin: false, deadlines: [], failRead: false, failSession: false, failSignOut: false, failSave: false, revision: 2, title: "Before save", saveCalls: 0, tables: {}, queries: [], snapshots: 0, largeRecords: 0 }
   let authChanged
   const response = table => transport.failRead ? { error: new Error("Offline") } : { error: null, data:
     transport.tables[table] ?? (table === "myssp_projects" ? [{ id: "one", code: "A-1", payload: { title: "Project one" }, published: true, editing_enabled: true }] :
@@ -59,10 +59,18 @@ async function fixture(loadContent = true) {
         })
         const data={projects:delta("myssp_projects",args.known.projects),people:transport.user ? delta("myssp_participants",args.known.people) : [],
           submissions:response("myssp_submissions").data.map(row=>({project_id:row.project_id,version:`draft-${row.revision}`,revision:row.revision,title:row.content.title,hasCover:!!row.content.coverImage})),
-          isAdmin:false,fields:[],deadlines:[],cohorts:[],adminProfile:null,
+          isAdmin:transport.isAdmin,fields:[],deadlines:transport.deadlines,cohorts:[],adminProfile:null,
           mentors:response("myssp_mentors").data,mentorProjects:response("myssp_mentor_projects").data}
         await transport.snapshotGate
         return {data,error:null}
+      }
+      if (name === "myssp_set_submission_deadline") {
+        transport.deadlineArgs = args
+        if (transport.deadlineError) return {data:null,error:transport.deadlineError}
+        const cutoff = args.close_now ? new Date().toISOString() : args.closing_time
+        transport.deadlines = [{year:args.cohort_year,closes_at:cutoff}]
+        transport.afterWrite?.()
+        return {data:cutoff,error:null}
       }
       assert.equal(name, "myssp_save_submission")
       transport.saveCalls++
@@ -238,4 +246,49 @@ test("removing read access prunes cached pages and images even without signing o
   assert.deepEqual(api.getBackend().drafts,{})
   assert.deepEqual(api.getBackend().covers,{})
   assert.deepEqual(api.getBackend().draftVersions,{})
+})
+
+test("only committee can schedule editing and RPC failures do not change the cached deadline", async () => {
+  const {api,transport}=await fixture(false)
+  const old="2026-11-20T16:00:00Z",next="2026-11-25T16:00:00Z"
+  await assert.rejects(()=>api.setLiveSubmissionDeadline(2026,next,old,true),/Committee sign-in required/)
+  assert.equal(transport.deadlineArgs,undefined)
+  transport.isAdmin=true
+  transport.deadlines=[{year:2026,closes_at:old}]
+  await api.refreshBackend()
+  transport.deadlineError={code:"40001",message:"The deadline changed. Close this window and try again."}
+  await assert.rejects(()=>api.setLiveSubmissionDeadline(2026,next,old,true),/deadline changed/)
+  assert.equal(api.getBackend().submissionDeadlines[2026],old)
+  transport.deadlineError={code:"PGRST202"}
+  await assert.rejects(()=>api.setLiveSubmissionDeadline(2026,next,old,true),/latest database update/)
+})
+
+test("a confirmed deadline change survives a failed refresh without changing visibility or another cohort", async () => {
+  const {api,transport}=await fixture(false)
+  const old="2026-11-20T16:00:00Z",next="2026-11-25T16:00:00Z"
+  transport.isAdmin=true
+  transport.deadlines=[{year:2026,closes_at:old}]
+  transport.tables.myssp_projects=[
+    {id:"one",code:"A-1",payload:{year:2026},published:false,editing_enabled:false},
+    {id:"other",code:"A-1",payload:{year:2027},published:false,editing_enabled:false},
+  ]
+  await api.refreshBackend()
+  transport.afterWrite=()=>{transport.failRead=true}
+  await api.setLiveSubmissionDeadline(2026,next,old,true)
+  assert.deepEqual(transport.deadlineArgs,{cohort_year:2026,closing_time:next,expected_closing_time:old,reopen_projects:true,close_now:false})
+  assert.equal(api.getBackend().submissionDeadlines[2026],next)
+  assert.deepEqual(api.getBackend().editing,{one:true,other:false})
+  assert.deepEqual(api.getBackend().visibility,{one:false,other:false})
+  assert.ok(api.getBackend().error)
+})
+
+test("a deadline response arriving after sign-out cannot restore committee state", async () => {
+  const {api,transport}=await fixture(false)
+  transport.isAdmin=true
+  await api.refreshBackend()
+  transport.afterWrite=()=>{void api.signOutLive();transport.failRead=true}
+  await api.setLiveSubmissionDeadline(2026,null,null,true)
+  assert.equal(api.getBackend().userId,null)
+  assert.equal(api.getBackend().isAdmin,false)
+  assert.deepEqual(api.getBackend().submissionDeadlines,{})
 })

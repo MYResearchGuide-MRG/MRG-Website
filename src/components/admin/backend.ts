@@ -262,6 +262,27 @@ export async function setProjectControl(ids: readonly string[], field: "publishe
   await refreshBackend()
   return !error && data?.length === ids.length
 }
+export async function setLiveSubmissionDeadline(year: number, closingTime: string | null, expectedClosingTime: string | null, reopenProjects: boolean, closeNow = false) {
+  if (!supabase || !state.isAdmin) throw new Error("Committee sign-in required.")
+  const userId = state.userId
+  const {data,error} = await supabase.rpc("myssp_set_submission_deadline", {
+    cohort_year: year, closing_time: closingTime, expected_closing_time: expectedClosingTime,
+    reopen_projects: reopenProjects, close_now: closeNow,
+  })
+  if (error) {
+    if (error.code === "PGRST202") throw new Error("Deadline controls need the latest database update.")
+    throw new Error(error.message || "Could not update the deadline. Please try again.")
+  }
+  // Preserve a confirmed change if the subsequent read is temporarily offline.
+  if (state.userId === userId && state.isAdmin) {
+    epoch++
+    publish({...state,
+      submissionDeadlines:{...state.submissionDeadlines,[year]:data as string | null},
+      editing:reopenProjects ? {...state.editing,...Object.fromEntries(state.boards.filter(b => b.year === year).map(b => [b.id,true]))} : state.editing,
+    })
+  }
+  await refreshBackend()
+}
 export async function changeLiveAssignment(id:string, projectId:string, revoked:boolean) {
   if (!supabase || !state.isAdmin) return false
   const {data,error} = await supabase.from("myssp_participants").update({project_id:projectId,revoked}).eq("id",id).select("id")

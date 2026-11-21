@@ -68,6 +68,7 @@ import { MentorManagement } from "./MentorManagement"
 import { useMentorAccess } from "./mentor-access"
 import "./workspace.css"
 import { useSubmissionDeadline } from "../projectboard/use-submission-deadline"
+import { SubmissionDeadlineDialog } from "./SubmissionDeadlineDialog"
 
 type View = "participants" | "mentors" | "projects" | "trash" | "setup"
 export default function AdminPanel() {
@@ -82,6 +83,7 @@ export default function AdminPanel() {
     [allBoards, year]
   )
   const [newCohort, setNewCohort] = useState(false)
+  const [deadlineEditor, setDeadlineEditor] = useState(false)
   const [projectEditor, setProjectEditor] = useState<Board | "new" | null>(null)
   const [splitting, setSplitting] = useState<Board | null>(null)
   const { people } = useDemoAccess()
@@ -420,7 +422,16 @@ export default function AdminPanel() {
             <MentorManagement boards={allBoards} year={year} />
           ) : view === "projects" ? (
             <section aria-label="Project visibility">
-              {submissionDeadline.label && <p className="ad-notice">{submissionDeadline.closed ? "Student editing closed" : "Student editing closes"} · {submissionDeadline.label}. The deadline also locks student names and photos. Committee corrections remain available.</p>}
+              <div className="ad-deadline-summary">
+                <div>
+                  <strong>{submissionDeadline.closed ? "Student editing closed" : "Editing deadline"}</strong>
+                  <p>{submissionDeadline.label || "No automatic deadline"}</p>
+                  <small>{submissionDeadline.closed ? "Reopen the editing window to let teams make corrections." : "Project switches control which teams can edit."}</small>
+                </div>
+                <button className="ad-button" disabled={busy} onClick={() => setDeadlineEditor(true)}>
+                  <Settings2 size={15} aria-hidden /> Manage deadline
+                </button>
+              </div>
               <div className="ad-project-toolbar">
                 <label className="ad-search">
                   <Search size={16} />
@@ -582,7 +593,7 @@ export default function AdminPanel() {
                           role="switch"
                           aria-checked={!submissionDeadline.closed && editingPermissions[b.id] === true}
                           aria-label={`Allow editing for ${b.code}`}
-                          title={submissionDeadline.closed ? "The cohort submission deadline has passed." : undefined}
+                          title={submissionDeadline.closed ? "Use Manage deadline above to reopen the cohort editing window." : undefined}
                           onClick={() =>
                             changeEditing(
                               [b.id],
@@ -814,6 +825,12 @@ export default function AdminPanel() {
           }}
         />
       )}
+      {deadlineEditor && <SubmissionDeadlineDialog
+        year={year} closesAt={submissionDeadline.closesAt} projectIds={boards.map(board => board.id)}
+        enabledCount={boards.filter(board => editingPermissions[board.id] === true).length}
+        onClose={() => setDeadlineEditor(false)}
+        onSaved={message => { setDeadlineEditor(false); setNotice(message) }}
+      />}
       {projectEditor && (
         <ProjectEditor
           year={year}

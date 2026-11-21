@@ -1,14 +1,16 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useSyncExternalStore } from "react"
 import { getBackend, useBackend, useLiveBackend } from "../admin/backend"
 import { submissionClosed, submissionDeadlineLabel, submissionDeadlines } from "./submission-deadline"
+import { getPreviewDeadlines, subscribePreviewDeadlines } from "./preview-deadlines"
 
 export function deadlineForYear(year: number) {
-  const remote = getBackend().submissionDeadlines
-  return useLiveBackend && Object.hasOwn(remote, year) ? remote[year] : submissionDeadlines[year] ?? null
+  const deadlines = useLiveBackend ? getBackend().submissionDeadlines : getPreviewDeadlines()
+  return Object.hasOwn(deadlines, year) ? deadlines[year] : submissionDeadlines[year] ?? null
 }
 
 export function useSubmissionDeadline(year: number) {
   useBackend()
+  useSyncExternalStore(subscribePreviewDeadlines,getPreviewDeadlines)
   const [now, setNow] = useState(Date.now)
   const closesAt = deadlineForYear(year)
   useEffect(() => {
@@ -19,5 +21,6 @@ export function useSubmissionDeadline(year: number) {
     window.addEventListener("focus", update)
     return () => { window.clearTimeout(timer); window.clearInterval(interval); window.removeEventListener("focus", update) }
   }, [closesAt, now])
-  return { closesAt, closed: submissionClosed(closesAt, now), label: submissionDeadlineLabel(closesAt) }
+  // Recheck the actual clock on renders triggered by a newly saved cutoff too.
+  return { closesAt, closed: submissionClosed(closesAt), label: submissionDeadlineLabel(closesAt) }
 }
