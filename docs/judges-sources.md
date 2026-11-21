@@ -1,6 +1,8 @@
 # MYSSP 2026 judges
 
-Checked 5 November 2026. Award-group assignments and LinkedIn destinations were supplied by the committee. Bios are short paraphrases of the public sources below. No new academic qualifications or award claims were inferred.
+The seven displayed biographies were replaced with committee-supplied text on 21 November 2026. That update preserves the supplied wording as plain text, without the pasted paragraph hyperlinks. Existing portraits, award-group assignments and separate LinkedIn profile links remain unchanged. The replacement wording was not independently fact-checked in that copy update.
+
+The source notes below record the original research checked on 5 November 2026 and the portrait provenance. They do not independently verify every claim in the replacement biographies.
 
 ## Waywen Loh
 
