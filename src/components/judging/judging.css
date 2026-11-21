@@ -371,6 +371,7 @@
   display: none;
 }
 .judge-criterion {
+  min-width: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -401,11 +402,23 @@
     padding: 16px 18px;
   }
   .judge-criterion .judge-rating {
-    grid-template-columns: minmax(48px, 1fr) auto minmax(48px, 1fr);
-    gap: 8px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px 0;
+  }
+  .judge-criterion .judge-scale {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    justify-content: space-between;
   }
   .judge-criterion .judge-rating-end {
     width: auto;
+    grid-row: 2;
+  }
+  .judge-criterion .judge-rating-low {
+    text-align: left;
+  }
+  .judge-criterion .judge-rating-high {
+    text-align: right;
   }
   .judge-remarks {
     padding: 18px 18px 16px;

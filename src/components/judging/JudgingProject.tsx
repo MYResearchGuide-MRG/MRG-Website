@@ -269,7 +269,7 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
         )}
         <fieldset
           disabled={!judgingOpen || submitted}
-          className="mt-8 space-y-6 disabled:opacity-60"
+          className="mt-8 min-w-0 space-y-6 disabled:opacity-60"
         >
           {judgingSections.map((section, sectionIndex) => {
             const review = sectionRemarks[sectionIndex]

@@ -1,6 +1,7 @@
 import * as React from "react"
 import { useReducedMotion } from "motion/react"
 import { parseDemoDayRoute } from "./demo-day"
+import { feedbackDemoEnabled } from "./feedback-demo"
 import { canonicalArchiveHash, isArchiveHash, libraryHash } from "@/components/projectboard/paths"
 
 /**
@@ -116,12 +117,15 @@ export type Route =
   | "profile"
   | "mentor"
   | "judging"
+  | "feedback-demo"
 
 const judgingRoute = /^#\/judging(?:\/[a-z0-9-]{1,100})?$/
 
 export function useRoute(): Route {
   const [route, setRoute] = React.useState<Route>(() =>
-    window.location.hash === "#/mentor"
+    feedbackDemoEnabled && window.location.hash === "#/feedback-demo"
+      ? "feedback-demo"
+      : window.location.hash === "#/mentor"
       ? "mentor"
       : judgingRoute.test(window.location.hash)
       ? "judging"
@@ -151,7 +155,9 @@ export function useRoute(): Route {
       }
       const scene = sceneFromHash(hash)
       const demoDay = parseDemoDayRoute(hash)
-      if (hash === "#/admin") {
+      if (feedbackDemoEnabled && hash === "#/feedback-demo") {
+        setRoute("feedback-demo")
+      } else if (hash === "#/admin") {
         setRoute("admin")
       } else if (hash === "#/mentor") {
         setRoute("mentor")

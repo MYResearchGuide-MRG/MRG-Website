@@ -8,6 +8,9 @@ import { useProjectBoards } from "@/components/admin/project-registry"
 import { prepareMemberPhoto } from "@/components/projectboard/project-image"
 import { boardUrl } from "@/components/projectboard/paths"
 import { useSubmissionDeadline } from "@/components/projectboard/use-submission-deadline"
+import { protectUnsavedNavigation } from "@/lib/unsaved-navigation"
+
+type EditStateHandler = (state: { dirty: boolean; busy: boolean }) => void
 
 type Section = "projects" | "settings"
 function currentSection(): Section {
@@ -17,38 +20,55 @@ function initials(name: string) {
   return name.trim().split(/\s+/).slice(0, 2).map(part => part[0]).join("").toUpperCase() || "?"
 }
 
-function ProfileSettingsForm({ displayName, email, photo, locked }: {
+function ProfileSettingsForm({ displayName, email, photo, locked, onEditStateChange }: {
   displayName: string
   email: string
   photo: string
   locked: boolean
+  onEditStateChange: EditStateHandler
 }) {
   const [name, setName] = React.useState(displayName)
   const [draftPhoto, setDraftPhoto] = React.useState(photo)
   const [saving, setSaving] = React.useState(false)
+  const [uploading, setUploading] = React.useState(false)
   const [error, setError] = React.useState("")
   const [saved, setSaved] = React.useState(false)
   const fileRef = React.useRef<HTMLInputElement>(null)
+  const pending = React.useRef(false)
+  const dirty = name.trim() !== displayName || draftPhoto !== photo
+  const busy = uploading || saving
+  React.useEffect(() => {
+    onEditStateChange({ dirty, busy })
+  }, [dirty, busy, onEditStateChange])
+  React.useEffect(() => () => onEditStateChange({ dirty: false, busy: false }), [onEditStateChange])
+  React.useEffect(() => {
+    if (!dirty && !busy) return
+    return protectUnsavedNavigation("Leave without saving your profile changes?", busy)
+  }, [dirty, busy])
 
   async function choosePhoto(file: File | undefined) {
-    if (!file) return
+    if (!file || pending.current || locked) return
+    pending.current = true
+    setUploading(true)
     setError("")
     try { setDraftPhoto(await prepareMemberPhoto(file)); setSaved(false) }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Could not read this image.") }
+    finally { pending.current = false; setUploading(false); if (fileRef.current) fileRef.current.value = "" }
   }
 
   async function saveProfile(event: React.FormEvent) {
     event.preventDefault()
-    if (saving || locked) return
+    if (pending.current || locked) return
+    pending.current = true
     setSaving(true); setError(""); setSaved(false)
     try { await saveOwnProfile(name, draftPhoto); setSaved(true) }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Could not save your profile.") }
-    finally { setSaving(false) }
+    finally { pending.current = false; setSaving(false) }
   }
 
   return <form onSubmit={saveProfile} className="mt-8 space-y-6">
     {locked && <p role="status" className="rounded-md border border-white/15 p-4 text-sm text-zinc-400">The submission deadline has passed. Your name and photo are part of your project submission and are now locked. Contact the committee for corrections.</p>}
-    <fieldset disabled={locked} className="space-y-6 disabled:opacity-60">
+    <fieldset disabled={locked || busy} className="space-y-6 disabled:opacity-60">
     <div className="flex items-center gap-5">
       <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-zinc-900 text-xl">{draftPhoto ? <img src={draftPhoto} alt="Profile photo preview" className="size-full object-cover" /> : initials(name)}</div>
       <div className="flex flex-wrap gap-3"><input ref={fileRef} className="sr-only" type="file" accept="image/jpeg,image/png,image/webp" onChange={event => void choosePhoto(event.target.files?.[0])} aria-label="Upload profile photo" />
@@ -60,15 +80,16 @@ function ProfileSettingsForm({ displayName, email, photo, locked }: {
     <label className="block text-sm">Email address<input value={email} readOnly className="mt-2 block w-full rounded-md border border-white/10 bg-[#161616] px-4 py-3 text-zinc-400" /><span className="mt-2 block text-xs text-zinc-500">Contact the MYSSP committee to change your sign-in email.</span></label>
     {error && <p role="alert" className="text-sm text-red-300">{error}</p>}
     {saved && <p role="status" className="flex items-center gap-2 text-sm text-zinc-300"><Check size={15} aria-hidden /> Profile saved.</p>}
-    <button type="submit" disabled={saving || (name.trim() === displayName && draftPhoto === photo)} className="inline-flex items-center gap-2 rounded-md bg-white px-5 py-3 text-sm font-medium text-black transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"><Pencil size={14} aria-hidden />{saving ? "Saving…" : "Save changes"}</button>
+    <button type="submit" disabled={busy || !dirty} className="inline-flex items-center gap-2 rounded-md bg-white px-5 py-3 text-sm font-medium text-black transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"><Pencil size={14} aria-hidden />{uploading ? "Processing photo…" : saving ? "Saving…" : "Save changes"}</button>
     </fieldset>
   </form>
 }
 
-export default function ProfilePage({ isAdmin, onSignIn, onSignOut }: {
+export default function ProfilePage({ isAdmin, onSignIn, onSignOut, onEditStateChange }: {
   isAdmin: boolean
   onSignIn: () => void
   onSignOut: () => void
+  onEditStateChange: EditStateHandler
 }) {
   const access = useDemoAccess()
   const backend = useBackend()
@@ -139,7 +160,7 @@ export default function ProfilePage({ isAdmin, onSignIn, onSignOut }: {
     </section> : <section className="max-w-xl pt-10">
       <h2 className="text-2xl font-medium tracking-tight">Account settings</h2>
       <p className="mt-2 text-sm text-zinc-400">Update the name and photo shown on your profile{isAdmin ? "." : " and project team."}</p>
-      <ProfileSettingsForm key={`${backend.userId || person?.id}:${displayName}:${photo.slice(-32)}`} displayName={displayName} email={email} photo={photo} locked={!isAdmin && deadline.closed} />
+      <ProfileSettingsForm key={`${backend.userId || person?.id}:${displayName}:${photo.slice(-32)}`} displayName={displayName} email={email} photo={photo} locked={!isAdmin && deadline.closed} onEditStateChange={onEditStateChange} />
       {!isAdmin && assignedBoard && <a href={boardUrl(assignedBoard.id)} className="mt-10 inline-flex items-center gap-2 border-t border-white/10 pt-6 text-sm text-zinc-400 transition-colors hover:text-white"><FolderOpen size={16} aria-hidden /> Go to your project <ArrowUpRight size={14} aria-hidden /></a>}
     </section>}
   </main>

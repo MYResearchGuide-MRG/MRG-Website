@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react"
+import { protectUnsavedNavigation } from "@/lib/unsaved-navigation"
 import { QRCodeSVG } from "qrcode.react"
 import { ArrowLeft, Check, Copy, ImagePlus, Pencil } from "lucide-react"
 import {
@@ -155,37 +156,7 @@ export function ProjectDetail({
 
   useEffect(() => {
     if (!dirty && !uploading && !saving) return
-    const warn = (event: BeforeUnloadEvent) => {
-      event.preventDefault()
-      event.returnValue = ""
-    }
-    const checkNavigation = (event: MouseEvent) => {
-      const anchor =
-        event.target instanceof Element ? event.target.closest("a[href]") : null
-      if (
-        !(anchor instanceof HTMLAnchorElement) ||
-        anchor.target === "_blank" ||
-        event.ctrlKey ||
-        event.metaKey ||
-        event.shiftKey ||
-        anchor.href === window.location.href
-      )
-        return
-      if (
-        saving ||
-        uploading ||
-        !window.confirm("Leave this project without saving your changes?")
-      ) {
-        event.preventDefault()
-        event.stopPropagation()
-      }
-    }
-    window.addEventListener("beforeunload", warn)
-    document.addEventListener("click", checkNavigation, true)
-    return () => {
-      window.removeEventListener("beforeunload", warn)
-      document.removeEventListener("click", checkNavigation, true)
-    }
+    return protectUnsavedNavigation("Leave this project without saving your changes?", uploading || saving)
   }, [dirty, uploading, saving])
 
   function update<K extends Exclude<keyof Draft, "projectId" | "version">>(

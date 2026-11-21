@@ -654,13 +654,13 @@ export const timeline: TimelinePhase[] = [
     end: "2026-10-18",
   },
   {
-    date: "18 November 2026",
+    date: "20 November 2026",
     title: "Project Submission Deadline",
     stage: "Research",
     description:
       "All project works must be submitted via the given submission templates by this date, as participants prepare for their showcase presentation on Demo Day.",
-    start: "2026-11-18",
-    end: "2026-11-18",
+    start: "2026-11-20",
+    end: "2026-11-20",
   },
   {
     date: "20 November 2026",

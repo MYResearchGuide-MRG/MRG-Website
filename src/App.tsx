@@ -18,6 +18,7 @@ import { Resources } from "@/components/sections/resources"
 import { DemoDayPage } from "@/components/sections/demo-day-page"
 import { useRoute } from "@/lib/results"
 import { useDemoDayYear } from "@/lib/demo-day"
+import { feedbackDemoEnabled } from "@/lib/feedback-demo"
 import { signOutMentor, useMentorAccess } from "@/components/admin/mentor-access"
 import { signOutJudge, useJudgeAccess } from "@/components/judging/judge-access"
 import { setPreviewCommitteeSession, useCommitteeAccess } from "@/components/admin/committee-session"
@@ -38,6 +39,8 @@ const AccessDialog = React.lazy(
 const ProfilePage = React.lazy(() => import("@/components/profile/ProfilePage"))
 const MentorDashboard = React.lazy(() => import("@/components/mentor/MentorDashboard"))
 const JudgeWorkspace = React.lazy(() => import("@/components/judging/JudgeWorkspace"))
+const FeedbackDemo = import.meta.env.VITE_FEEDBACK_DEMO === "true" && feedbackDemoEnabled
+  ? React.lazy(() => import("@/components/projectboard/FeedbackDemo")) : null
 
 function App() {
   const route = useRoute()
@@ -134,7 +137,11 @@ function App() {
         setSignOutOpen(true)
       }} />
 
-      {route === "mentor" ? (
+      {route === "feedback-demo" && FeedbackDemo ? (
+        <React.Suspense fallback={<main className="container min-h-[70svh] pt-32" role="status">Loading feedback preview…</main>}>
+          <FeedbackDemo />
+        </React.Suspense>
+      ) : route === "mentor" ? (
         <React.Suspense fallback={<main className="container min-h-[70svh] pt-32" role="status">Loading mentor projects…</main>}>
           <MentorDashboard onSignIn={() => signIn("mentor")} />
         </React.Suspense>
@@ -144,7 +151,7 @@ function App() {
         </React.Suspense>
       ) : route === "profile" ? (
         <React.Suspense fallback={<main className="container min-h-[70svh] pt-32" role="status">Loading profile…</main>}>
-          <ProfilePage isAdmin={isAdmin} onSignIn={signIn} onSignOut={() => setSignOutOpen(true)} />
+          <ProfilePage isAdmin={isAdmin} onSignIn={signIn} onSignOut={() => setSignOutOpen(true)} onEditStateChange={setEditState} />
         </React.Suspense>
       ) : route === "projectboard" ? (
         <React.Suspense
