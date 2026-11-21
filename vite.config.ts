@@ -3,6 +3,8 @@ import fs from "fs"
 import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react"
 import { defineConfig, type Plugin } from "vite"
+// @ts-expect-error The same plain Node handler also runs on Vercel and in the local preview.
+import { canvaLinkHandler } from "./server/canva-link.mjs"
 
 /**
  * Serves the pre-redesign build (public/old/, produced by `bun run
@@ -59,7 +61,28 @@ function legacySite(): Plugin {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss(), legacySite()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    legacySite(),
+    {
+      name: "canva-share-links",
+      configureServer(server) {
+        server.middlewares.use((req, res, next) => {
+          if (req.url?.split("?")[0] === "/api/canva-link")
+            void canvaLinkHandler(req, res)
+          else next()
+        })
+      },
+      configurePreviewServer(server) {
+        server.middlewares.use((req, res, next) => {
+          if (req.url?.split("?")[0] === "/api/canva-link")
+            void canvaLinkHandler(req, res)
+          else next()
+        })
+      },
+    },
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

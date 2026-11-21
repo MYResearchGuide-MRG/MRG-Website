@@ -23,10 +23,13 @@ test("required content and each photo are checked; additional materials remain o
   assert.equal(submissionChecklist(board,{...complete,teamMembers:[]}).find(item=>item.id==="member-0").done,false)
   assert.equal(submissionChecklist(board,{...complete,summary:" Original  brief ",method:"- Original method"}).filter(item=>["summary","method"].includes(item.id)).every(item=>!item.done),true)
   assert.equal(submissionChecklist(board,{...complete,video:"javascript:alert(1)"}).find(item=>item.id==="video").done,false)
+  const wrongProvider=submissionChecklist(board,{...complete,video:"https://drive.google.com/file/d/example/view"}).find(item=>item.id==="video")
+  assert.equal(wrongProvider.done,false)
+  assert.equal(wrongProvider.detail,"Use a YouTube video link.")
 })
 
-test("materials checklist accepts links that cannot be embedded",()=>{
-  const shared={...complete,video:"https://vimeo.com/123456789",slides:"https://canva.link/xr1tgcwosi65q23",paper:"https://example.com/research.pdf"}
+test("materials checklist accepts Canva short links before preview resolution",()=>{
+  const shared={...complete,slides:"https://canva.link/xr1tgcwosi65q23",paper:"https://drive.google.com/open?id=example"}
   assert.ok(submissionChecklist(board,shared).filter(item=>item.section==="materials").every(item=>item.done))
 })
 test("final review expires when required content changes and survives unrelated save metadata",()=>{

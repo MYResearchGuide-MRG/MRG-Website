@@ -50,7 +50,12 @@ function fixture(kind, { signedIn = true, admin = true, deliveryFails = false, l
       return { error: deliveryFails ? new Error('Mail unavailable') : null }
     } } }
   }
-  const source = stripTypeScriptTypes(readFileSync(new URL(`../functions/invite-${kind}/index.ts`, import.meta.url), 'utf8')).replace(/^import .*$/gm, '')
+  const load = path => stripTypeScriptTypes(readFileSync(new URL(path, import.meta.url), 'utf8')).replace(/^import .*$/gm, '')
+  const entry = load(`../functions/invite-${kind}/index.ts`)
+  // Mentors and judges share one handler; run it in the same context.
+  const shared = entry.includes('serveAccountInvitations(')
+    ? load('../functions/_shared/account-invitations.ts').replace(/^export /gm, '') : ''
+  const source = `${shared}\n${entry}`
   runInNewContext(source, {
     createClient, Response, Uint8Array,
     crypto: { getRandomValues: bytes => { bytes.fill(0); return bytes } },
@@ -62,7 +67,7 @@ function fixture(kind, { signedIn = true, admin = true, deliveryFails = false, l
   }
 }
 
-for (const kind of ['mentors', 'participants']) {
+for (const kind of ['mentors', 'judges', 'participants']) {
   test(`${kind}: only verified committee users may invoke invitations`, async () => {
     for (const [options, status] of [[{ signedIn: false }, 401], [{ admin: false }, 403]]) {
       const f = fixture(kind, options)
@@ -86,9 +91,9 @@ for (const kind of ['mentors', 'participants']) {
 }
 
 // An email edit, pause or delete invalidates the invitation's row revision.
-test('mentors: stale invitation cannot attach a login, rotate a code or report delivery', async () => {
+for (const kind of ['mentors', 'judges']) test(`${kind}: stale invitation cannot attach a login, rotate a code or report delivery`, async () => {
   for (const uninvited of [false,true]) {
-    const f = fixture('mentors', {lifecycleChange:true,uninvited})
+    const f = fixture(kind, {lifecycleChange:true,uninvited})
     assert.deepEqual(await (await f.call()).json(), {sent:0,failed:1})
     assert.equal(f.sends(),0)
     assert.equal(f.updates.length,0)

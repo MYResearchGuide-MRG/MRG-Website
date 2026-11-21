@@ -1,0 +1,668 @@
+/* Judging pages use Tailwind for layout. The project-board styles are borrowed
+   only for rich text and embedded materials, so undo its page-level frame. */
+.judge-embed.pb-root {
+  min-height: 0;
+  padding-top: 0;
+  background: transparent;
+}
+
+.judge-details {
+  border-top: 1px solid rgb(255 255 255 / 0.1);
+  padding-top: 12px;
+}
+.judge-details > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 14px;
+  color: rgb(212 212 216);
+}
+.judge-details > summary::-webkit-details-marker {
+  display: none;
+}
+.judge-details > summary:hover {
+  color: #fff;
+}
+.judge-details > summary svg {
+  transition: transform 150ms ease;
+}
+.judge-details[open] > summary svg {
+  transform: rotate(180deg);
+}
+.judge-details > summary:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 4px;
+  border-radius: 2px;
+}
+
+/* Lineup page --------------------------------------------------------------- */
+/* Tags: filled pills with no border, tinted per tone. "Soft" is the quiet
+   tinted fill, "secondary" a stronger one, "primary" a solid fill. */
+.judge-tag {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+.judge-tag svg {
+  flex: none;
+}
+.judge-tag-soft-default {
+  background: #1c1c1e;
+  color: #a1a1a6;
+}
+.judge-tag-soft-accent {
+  background: #132538;
+  color: #8fc9f5;
+}
+.judge-tag-soft-success {
+  background: #10291e;
+  color: #7fdcae;
+}
+.judge-tag-soft-warning {
+  background: #2c1e0b;
+  color: #f3c862;
+}
+.judge-tag-soft-danger {
+  background: #2b1218;
+  color: #f2a3b6;
+}
+.judge-tag-secondary-default {
+  background: #2a2a2d;
+  color: #e6e6e6;
+}
+.judge-tag-secondary-success {
+  background: #0f3324;
+  color: #a6ecc8;
+}
+.judge-tag-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* Buttons follow the home page hero: solid white primary (.btn-light) and an
+   outlined near-black secondary (.btn-dark). */
+.judge-primary-button {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  height: 44px;
+  padding-inline: 20px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: #fff;
+  color: #111;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+/* Hover, press and focus come from the shared landing-page action motion. */
+.judge-primary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.judge-progress-bar {
+  display: flex;
+  gap: 4px;
+  margin: 24px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.judge-progress-bar li {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.1);
+}
+.judge-progress-bar li[data-state="draft"] {
+  background: rgb(252 211 77 / 0.55);
+}
+.judge-progress-bar li[data-state="complete"] {
+  background: rgb(52 211 153 / 0.75);
+}
+.judge-progress-bar li[data-state="submitted"] {
+  background: rgb(52 211 153);
+}
+.judge-autosubmit-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 16px;
+  color: var(--color-muted-foreground);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.judge-autosubmit-note svg {
+  margin-top: 2px;
+  color: var(--color-foreground);
+}
+.judge-autosubmit-note strong {
+  font-weight: 600;
+  color: #fff;
+}
+.judge-progress-next {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px 24px;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--color-border);
+}
+@media (max-width: 639px) {
+  .judge-progress-next .judge-primary-button {
+    width: 100%;
+  }
+}
+
+/* One heading size for every judging page heading, matching "Presentation Scores". */
+.judge-heading {
+  font-size: 1.875rem;
+  line-height: 1.2;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+@media (min-width: 640px) {
+  .judge-heading {
+    font-size: 2.25rem;
+    line-height: 1.15;
+  }
+}
+
+/* Judge notes sit straight on the page, with no panel, numbered like the
+   home page's "How it works" steps. On wide screens the rubric and anonymity
+   cards sit beside the notes instead of stretching under them. */
+.judge-notes-body {
+  padding-top: 24px;
+}
+@media (min-width: 1024px) {
+  .judge-notes-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+    align-items: start;
+    gap: 56px;
+  }
+  .judge-notes-body .judge-notes-footer {
+    margin-top: 0;
+  }
+}
+/* Body-size, high-contrast text with a readable measure: judges skim these
+   right before scoring, so they must not read like fine print. */
+.judge-notes ol {
+  display: grid;
+  gap: 18px;
+  max-width: 68ch;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: note;
+  color: rgb(255 255 255 / 82%);
+  font-size: 15px;
+  line-height: 1.6;
+}
+@media (max-width: 639px) {
+  .judge-notes ol {
+    gap: 16px;
+  }
+}
+.judge-notes ol li {
+  position: relative;
+  padding-left: 40px;
+  counter-increment: note;
+}
+.judge-notes ol li::before {
+  content: counter(note, decimal-leading-zero);
+  position: absolute;
+  top: 0.1em;
+  left: 0;
+  color: var(--color-foreground);
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.judge-notes strong {
+  color: var(--color-foreground);
+  font-weight: 600;
+}
+.judge-notes-link {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  color: var(--color-foreground);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: rgb(255 255 255 / 40%);
+  text-underline-offset: 3px;
+  transition: text-decoration-color 160ms ease;
+}
+.judge-notes-link:hover {
+  text-decoration-color: currentColor;
+}
+.judge-notes-link svg {
+  align-self: center;
+}
+/* Rubric first, so it reads as the next step after the notes. */
+.judge-notes-footer {
+  display: grid;
+  gap: 12px;
+  margin-top: 28px;
+}
+.judge-notes-rubric,
+.judge-notes-important {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #0a0a0a;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.judge-notes-rubric {
+  align-items: center;
+  color: var(--color-foreground);
+}
+/* Hover and press come from the shared landing-page action motion; only the size is compact here. */
+.judge-notes-rubric-open {
+  flex: none;
+  gap: 6px;
+  margin-left: auto;
+  height: 36px;
+  padding-inline: 14px;
+  font-size: 13px;
+}
+.judge-notes-rubric > svg:first-child {
+  flex: none;
+  margin-top: 2px;
+}
+.judge-notes-important {
+  color: var(--color-muted-foreground);
+}
+.judge-notes-important svg {
+  margin-top: 2px;
+}
+
+.judge-lineup-index {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  color: var(--color-muted-foreground);
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.judge-lineup-row:hover .judge-lineup-index {
+  border-color: #555;
+  color: var(--color-foreground);
+}
+.judge-lineup-row[aria-current="step"] .judge-lineup-index {
+  border-color: var(--color-foreground);
+  background: var(--color-foreground);
+  color: var(--color-background);
+}
+
+/* Scoring page --------------------------------------------------------------- */
+.judge-section {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-card);
+}
+.judge-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 28px 28px 22px;
+}
+/* Tone comes from the shared .judge-tag classes. */
+.judge-section-count {
+  font-variant-numeric: tabular-nums;
+}
+/* Rubric link next to where judges score; stays usable when the form is locked. */
+.judge-section-rubric {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 6px 12px;
+  border: 1px solid #454545;
+  border-radius: 8px;
+  background: rgb(12 12 12 / 85%);
+  color: var(--color-foreground);
+  font-size: 13px;
+  font-weight: 500;
+  transition:
+    background-color 200ms ease,
+    border-color 200ms ease;
+}
+.judge-section-rubric:hover {
+  background: #242424;
+  border-color: #777;
+}
+.judge-section-rubric:focus-visible {
+  outline: 2px solid #eee;
+  outline-offset: 3px;
+}
+.judge-criteria {
+  border-top: 1px solid var(--color-border);
+}
+.judge-criteria-scale-head {
+  display: none;
+}
+.judge-criterion {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px 24px;
+  margin: 0;
+  padding: 18px 28px;
+  border: 0;
+  border-bottom: 1px solid var(--color-border);
+  scroll-margin: 120px;
+}
+.judge-criterion .judge-rating {
+  grid-template-columns: auto auto auto;
+  gap: 14px;
+}
+.judge-criterion .judge-rating-end {
+  width: 58px;
+}
+.judge-remarks {
+  padding: 24px 28px 22px;
+  scroll-margin: 120px;
+}
+@media (max-width: 719px) {
+  .judge-section-header {
+    padding: 20px 18px 16px;
+  }
+  .judge-criterion {
+    grid-template-columns: 1fr;
+    padding: 16px 18px;
+  }
+  .judge-criterion .judge-rating {
+    grid-template-columns: minmax(48px, 1fr) auto minmax(48px, 1fr);
+    gap: 8px;
+  }
+  .judge-criterion .judge-rating-end {
+    width: auto;
+  }
+  .judge-remarks {
+    padding: 18px 18px 16px;
+  }
+}
+
+.judge-secondary-button {
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-shrink: 0;
+  height: 44px;
+  padding-inline: 18px;
+  border: 1px solid #454545;
+  border-radius: 8px;
+  background: rgb(12 12 12 / 85%);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
+}
+.judge-secondary-button:hover {
+  border-color: #777;
+  background: #242424;
+}
+.judge-secondary-button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+.judge-secondary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+/* Submit-all confirmation; the judge pages do not load the admin styles. */
+.judge-dialog {
+  max-width: 480px;
+  padding: 28px;
+  border-color: var(--color-border);
+  border-radius: 12px;
+  background: #000;
+  color: rgb(244 244 245);
+  color-scheme: dark;
+}
+/* Grey warning panel with a solid yellow bar down the left edge. */
+.judge-final-list {
+  display: grid;
+  gap: 8px;
+  margin: 18px 0 0;
+  padding: 14px 16px 14px 40px;
+  border-left: 12px solid rgb(234 170 56);
+  border-radius: 8px;
+  background: #1a1a1c;
+  color: var(--color-foreground);
+  font-size: 14px;
+  line-height: 1.5;
+  list-style: disc;
+}
+.judge-final-ack {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 18px;
+  color: rgb(228 228 231);
+  font-size: 14px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+.judge-final-ack input {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 3px;
+  accent-color: #fff;
+  cursor: pointer;
+}
+.judge-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-border);
+}
+@media (max-width: 479px) {
+  .judge-dialog {
+    padding: 22px 18px;
+  }
+  .judge-dialog-actions > * {
+    flex: 1 1 100%;
+  }
+}
+
+/* Sticky progress + navigation for the review being scored. */
+.judge-actionbar {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  margin-top: 32px;
+  padding: 12px 0 max(12px, env(safe-area-inset-bottom));
+  background: linear-gradient(to top, #121212 75%, rgb(18 18 18 / 0));
+}
+.judge-actionbar-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px 16px;
+  padding: 12px 14px 12px 18px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: rgb(0 0 0 / 0.9);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.4);
+}
+.judge-actionbar-progress {
+  height: 4px;
+  margin-top: 8px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.1);
+  overflow: hidden;
+}
+.judge-actionbar-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: rgb(52 211 153);
+  transition: width 200ms ease;
+}
+
+/* 1–5 scale built from native radios for keyboard and screen readers. */
+.judge-rating {
+  display: grid;
+  grid-template-columns: minmax(116px, 1fr) auto minmax(116px, 1fr);
+  align-items: center;
+  gap: 24px;
+}
+.judge-rating-end {
+  color: rgb(161 161 170);
+  font-size: 13px;
+  line-height: 1.25;
+}
+/* Both ends hug the scale so "Poor" and "Excellent" sit the same distance
+   from the circles. */
+.judge-rating-low {
+  text-align: right;
+}
+.judge-rating-high {
+  text-align: left;
+}
+.judge-scale {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+@media (max-width: 639px) {
+  .judge-rating {
+    grid-template-columns: minmax(72px, 1fr) auto minmax(72px, 1fr);
+    gap: 10px;
+  }
+  .judge-rating-end {
+    font-size: 11px;
+  }
+  .judge-scale {
+    gap: 10px;
+  }
+}
+.judge-score {
+  position: relative;
+}
+.judge-score input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
+}
+/* Unpicked is a grey outline; picked fills solid white, border included. */
+.judge-score-circle {
+  --score: #f1f1f1;
+  --score-idle: #4a4a4d;
+  --score-hover: #5c5c60;
+  --score-ink: #111;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 2px solid var(--score-idle);
+  border-radius: 50%;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+}
+.judge-score:first-child .judge-score-circle,
+.judge-score:last-child .judge-score-circle {
+  width: 52px;
+  height: 52px;
+}
+.judge-score:nth-child(2) .judge-score-circle,
+.judge-score:nth-child(4) .judge-score-circle {
+  width: 42px;
+  height: 42px;
+}
+.judge-score:hover .judge-score-circle {
+  background-color: var(--score-hover);
+  border-color: var(--score-hover);
+}
+.judge-score input:checked + .judge-score-circle {
+  background-color: var(--score);
+  border-color: var(--score);
+  color: var(--score-ink);
+}
+.judge-score input:focus-visible + .judge-score-circle {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+@media (max-width: 639px) {
+  .judge-score:first-child .judge-score-circle,
+  .judge-score:last-child .judge-score-circle {
+    width: 42px;
+    height: 42px;
+  }
+  .judge-score:nth-child(2) .judge-score-circle,
+  .judge-score:nth-child(4) .judge-score-circle {
+    width: 34px;
+    height: 34px;
+  }
+  .judge-score-circle {
+    width: 26px;
+    height: 26px;
+  }
+}
+fieldset:disabled .judge-score input {
+  cursor: not-allowed;
+}
+fieldset:disabled .judge-score:hover .judge-score-circle {
+  background-color: transparent;
+  border-color: var(--score-idle);
+  color: inherit;
+}
+fieldset:disabled .judge-score:hover input:checked + .judge-score-circle {
+  background-color: var(--score);
+  border-color: var(--score);
+  color: var(--score-ink);
+}
+fieldset[aria-invalid="true"] .judge-score-circle {
+  border-color: rgb(252 165 165 / 0.5);
+}
+
+/* Callouts reuse the tag "soft" palette: tinted fill, no border. */
+.judge-callout-soft-accent {
+  background: #132538;
+  color: #8fc9f5;
+}
+.judge-callout-soft-accent .judge-callout-body {
+  color: #c3dcef;
+}

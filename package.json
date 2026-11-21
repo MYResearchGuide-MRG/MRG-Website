@@ -4,6 +4,7 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
+    "test:system": "node scripts/test-system.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",

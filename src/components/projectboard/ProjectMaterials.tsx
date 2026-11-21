@@ -1,10 +1,13 @@
-import { useId, useState } from "react"
-import { ArrowUpRight, Globe, Plus, Trash2 } from "lucide-react"
+import { useEffect, useId, useState } from "react"
+import { ArrowUpRight, Globe, Plus, RotateCw, Trash2 } from "lucide-react"
 import type { Draft } from "./data"
 import {
   materialSpecs,
   materialEmbed,
   materialError,
+  materialHint,
+  isCanvaShortLink,
+  canvaLinkFromPaste,
   webUrl,
   linkService,
   MAX_ADDITIONAL_MATERIALS,
@@ -12,6 +15,88 @@ import {
   type MaterialService,
   type MaterialKey,
 } from "./materials"
+import { resolveCanvaPreview } from "./canva-preview"
+
+function MaterialPreview({
+  material,
+  value,
+  title,
+}: {
+  material: MaterialKey
+  value: string
+  title: string
+}) {
+  const [resolved, setResolved] = useState<string | null | undefined>(undefined)
+  const [attempt, setAttempt] = useState(0)
+  const short = material === "slides" && isCanvaShortLink(value)
+  useEffect(() => {
+    let active = true
+    if (short)
+      void resolveCanvaPreview(value, { retry: attempt > 0 }).then((url) => {
+        if (active) setResolved(url)
+      })
+    return () => {
+      active = false
+    }
+  }, [value, short, attempt])
+  const embed = materialEmbed(material, resolved || value)
+  const href = embed?.href ?? webUrl(value)?.href
+  const service = linkService(resolved || value)
+  return (
+    <>
+      {embed ? (
+        <div className={`pb-media-frame pb-media-frame-${material}`}>
+          <iframe
+            key={attempt}
+            src={embed.src}
+            title={`${title} on ${service.label}`}
+            loading="lazy"
+            referrerPolicy="strict-origin-when-cross-origin"
+            allowFullScreen
+            allow={
+              material === "video"
+                ? "encrypted-media; picture-in-picture; fullscreen"
+                : "fullscreen"
+            }
+          />
+        </div>
+      ) : (
+        <div className="pb-media-empty">
+          <p>
+            {short && resolved === undefined
+              ? "Preparing Canva preview…"
+              : short
+                ? "The Canva preview could not be prepared. Try loading it again."
+              : href
+                ? "This link opens on the provider’s site. An embedded preview is unavailable."
+                : "Not added yet"}
+          </p>
+        </div>
+      )}
+      {href && (
+        <div className="pb-embed-note">
+          <span>{embed ? "Preview not loading?" : "Open the material:"}</span>{" "}
+          <a href={href} target="_blank" rel="noopener noreferrer">
+            Open on {service.label} <ArrowUpRight size={12} />
+          </a>
+          {material === "slides" && (embed || short) && (
+            <button
+              type="button"
+              className="pb-preview-retry"
+              disabled={short && resolved === undefined}
+              onClick={() => {
+                if (short) setResolved(undefined)
+                setAttempt((count) => count + 1)
+              }}
+            >
+              <RotateCw size={13} aria-hidden="true" /> Reload preview
+            </button>
+          )}
+        </div>
+      )}
+    </>
+  )
+}
 
 function ServiceIcon({ service }: { service: MaterialService }) {
   if (service === "web") return <Globe size={22} aria-hidden="true" />
@@ -55,7 +140,14 @@ function MaterialField({
 }) {
   const id = useId()
   const [touched, setTouched] = useState(false)
+  const [preview, setPreview] = useState(false)
+  const [settledValue, setSettledValue] = useState(value)
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSettledValue(value), 400)
+    return () => window.clearTimeout(timer)
+  }, [value])
   const error = touched ? materialError(spec.key, value) : null
+  const hint = materialHint(spec.key, value)
   return (
     <div className="pb-material-input">
       <label className="pb-field" htmlFor={id}>
@@ -70,6 +162,14 @@ function MaterialField({
           aria-describedby={`${id}-help${error ? ` ${id}-error` : ""}`}
           onBlur={() => setTouched(true)}
           onChange={(event) => onChange(event.target.value)}
+          onPaste={(event) => {
+            if (spec.key !== "slides") return
+            const link = canvaLinkFromPaste(event.clipboardData.getData("text"))
+            if (!link) return
+            event.preventDefault()
+            onChange(link)
+            setTouched(true)
+          }}
         />
       </label>
       <p id={`${id}-help`} className="pb-material-help">
@@ -79,6 +179,56 @@ function MaterialField({
         <p id={`${id}-error`} className="pb-material-error" role="alert">
           {error}
         </p>
+      )}
+      {hint && (
+        <p className="pb-material-help" role="status">
+          {hint}
+        </p>
+      )}
+      {spec.key === "slides" && (
+        <aside className="pb-canva-setup" aria-label="Enable Canva embedding">
+          <h4>Enable the Canva preview</h4>
+          <p>One-time setup by the design owner:</p>
+          <ol>
+            <li>Open the slides in Canva. Choose <strong>Share → See all → Embed</strong>.</li>
+            <li>Select <strong>Embed</strong> to publish the embed, then copy the <strong>Smart embed link</strong> or HTML embed code.</li>
+            <li>Paste it in the field above. The preview appears here automatically.</li>
+          </ol>
+          <a href="https://www.canva.com/help/embed-designs/" target="_blank" rel="noopener noreferrer">Canva’s embedding guide <ArrowUpRight size={12} aria-hidden="true" /></a>
+        </aside>
+      )}
+      {value.trim() && !materialError(spec.key, value) && (
+        spec.key === "slides" ? (
+          <div className="pb-material-inline-preview">
+            {settledValue === value ? (
+              <MaterialPreview
+                key={value}
+                material={spec.key}
+                value={value}
+                title={spec.title}
+              />
+            ) : (
+              <p className="pb-material-help" role="status">Preparing slide preview…</p>
+            )}
+          </div>
+        ) : <>
+          <button
+            type="button"
+            className="pb-button"
+            aria-expanded={preview}
+            onClick={() => setPreview((v) => !v)}
+          >
+            {preview ? "Hide preview" : "Preview link"}
+          </button>
+          {preview && (
+            <MaterialPreview
+              key={value}
+              material={spec.key}
+              value={value}
+              title={spec.title}
+            />
+          )}
+        </>
       )}
     </div>
   )
@@ -97,32 +247,39 @@ export function ProjectMaterials({
 }) {
   const links = content?.additionalMaterials ?? []
   function changeLink(id: string, changes: Partial<AdditionalMaterial>) {
-    onLinksChange(links.map((link) => (link.id === id ? { ...link, ...changes } : link)))
+    onLinksChange(
+      links.map((link) => (link.id === id ? { ...link, ...changes } : link))
+    )
   }
   return (
     <div className="pb-materials">
       <h2 className="pb-main-materials-heading">Main materials</h2>
       {editing && (
-        <section className="pb-submission-rules" aria-labelledby="pb-submission-heading">
+        <section
+          className="pb-submission-rules"
+          aria-labelledby="pb-submission-heading"
+        >
           <h3 id="pb-submission-heading">Before you submit</h3>
           <p>
-            One submission per team, preferably completed by the team leader. All three components
-            below are required for the final submission.
+            One submission per team, preferably completed by the team leader.
+            All three components below are required for the final submission.
           </p>
           <p>
             Follow the{" "}
             <a href="#/resources" target="_blank" rel="noopener noreferrer">
               official templates and guidelines
             </a>
-            . Check that every file is complete, finalised and shared correctly before submitting.
+            . Check that every file is complete, finalised and shared correctly
+            before submitting.
           </p>
           <p className="pb-submission-note">
-            Submitted research materials and associated information may be published or showcased on
-            MYResearchGuide’s official platforms and in programme publications.
+            Submitted research materials and associated information may be
+            published or showcased on MYResearchGuide’s official platforms and
+            in programme publications.
           </p>
           <p className="pb-submission-note">
-            Check video length, resolution, slide count, file
-            contents and sharing permissions before your final submission.
+            Check video length, resolution, slide count, file contents and
+            sharing permissions before your final submission.
           </p>
         </section>
       )}
@@ -130,9 +287,15 @@ export function ProjectMaterials({
         const value = content?.[spec.key] ?? ""
         const embed = materialEmbed(spec.key, value)
         const href = embed?.href ?? webUrl(value)?.href
-        const service = href ? linkService(value) : { icon: spec.service, label: spec.provider }
+        const service = !editing && href
+          ? linkService(value)
+          : { icon: spec.service, label: spec.provider }
         return (
-          <section key={spec.key} className="pb-media-card" aria-label={spec.title}>
+          <section
+            key={spec.key}
+            className="pb-media-card"
+            aria-label={spec.title}
+          >
             <div className="pb-media-heading">
               <span className="pb-service-icon">
                 <ServiceIcon service={service.icon} />
@@ -166,42 +329,21 @@ export function ProjectMaterials({
                 value={value}
                 onChange={(next) => onChange(spec.key, next)}
               />
-            ) : embed ? (
-              <>
-                <div className={`pb-media-frame pb-media-frame-${spec.key}`}>
-                  <iframe
-                    src={embed.src}
-                    title={`${spec.title} on ${service.label}`}
-                    loading="lazy"
-                    referrerPolicy="strict-origin-when-cross-origin"
-                    allowFullScreen
-                    allow={
-                      spec.key === "video"
-                        ? "encrypted-media; picture-in-picture; fullscreen"
-                        : "fullscreen"
-                    }
-                  />
-                </div>
-                <p className="pb-embed-note">
-                  Preview not loading?{" "}
-                  <a href={href} target="_blank" rel="noopener noreferrer">
-                    Open on {service.label} <ArrowUpRight size={12} />
-                  </a>
-                </p>
-              </>
             ) : (
-              <div className="pb-media-empty">
-                <p>
-                  {href
-                    ? "Use Open to view this material in a new tab."
-                    : "Not added yet"}
-                </p>
-              </div>
+              <MaterialPreview
+                key={value}
+                material={spec.key}
+                value={value}
+                title={spec.title}
+              />
             )}
           </section>
         )
       })}
-      <section className="pb-additional-materials" aria-labelledby="pb-additional-heading">
+      <section
+        className="pb-additional-materials"
+        aria-labelledby="pb-additional-heading"
+      >
         <div className="pb-additional-heading">
           <h2 id="pb-additional-heading">Additional materials</h2>
           {editing && (
@@ -209,7 +351,10 @@ export function ProjectMaterials({
               className="pb-button"
               disabled={links.length >= MAX_ADDITIONAL_MATERIALS}
               onClick={() =>
-                onLinksChange([...links, { id: crypto.randomUUID(), name: "", url: "" }])
+                onLinksChange([
+                  ...links,
+                  { id: crypto.randomUUID(), name: "", url: "" },
+                ])
               }
             >
               <Plus size={15} /> Add link
@@ -219,7 +364,8 @@ export function ProjectMaterials({
         {editing ? (
           <>
             <p className="pb-material-help">
-              Link to code, datasets or other supporting work. Give each link a name.
+              Link to code, datasets or other supporting work. Give each link a
+              name.
             </p>
             <div className="pb-link-edit-list">
               {links.map((link, index) => (
@@ -232,7 +378,9 @@ export function ProjectMaterials({
                         value={link.name}
                         maxLength={100}
                         placeholder="e.g. Code repository"
-                        onChange={(event) => changeLink(link.id, { name: event.target.value })}
+                        onChange={(event) =>
+                          changeLink(link.id, { name: event.target.value })
+                        }
                       />
                     </label>
                     <label className="pb-field">
@@ -243,7 +391,9 @@ export function ProjectMaterials({
                         value={link.url}
                         maxLength={2048}
                         placeholder="https://"
-                        onChange={(event) => changeLink(link.id, { url: event.target.value })}
+                        onChange={(event) =>
+                          changeLink(link.id, { url: event.target.value })
+                        }
                       />
                     </label>
                   </div>
@@ -251,7 +401,9 @@ export function ProjectMaterials({
                     className="pb-remove-link"
                     aria-label={`Remove link ${index + 1}`}
                     title="Remove link"
-                    onClick={() => onLinksChange(links.filter((item) => item.id !== link.id))}
+                    onClick={() =>
+                      onLinksChange(links.filter((item) => item.id !== link.id))
+                    }
                   >
                     <Trash2 size={17} />
                   </button>

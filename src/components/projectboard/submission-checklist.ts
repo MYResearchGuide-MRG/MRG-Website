@@ -1,5 +1,5 @@
 import type { Board, Draft } from "./data"
-import { webUrl } from "./materials"
+import { materialError } from "./materials"
 import { overviewFields } from "./overview"
 
 export type ChecklistSection = "heading" | "overview" | "materials" | "team"
@@ -20,14 +20,18 @@ export function submissionChecklist(board: Board, draft: Draft): ChecklistItem[]
   ]
   for (const [index, assigned] of board.team.entries()) {
     const member = draft.teamMembers?.find(member => member.id === (assigned.memberId ?? `${board.id}:member-${index + 1}`))
-    items.push({ id: `member-${index}`, label: member?.name || assigned.name, section: "team", detail: "Check name and school. Add a short bio and a profile photo.", done: Boolean(member && filled(member.name, 100) && filled(member.school, 200) && filled(member.bio, 500) && photo(member.photo)) })
+    const missing = [!filled(member?.name,100) && "name",!filled(member?.school,200) && "school",!filled(member?.bio,500) && "bio",!photo(member?.photo) && "photo"].filter(Boolean)
+    items.push({ id: `member-${index}`, label: member?.name || assigned.name, section: "team", detail: missing.length ? `Missing ${missing.join(", ")}.` : "Name, school, bio and photo added.", done: !missing.length })
   }
   if (!board.team.length) items.push({ id: "team", label: "Student team", detail: "Ask the committee to assign your team members.", done: false, section: "team" })
   for (const [key, label, detail] of [
-    ["video", "Video presentation", "Share a video link: 2–3 minutes, at least 1080p. Every member must appear and speak."],
-    ["slides", "Presentation slides", "Share a slides link. Up to 12 pages using the official template."],
-    ["paper", "Research write-up", "Share the final PDF. Anyone with the link must be able to view it."],
-  ] as const) items.push({id:key,label,detail,done:Boolean(webUrl(draft[key])),section:"materials"})
+    ["video", "Video presentation", "Share a YouTube video: 2–3 minutes, at least 1080p. Every member must appear and speak."],
+    ["slides", "Presentation slides", "Share your Canva slides. Up to 12 pages using the official template."],
+    ["paper", "Research write-up", "Share the final PDF on Google Drive. Anyone with the link must be able to view it."],
+  ] as const) {
+    const error = materialError(key, draft[key])
+    items.push({id:key,label,detail:error || detail,done:Boolean(draft[key].trim() && !error),section:"materials"})
+  }
   return items
 }
 

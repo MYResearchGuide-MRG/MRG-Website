@@ -13,7 +13,7 @@ const require = createRequire(import.meta.url)
 const exports = {}
 runInNewContext(ts.transpileModule(read("./ProjectMaterials.tsx"), {
   compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS },
-}).outputText, { exports, require: name => name === "./materials" ? materials : require(name) })
+}).outputText, { exports, require: name => name === "./materials" ? materials : name === "./canva-preview" ? {resolveCanvaPreview:async()=>null} : require(name) })
 
 function render(content) {
   return renderToStaticMarkup(createElement(exports.ProjectMaterials, {
@@ -46,4 +46,23 @@ test("recognised providers keep previews while unsafe links never render", () =>
   const unsafe = render({video:"javascript:alert(1)",slides:"data:text/html,test",paper:"not a link"})
   assert.equal(unsafe.includes("<iframe"), false)
   assert.equal(unsafe.includes('class="pb-material-open"'), false)
+})
+
+test("Canva slides render inline automatically while editing, without a preview-button step", () => {
+  const html = renderToStaticMarkup(createElement(exports.ProjectMaterials, {
+    content: {slides:"https://www.canva.com/design/ABC/token/edit"},
+    editing: true, onChange() {}, onLinksChange() {},
+  }))
+  assert.ok(html.includes('src="https://www.canva.com/design/ABC/token/view?embed"'))
+  assert.ok(html.includes("Reload preview"))
+  assert.ok(html.includes("Enable the Canva preview"))
+  assert.ok(html.includes("Share → See all → Embed"))
+  assert.ok(html.includes("Smart embed link"))
+  assert.equal(html.includes("Preview link"), false)
+  const short = renderToStaticMarkup(createElement(exports.ProjectMaterials, {
+    content: {slides:"https://canva.link/example"},
+    editing: true, onChange() {}, onLinksChange() {},
+  }))
+  assert.ok(short.includes("Preparing Canva preview"))
+  assert.equal(short.includes("Preview link"), false)
 })

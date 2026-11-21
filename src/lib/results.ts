@@ -115,11 +115,16 @@ export type Route =
   | "admin"
   | "profile"
   | "mentor"
+  | "judging"
+
+const judgingRoute = /^#\/judging(?:\/[a-z0-9-]{1,100})?$/
 
 export function useRoute(): Route {
   const [route, setRoute] = React.useState<Route>(() =>
     window.location.hash === "#/mentor"
       ? "mentor"
+      : judgingRoute.test(window.location.hash)
+      ? "judging"
       : window.location.hash.startsWith("#/profile")
       ? "profile"
       : window.location.hash === "#/admin"
@@ -150,6 +155,8 @@ export function useRoute(): Route {
         setRoute("admin")
       } else if (hash === "#/mentor") {
         setRoute("mentor")
+      } else if (judgingRoute.test(hash)) {
+        setRoute("judging")
       } else if (/^#\/profile(?:\/(?:projects|settings))?$/.test(hash)) {
         setRoute("profile")
       } else if (isProjectsRoute(hash)) {

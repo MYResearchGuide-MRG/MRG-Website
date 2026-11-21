@@ -14,15 +14,29 @@ import { libraryHash, projectShareUrl } from "./paths"
 import { prepareProjectImage, prepareMemberPhoto } from "./project-image"
 import { MemberAvatar, ProjectTeam } from "./ProjectTeam"
 import { ProjectMaterials } from "./ProjectMaterials"
-import { materialSpecs, materialError, validAdditionalMaterials } from "./materials"
+import {
+  materialSpecs,
+  materialError,
+  validAdditionalMaterials,
+} from "./materials"
+import { ProjectFeedback, type FeedbackViewer } from "./ProjectFeedback"
 import { overviewFields, overviewError } from "./overview"
 import { SubmissionChecklist } from "./SubmissionChecklist"
-import { submissionFingerprint, submissionReviewed, type ChecklistSection } from "./submission-checklist"
+import { CommitteeReviewNotice } from "./CommitteeReviewNotice"
+import {
+  submissionFingerprint,
+  submissionReviewed,
+  type ChecklistSection,
+} from "./submission-checklist"
 
 const tabs = ["overview", "materials", "team"] as const
 
 function ProjectShare({ board }: { board: Board }) {
-  const url = projectShareUrl(board.id, window.location.origin, window.location.pathname)
+  const url = projectShareUrl(
+    board.id,
+    window.location.origin,
+    window.location.pathname
+  )
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState(false)
   useEffect(() => {
@@ -54,12 +68,18 @@ function ProjectShare({ board }: { board: Board }) {
           }}
         >
           {copied ? <Check size={16} /> : <Copy size={16} />}
-          <span aria-live="polite">{copied ? "Link copied" : "Copy project link"}</span>
+          <span aria-live="polite">
+            {copied ? "Link copied" : "Copy project link"}
+          </span>
         </button>
         {error && (
           <label className="pb-field pb-copy-fallback">
             Copy this link
-            <input readOnly value={url} onFocus={(event) => event.target.select()} />
+            <input
+              readOnly
+              value={url}
+              onFocus={(event) => event.target.select()}
+            />
           </label>
         )}
       </div>
@@ -74,15 +94,19 @@ export function ProjectDetail({
   onEditStateChange,
   editable,
   owner,
+  reviewVisible = owner,
+  feedbackViewer = null,
   revision,
   deadline,
 }: {
   board: Board
   savedDraft?: Draft
-  onSave: (draft: Draft, revision:number) => Promise<boolean>
+  onSave: (draft: Draft, revision: number) => Promise<boolean>
   onEditStateChange: (state: { dirty: boolean; busy: boolean }) => void
   editable: boolean
   owner: boolean
+  reviewVisible?: boolean
+  feedbackViewer?: FeedbackViewer | null
   revision: number
   deadline: { closed: boolean; label: string }
 }) {
@@ -109,17 +133,25 @@ export function ProjectDetail({
   const savePending = useRef(false)
   const imageInput = useId()
   const sections = useRef<HTMLDivElement>(null)
-  const dirty = requestedEditing && JSON.stringify(draft) !== JSON.stringify(savedDraft ?? newDraft(board))
+  const dirty =
+    requestedEditing &&
+    JSON.stringify(draft) !== JSON.stringify(savedDraft ?? newDraft(board))
   const content = editing ? draft : savedDraft
   const title = content?.title ?? board.title
   const members = content?.teamMembers ?? teamProfiles(board)
-  const staleTeam = editing && (editRevision !== revision ||
-    JSON.stringify((draft.teamMembers ?? []).map(member => member.id)) !== JSON.stringify(teamProfiles(board).map(member => member.id)))
+  const staleTeam =
+    editing &&
+    (editRevision !== revision ||
+      JSON.stringify((draft.teamMembers ?? []).map((member) => member.id)) !==
+        JSON.stringify(teamProfiles(board).map((member) => member.id)))
 
   useEffect(() => {
     onEditStateChange({ dirty, busy: uploading || saving })
   }, [dirty, uploading, saving, onEditStateChange])
-  useEffect(() => () => onEditStateChange({ dirty: false, busy: false }), [onEditStateChange])
+  useEffect(
+    () => () => onEditStateChange({ dirty: false, busy: false }),
+    [onEditStateChange]
+  )
 
   useEffect(() => {
     if (!dirty && !uploading && !saving) return
@@ -128,7 +160,8 @@ export function ProjectDetail({
       event.returnValue = ""
     }
     const checkNavigation = (event: MouseEvent) => {
-      const anchor = event.target instanceof Element ? event.target.closest("a[href]") : null
+      const anchor =
+        event.target instanceof Element ? event.target.closest("a[href]") : null
       if (
         !(anchor instanceof HTMLAnchorElement) ||
         anchor.target === "_blank" ||
@@ -138,7 +171,11 @@ export function ProjectDetail({
         anchor.href === window.location.href
       )
         return
-      if (saving || uploading || !window.confirm("Leave this project without saving your changes?")) {
+      if (
+        saving ||
+        uploading ||
+        !window.confirm("Leave this project without saving your changes?")
+      ) {
         event.preventDefault()
         event.stopPropagation()
       }
@@ -159,7 +196,10 @@ export function ProjectDetail({
     setDraft((current) => ({ ...current, [key]: value }))
     setStatus("")
   }
-  function updateMember(id: string, changes: Partial<Omit<TeamMemberProfile, "id">>) {
+  function updateMember(
+    id: string,
+    changes: Partial<Omit<TeamMemberProfile, "id">>
+  ) {
     if (savePending.current || !editable) return
     setDraft((current) => ({
       ...current,
@@ -175,14 +215,17 @@ export function ProjectDetail({
       updateMember(id, { photo: await prepareMemberPhoto(file) })
     } catch (error) {
       setStatus(
-        error instanceof Error ? error.message : "Could not read that photo. Try another file."
+        error instanceof Error
+          ? error.message
+          : "Could not read that photo. Try another file."
       )
     } finally {
       setUploading(false)
     }
   }
   async function save() {
-    if (!owner || !editable || uploading || savePending.current || staleTeam) return
+    if (!owner || !editable || uploading || savePending.current || staleTeam)
+      return
     const invalidOverview = overviewError(draft)
     if (!draft.title.trim() || draft.title.length > 240 || invalidOverview) {
       setStatus(
@@ -194,7 +237,11 @@ export function ProjectDetail({
       return
     }
     const invalidMaterial = materialSpecs
-      .map((spec) => materialError(spec.key, draft[spec.key] ?? ""))
+      .map((spec) =>
+        draft[spec.key] === savedDraft?.[spec.key]
+          ? null
+          : materialError(spec.key, draft[spec.key] ?? "")
+      )
       .find(Boolean)
     if (invalidMaterial) {
       setStatus(invalidMaterial)
@@ -203,18 +250,26 @@ export function ProjectDetail({
     }
     const additionalMaterials = (draft.additionalMaterials ?? [])
       .filter((link) => link.name.trim() || link.url.trim())
-      .map((link) => ({ ...link, name: link.name.trim(), url: link.url.trim() }))
+      .map((link) => ({
+        ...link,
+        name: link.name.trim(),
+        url: link.url.trim(),
+      }))
     if (!validAdditionalMaterials(additionalMaterials)) {
-      setStatus("Give each additional material a name and a full https:// or http:// link.")
+      setStatus(
+        "Give each additional material a name and a full https:// or http:// link."
+      )
       setTab("materials")
       return
     }
-    const teamMembers = (draft.teamMembers ?? teamProfiles(board)).map((member) => ({
-      ...member,
-      name: member.name.trim(),
-      school: member.school.trim(),
-      bio: member.bio.trim(),
-    }))
+    const teamMembers = (draft.teamMembers ?? teamProfiles(board)).map(
+      (member) => ({
+        ...member,
+        name: member.name.trim(),
+        school: member.school.trim(),
+        bio: member.bio.trim(),
+      })
+    )
     if (!validTeamProfiles(teamMembers, board)) {
       setStatus("Add a name for every team member before saving.")
       setTab("team")
@@ -233,7 +288,9 @@ export function ProjectDetail({
       savedAt: new Date().toISOString(),
     }
     // Trimming input on save must not invalidate a review made just before it.
-    next.reviewedFingerprint = submissionReviewed(draft) ? submissionFingerprint(next) : ""
+    next.reviewedFingerprint = submissionReviewed(draft)
+      ? submissionFingerprint(next)
+      : ""
     savePending.current = true
     setSaving(true)
     try {
@@ -242,7 +299,9 @@ export function ProjectDetail({
       setEditing(false)
       setStatus("Changes saved. You can keep browsing while signed in.")
     } catch {
-      setStatus("Could not save. Your access may have changed or a teammate saved a newer version. Copy your changes before reloading.")
+      setStatus(
+        "Could not save. Your access may have changed or a teammate saved a newer version. Copy your changes before reloading."
+      )
     } finally {
       savePending.current = false
       setSaving(false)
@@ -258,8 +317,16 @@ export function ProjectDetail({
     }
     if (section !== "heading") setTab(section)
     window.requestAnimationFrame(() => {
-      if (section === "heading") document.getElementById("pb-project-heading")?.scrollIntoView({block:"start"})
-      else { sections.current?.scrollIntoView({block:"start"}); document.getElementById(`pb-tab-${section}`)?.focus({preventScroll:true}) }
+      if (section === "heading")
+        document
+          .getElementById("pb-project-heading")
+          ?.scrollIntoView({ block: "start" })
+      else {
+        sections.current?.scrollIntoView({ block: "start" })
+        document
+          .getElementById(`pb-tab-${section}`)
+          ?.focus({ preventScroll: true })
+      }
     })
   }
 
@@ -272,16 +339,28 @@ export function ProjectDetail({
         <span>/</span>
         <span>{board.code}</span>
       </div>
+      {reviewVisible && (
+        <CommitteeReviewNotice board={board} revision={revision} />
+      )}
       {owner && (
         <div className={`pb-inline-toolbar ${editing ? "is-editing" : ""}`}>
           <div>
-            <strong>{editing ? "Editing your project" : "Your team’s project"}</strong>
+            <strong>
+              {editing ? "Editing your project" : "Your team’s project"}
+            </strong>
             <span role="status">
               {uploading
                 ? "Preparing image…"
-                : staleTeam ? "The project or team has changed. Copy any unsaved work, then cancel and edit again to load the latest version."
-                : deadline.closed ? `The submission deadline has passed. Editing is closed.${dirty ? " Copy any unsaved text before leaving." : ""}`
-                : status || (dirty ? "Unsaved changes" : editable ? board.code : "Editing is closed by the committee.")}
+                : staleTeam
+                  ? "The project or team has changed. Copy any unsaved work, then cancel and edit again to load the latest version."
+                  : deadline.closed
+                    ? `The submission deadline has passed. Editing is closed.${dirty ? " Copy any unsaved text before leaving." : ""}`
+                    : status ||
+                      (dirty
+                        ? "Unsaved changes"
+                        : editable
+                          ? board.code
+                          : "Editing is closed by the committee.")}
             </span>
           </div>
           <div className="pb-inline-actions">
@@ -291,7 +370,11 @@ export function ProjectDetail({
                   className="pb-button"
                   disabled={uploading || saving}
                   onClick={() => {
-                    if (dirty && !window.confirm("Discard your unsaved changes?")) return
+                    if (
+                      dirty &&
+                      !window.confirm("Discard your unsaved changes?")
+                    )
+                      return
                     setDraft(savedDraft ?? newDraft(board))
                     setEditing(false)
                     setStatus("")
@@ -299,13 +382,19 @@ export function ProjectDetail({
                 >
                   Cancel
                 </button>
-                <button className="pb-button pb-primary" disabled={!editable || uploading || saving || staleTeam} onClick={save}>
+                <button
+                  className="pb-button pb-primary"
+                  disabled={!editable || uploading || saving || staleTeam}
+                  onClick={save}
+                >
                   {saving ? "Saving…" : "Save changes"}
                 </button>
               </>
             ) : (
               <>
-                <a className="pb-button" href={libraryHash}>Browse projects</a>
+                <a className="pb-button" href={libraryHash}>
+                  Browse projects
+                </a>
                 <button
                   className="pb-button pb-primary"
                   disabled={!editable}
@@ -323,8 +412,27 @@ export function ProjectDetail({
           </div>
         </div>
       )}
-      {owner && <SubmissionChecklist board={board} draft={content ?? newDraft(board)} editing={editing} editable={editable} deadline={deadline} onOpen={openChecklistSection} onReview={reviewed => update("reviewedFingerprint", reviewed ? submissionFingerprint(draft) : "")} />}
-      <header className="pb-detail-heading" id="pb-project-heading" style={{scrollMarginTop:100}}>
+      {owner && (
+        <SubmissionChecklist
+          board={board}
+          draft={content ?? newDraft(board)}
+          editing={editing}
+          editable={editable}
+          deadline={deadline}
+          onOpen={openChecklistSection}
+          onReview={(reviewed) =>
+            update(
+              "reviewedFingerprint",
+              reviewed ? submissionFingerprint(draft) : ""
+            )
+          }
+        />
+      )}
+      <header
+        className="pb-detail-heading"
+        id="pb-project-heading"
+        style={{ scrollMarginTop: 100 }}
+      >
         <div className="pb-detail-intro">
           <div className="pb-tag-row">
             <span className="pb-code">{board.code}</span>
@@ -332,7 +440,8 @@ export function ProjectDetail({
           </div>
           {editing && (
             <p className="pb-small-note">
-              Project code {board.code} is assigned by the committee and cannot be edited.
+              Project code {board.code} is assigned by the committee and cannot
+              be edited.
             </p>
           )}
           {editing ? (
@@ -355,7 +464,9 @@ export function ProjectDetail({
             onClick={() => {
               setTab("team")
               sections.current?.scrollIntoView({ block: "start" })
-              document.getElementById("pb-tab-team")?.focus({ preventScroll: true })
+              document
+                .getElementById("pb-tab-team")
+                ?.focus({ preventScroll: true })
             }}
             aria-label={`View team: ${members.map((member) => member.name).join(", ")}`}
           >
@@ -387,9 +498,14 @@ export function ProjectDetail({
           {editing && (
             <div className="pb-inline-image">
               <div className="pb-image-controls">
-                <label className="pb-button pb-image-picker" htmlFor={imageInput}>
+                <label
+                  className="pb-button pb-image-picker"
+                  htmlFor={imageInput}
+                >
                   <ImagePlus size={16} />{" "}
-                  {draft.coverImage ? "Change project image" : "Add project image"}
+                  {draft.coverImage
+                    ? "Change project image"
+                    : "Add project image"}
                   <input
                     className="pb-sr-only"
                     id={imageInput}
@@ -427,8 +543,9 @@ export function ProjectDetail({
                 )}
               </div>
               <p className="pb-small-note" id={`${imageInput}-help`}>
-                Use a 16:9 landscape image, ideally 1600 × 900 px. JPG, PNG or WebP, up to 5 MB.
-                Other sizes are cropped to fit, so keep important details away from the edges.
+                Use a 16:9 landscape image, ideally 1600 × 900 px. JPG, PNG or
+                WebP, up to 5 MB. Other sizes are cropped to fit, so keep
+                important details away from the edges.
               </p>
               {draft.coverImage && (
                 <label className="pb-field">
@@ -448,7 +565,11 @@ export function ProjectDetail({
       <div className="pb-detail-layout">
         <div className="pb-detail-primary">
           <div className="pb-board-content pb-detail-sections" ref={sections}>
-            <div className="pb-tabs" role="tablist" aria-label="Project sections">
+            <div
+              className="pb-tabs"
+              role="tablist"
+              aria-label="Project sections"
+            >
               {tabs.map((name, index) => (
                 <button
                   key={name}
@@ -459,7 +580,12 @@ export function ProjectDetail({
                   tabIndex={tab === name ? 0 : -1}
                   onClick={() => setTab(name)}
                   onKeyDown={(event) => {
-                    if (!["ArrowRight", "ArrowLeft", "Home", "End"].includes(event.key)) return
+                    if (
+                      !["ArrowRight", "ArrowLeft", "Home", "End"].includes(
+                        event.key
+                      )
+                    )
+                      return
                     event.preventDefault()
                     const next =
                       tabs[
@@ -492,8 +618,8 @@ export function ProjectDetail({
                 editing ? (
                   <>
                     <p className="pb-editor-note">
-                      Write in Markdown. Keep the overview brief; put full details in your research
-                      write-up.
+                      Write in Markdown. Keep the overview brief; put full
+                      details in your research write-up.
                     </p>
                     {overviewFields.map(({ key, label, maxLength }) => (
                       <OverviewEditor
@@ -510,7 +636,9 @@ export function ProjectDetail({
                   <>
                     <section>
                       <h2>Abstract</h2>
-                      <OverviewContent text={content?.summary ?? board.description} />
+                      <OverviewContent
+                        text={content?.summary ?? board.description}
+                      />
                     </section>
                     {content?.question && (
                       <section>
@@ -521,7 +649,10 @@ export function ProjectDetail({
                     <section>
                       <h2>Research approach</h2>
                       <OverviewContent
-                        text={content?.method ?? board.tasks.map((task) => `- ${task}`).join("\n")}
+                        text={
+                          content?.method ??
+                          board.tasks.map((task) => `- ${task}`).join("\n")
+                        }
                       />
                     </section>
                     <section>
@@ -529,7 +660,9 @@ export function ProjectDetail({
                       {content?.findings ? (
                         <OverviewContent text={content.findings} />
                       ) : (
-                        <p className="pb-muted">The team has not added findings yet.</p>
+                        <p className="pb-muted">
+                          The team has not added findings yet.
+                        </p>
                       )}
                     </section>
                   </>
@@ -539,7 +672,9 @@ export function ProjectDetail({
                   content={content}
                   editing={editing}
                   onChange={update}
-                  onLinksChange={(links) => update("additionalMaterials", links)}
+                  onLinksChange={(links) =>
+                    update("additionalMaterials", links)
+                  }
                 />
               ) : (
                 <section>
@@ -576,7 +711,11 @@ export function ProjectDetail({
                   <div className="pb-mentor">
                     <div className="pb-member-photo-column">
                       <span className="pb-member-avatar">
-                        <img src={board.photo} alt={board.mentor} loading="lazy" />
+                        <img
+                          src={board.photo}
+                          alt={board.mentor}
+                          loading="lazy"
+                        />
                       </span>
                     </div>
                     <div className="pb-member-copy">
@@ -586,7 +725,8 @@ export function ProjectDetail({
                   </div>
                   {editing && (
                     <p className="pb-small-note">
-                      Team membership and mentor assignments are managed by the committee.
+                      Team membership and mentor assignments are managed by the
+                      committee.
                     </p>
                   )}
                 </section>
@@ -595,6 +735,13 @@ export function ProjectDetail({
           </div>
         </div>
         <ProjectShare board={board} />
+        {feedbackViewer && !editing && (
+          <ProjectFeedback
+            projectId={board.id}
+            year={board.year}
+            viewer={feedbackViewer}
+          />
+        )}
       </div>
     </main>
   )

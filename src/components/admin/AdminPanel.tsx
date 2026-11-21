@@ -12,6 +12,7 @@ import {
   FolderOpen,
   GitFork,
   LockKeyhole,
+  ListChecks,
   Mail,
   Plus,
   Pencil,
@@ -38,13 +39,13 @@ import {
 import { NewCohortDialog, ProjectEditor } from "./CohortDialogs"
 import { SplitProjectDialog } from "./SplitProjectDialog"
 import { type Assignment } from "./access-model"
-import {
-  prepareInvitations,
-  useDemoAccess,
-} from "./demo-access"
+import { prepareInvitations, useDemoAccess } from "./demo-access"
 import "./admin.css"
 import { AdminSignIn } from "./AdminSignIn"
-import { setPreviewCommitteeSession, useCommitteeAccess } from "./committee-session"
+import {
+  setPreviewCommitteeSession,
+  useCommitteeAccess,
+} from "./committee-session"
 import { SignOutDialog } from "@/components/layout/sign-out-dialog"
 import { useProjectEditing, setProjectEditing } from "./project-editing"
 import {
@@ -69,8 +70,18 @@ import { useMentorAccess } from "./mentor-access"
 import "./workspace.css"
 import { useSubmissionDeadline } from "../projectboard/use-submission-deadline"
 import { SubmissionDeadlineDialog } from "./SubmissionDeadlineDialog"
+import { SubmissionReviewQueue } from "./SubmissionReviewQueue"
+import { Gavel } from "lucide-react"
+import { JudgingAdmin } from "../judging/JudgingAdmin"
 
-type View = "participants" | "mentors" | "projects" | "trash" | "setup"
+type View =
+  | "review"
+  | "participants"
+  | "mentors"
+  | "judging"
+  | "projects"
+  | "trash"
+  | "setup"
 export default function AdminPanel() {
   const allBoards = useProjectBoards()
   const cohorts = useCohorts()
@@ -100,7 +111,10 @@ export default function AdminPanel() {
   const [signOutOpen, setSignOutOpen] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
   const [signOutError, setSignOutError] = useState("")
-  const requestSignOut = () => { setSignOutError(""); setSignOutOpen(true) }
+  const requestSignOut = () => {
+    setSignOutError("")
+    setSignOutOpen(true)
+  }
   async function signOut() {
     if (busy || signingOut) return
     setSigningOut(true)
@@ -115,7 +129,7 @@ export default function AdminPanel() {
       setSigningOut(false)
     }
   }
-  const [view, setView] = useState<View>("participants")
+  const [view, setView] = useState<View>("review")
   const [project, setProject] = useState("")
   const [projectQuery, setProjectQuery] = useState("")
   const [projectStatus, setProjectStatus] = useState("")
@@ -129,7 +143,8 @@ export default function AdminPanel() {
           ? visibility[board.id] === true
           : projectStatus === "hidden"
             ? visibility[board.id] !== true
-            : submissionDeadline.closed || editingPermissions[board.id] !== true))
+            : submissionDeadline.closed ||
+              editingPermissions[board.id] !== true))
   )
   const [adding, setAdding] = useState(false)
   const [addingSingle, setAddingSingle] = useState(false)
@@ -243,10 +258,7 @@ export default function AdminPanel() {
             <span className="ad-library-short">Archive</span>
             <ArrowUpRight size={15} />
           </a>
-          <button
-            className="ad-mobile-exit"
-            onClick={requestSignOut}
-          >
+          <button className="ad-mobile-exit" onClick={requestSignOut}>
             Sign out
           </button>
         </div>
@@ -278,8 +290,10 @@ export default function AdminPanel() {
           <nav aria-label="Admin navigation">
             {(
               [
+                { id: "review", label: "Submission review", Icon: ListChecks },
                 { id: "participants", label: "Participants", Icon: Users },
                 { id: "mentors", label: "Mentors", Icon: UsersRound },
+                { id: "judging", label: "Judging", Icon: Gavel },
                 { id: "projects", label: "Projects", Icon: FolderOpen },
                 ...(useLiveBackend
                   ? [{ id: "trash", label: "Trash", Icon: Trash2 } as const]
@@ -295,14 +309,23 @@ export default function AdminPanel() {
                 <Icon size={17} />
                 {label}
                 {id === "participants" && <span>{cohortPeople.length}</span>}
-                {id === "mentors" && <span>{mentors.filter(mentor => !mentor.deletedAt && mentor.projectIds.some(id => boards.some(board => board.id === id))).length}</span>}
+                {id === "mentors" && (
+                  <span>
+                    {
+                      mentors.filter(
+                        (mentor) =>
+                          !mentor.deletedAt &&
+                          mentor.projectIds.some((id) =>
+                            boards.some((board) => board.id === id)
+                          )
+                      ).length
+                    }
+                  </span>
+                )}
               </button>
             ))}
           </nav>
-          <button
-            className="ad-exit"
-            onClick={requestSignOut}
-          >
+          <button className="ad-exit" onClick={requestSignOut}>
             <ArrowLeft size={15} /> Sign out
           </button>
         </aside>
@@ -313,29 +336,42 @@ export default function AdminPanel() {
                 {view === "trash" || view === "setup"
                   ? "All cohorts"
                   : cohort?.name || `MYSSP ${year}`}{" "}
-                / {view === "setup" ? "Configuration" : "Access management"}
+                /{" "}
+                {view === "setup"
+                  ? "Configuration"
+                  : view === "review"
+                    ? "Project readiness"
+                    : "Access management"}
               </p>
               <h1>
-                {view === "participants"
-                  ? "Participants"
-                  : view === "mentors"
-                    ? "Mentors"
-                  : view === "projects"
-                    ? "Projects"
-                    : view === "trash"
-                      ? "Trash"
-                      : "Setup"}
+                {view === "review"
+                  ? "Submission review"
+                  : view === "participants"
+                    ? "Participants"
+                    : view === "mentors"
+                      ? "Mentors"
+                      : view === "judging"
+                        ? "Judging"
+                        : view === "projects"
+                          ? "Projects"
+                          : view === "trash"
+                            ? "Trash"
+                            : "Setup"}
               </h1>
               <p>
-                {view === "participants"
-                  ? `Manage accounts, assignments and invitations for ${year}.`
-                  : view === "mentors"
-                    ? `Assign mentors to projects and manage their access for ${year}.`
-                  : view === "projects"
-                    ? "Add projects, assign teams and control what goes live."
-                    : view === "trash"
-                      ? "Restore deleted participants and projects."
-                      : "Database, sign-in and email delivery."}
+                {view === "review"
+                  ? "Check what is missing, request corrections and approve completed work."
+                  : view === "participants"
+                    ? `Manage accounts, assignments and invitations for ${year}.`
+                    : view === "mentors"
+                      ? `Assign mentors to projects and manage their access for ${year}.`
+                      : view === "judging"
+                        ? `Judges, lineup and feedback for ${year}.`
+                        : view === "projects"
+                          ? "Add projects, assign teams and control what goes live."
+                          : view === "trash"
+                            ? "Restore deleted participants and projects."
+                            : "Database, sign-in and email delivery."}
               </p>
             </div>
             {view === "participants" && (
@@ -382,7 +418,17 @@ export default function AdminPanel() {
               </button>
             </p>
           )}
-          {view === "participants" && !boards.length ? (
+          {view === "review" ? (
+            <SubmissionReviewQueue
+              key={`${year}-${backend.userId || "preview"}`}
+              boards={boards}
+              year={year}
+              onDeadline={() => setDeadlineEditor(true)}
+              onProjects={() => setView("projects")}
+              deadlineLabel={submissionDeadline.label}
+              closed={submissionDeadline.closed}
+            />
+          ) : view === "participants" && !boards.length ? (
             <div className="ad-empty ad-cohort-empty">
               <FolderOpen size={28} />
               <h2>Add the first project for {year}</h2>
@@ -418,17 +464,31 @@ export default function AdminPanel() {
               onPreview={setInvitation}
               onAdd={() => setAddingSingle(true)}
             />
+          ) : view === "judging" ? (
+            <JudgingAdmin boards={boards} year={year} />
           ) : view === "mentors" ? (
             <MentorManagement boards={allBoards} year={year} />
           ) : view === "projects" ? (
             <section aria-label="Project visibility">
               <div className="ad-deadline-summary">
                 <div>
-                  <strong>{submissionDeadline.closed ? "Student editing closed" : "Editing deadline"}</strong>
+                  <strong>
+                    {submissionDeadline.closed
+                      ? "Student editing closed"
+                      : "Editing deadline"}
+                  </strong>
                   <p>{submissionDeadline.label || "No automatic deadline"}</p>
-                  <small>{submissionDeadline.closed ? "Reopen the editing window to let teams make corrections." : "Project switches control which teams can edit."}</small>
+                  <small>
+                    {submissionDeadline.closed
+                      ? "Reopen the editing window to let teams make corrections."
+                      : "Project switches control which teams can edit."}
+                  </small>
                 </div>
-                <button className="ad-button" disabled={busy} onClick={() => setDeadlineEditor(true)}>
+                <button
+                  className="ad-button"
+                  disabled={busy}
+                  onClick={() => setDeadlineEditor(true)}
+                >
                   <Settings2 size={15} aria-hidden /> Manage deadline
                 </button>
               </div>
@@ -591,9 +651,16 @@ export default function AdminPanel() {
                           disabled={busy || submissionDeadline.closed}
                           className="ad-visibility-switch"
                           role="switch"
-                          aria-checked={!submissionDeadline.closed && editingPermissions[b.id] === true}
+                          aria-checked={
+                            !submissionDeadline.closed &&
+                            editingPermissions[b.id] === true
+                          }
                           aria-label={`Allow editing for ${b.code}`}
-                          title={submissionDeadline.closed ? "Use Manage deadline above to reopen the cohort editing window." : undefined}
+                          title={
+                            submissionDeadline.closed
+                              ? "Use Manage deadline above to reopen the cohort editing window."
+                              : undefined
+                          }
                           onClick={() =>
                             changeEditing(
                               [b.id],
@@ -602,9 +669,11 @@ export default function AdminPanel() {
                           }
                         >
                           <span>
-                            {submissionDeadline.closed ? "Deadline passed" : editingPermissions[b.id] === true
-                              ? "Allowed"
-                              : "Locked"}
+                            {submissionDeadline.closed
+                              ? "Deadline passed"
+                              : editingPermissions[b.id] === true
+                                ? "Allowed"
+                                : "Locked"}
                           </span>
                           <span className="ad-switch-track" aria-hidden="true">
                             <span />
@@ -701,9 +770,9 @@ export default function AdminPanel() {
                     a committee address before inviting teams.
                   </p>
                   <p>
-                    Participants and mentors receive separate invitations with
-                    a private six-character access code. A code stays valid
-                    until the committee issues a replacement.
+                    Participants and mentors receive separate invitations with a
+                    private six-character access code. A code stays valid until
+                    the committee issues a replacement.
                   </p>
                 </div>
                 <span>Verify SMTP</span>
@@ -719,7 +788,11 @@ export default function AdminPanel() {
                     projects without editing student work.
                   </p>
                 </div>
-                <span>{useLiveBackend && backend.ready && !backend.mentorError ? "Connected" : "Setup needed"}</span>
+                <span>
+                  {useLiveBackend && backend.ready && !backend.mentorError
+                    ? "Connected"
+                    : "Setup needed"}
+                </span>
               </article>
               <article>
                 <Users size={23} />
@@ -744,11 +817,15 @@ export default function AdminPanel() {
       </div>
       <SignOutDialog
         open={signOutOpen}
-        onOpenChange={(open) => { if (!signingOut) setSignOutOpen(open) }}
+        onOpenChange={(open) => {
+          if (!signingOut) setSignOutOpen(open)
+        }}
         onConfirm={() => void signOut()}
         busy={busy || signingOut}
         unsaved={false}
-        error={busy ? "Please wait for the current update to finish." : signOutError}
+        error={
+          busy ? "Please wait for the current update to finish." : signOutError
+        }
       />
       {recordAction && (
         <RecordActionDialog
@@ -825,12 +902,22 @@ export default function AdminPanel() {
           }}
         />
       )}
-      {deadlineEditor && <SubmissionDeadlineDialog
-        year={year} closesAt={submissionDeadline.closesAt} projectIds={boards.map(board => board.id)}
-        enabledCount={boards.filter(board => editingPermissions[board.id] === true).length}
-        onClose={() => setDeadlineEditor(false)}
-        onSaved={message => { setDeadlineEditor(false); setNotice(message) }}
-      />}
+      {deadlineEditor && (
+        <SubmissionDeadlineDialog
+          year={year}
+          closesAt={submissionDeadline.closesAt}
+          projectIds={boards.map((board) => board.id)}
+          enabledCount={
+            boards.filter((board) => editingPermissions[board.id] === true)
+              .length
+          }
+          onClose={() => setDeadlineEditor(false)}
+          onSaved={(message) => {
+            setDeadlineEditor(false)
+            setNotice(message)
+          }}
+        />
+      )}
       {projectEditor && (
         <ProjectEditor
           year={year}

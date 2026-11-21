@@ -2409,12 +2409,54 @@
   height: clamp(440px, 65vh, 700px);
 }
 .pb-embed-note {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
   margin: 0;
   padding: 12px 20px;
   color: #888;
   font-size: 11px;
   line-height: 1.7;
 }
+.pb-preview-retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 0;
+  border: 0;
+  color: #bbb;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+.pb-preview-retry:hover { color: #fff; }
+.pb-preview-retry:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
+.pb-preview-retry:disabled { opacity: .5; cursor: wait; }
+.pb-material-inline-preview {
+  margin-top: 18px;
+  overflow: hidden;
+  border: 1px solid var(--pb-line);
+  border-radius: 6px;
+}
+.pb-material-inline-preview .pb-media-frame { border: 0; }
+.pb-material-inline-preview .pb-embed-note { padding: 10px 12px; }
+.pb-canva-setup {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--pb-line);
+  border-radius: 6px;
+  background: var(--pb-bg);
+  color: var(--pb-muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.pb-canva-setup h4 { margin: 0; color: var(--pb-white); font-size: 13px; font-weight: 600; }
+.pb-canva-setup p { margin: 5px 0 0; }
+.pb-canva-setup ol { margin: 8px 0 10px; padding-left: 18px; list-style: decimal; }
+.pb-canva-setup li + li { margin-top: 5px; }
+.pb-canva-setup strong { color: var(--pb-white); font-weight: 500; }
+.pb-canva-setup a { display: inline-flex; gap: 4px; align-items: center; color: var(--pb-white); text-underline-offset: 3px; }
 .pb-media-empty {
   border-top: 1px solid #222;
   padding: 24px 20px;

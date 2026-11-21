@@ -13,11 +13,13 @@ import styles from "./site-header.module.css"
 export function SiteHeader({
   signedIn,
   isAdmin,
+  isJudge,
   onSignIn,
   onSignOut,
 }: {
   signedIn: boolean
   isAdmin: boolean
+  isJudge: boolean
   onSignIn: () => void
   onSignOut: () => void
 }) {
@@ -150,6 +152,15 @@ export function SiteHeader({
                 )}
               </React.Fragment>
             ))}
+            {isJudge && (
+              <a
+                href="#/judging"
+                aria-current={route === "judging" ? "page" : undefined}
+                className="text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground aria-[current=page]:text-foreground"
+              >
+                Judging
+              </a>
+            )}
           </nav>
 
           <div className="flex shrink-0 items-center gap-2.5 justify-self-end">
@@ -233,6 +244,16 @@ export function SiteHeader({
                   )}
                 </React.Fragment>
               ))}
+              {isJudge && (
+                <a
+                  href="#/judging"
+                  onClick={closeMenu}
+                  aria-current={route === "judging" ? "page" : undefined}
+                  className="rounded-md px-4 py-3.5 text-[15px] text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground aria-[current=page]:bg-foreground/[0.06] aria-[current=page]:text-foreground"
+                >
+                  Judging
+                </a>
+              )}
               {signedIn && isAdmin && (
                 <a
                   href="#/admin"

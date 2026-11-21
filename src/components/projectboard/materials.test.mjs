@@ -4,7 +4,7 @@ import { stripTypeScriptTypes } from "node:module"
 import { test } from "node:test"
 
 const source = readFileSync(new URL("./materials.ts", import.meta.url), "utf8")
-const { materialEmbed, materialError, linkService, validAdditionalMaterials, webUrl } =
+const { materialEmbed, materialError, linkService, validAdditionalMaterials, webUrl, canvaLinkFromPaste } =
   await import(
     `data:text/javascript;base64,${Buffer.from(stripTypeScriptTypes(source)).toString("base64")}`
   )
@@ -34,7 +34,7 @@ test("Canva accepts full view links and preserves the public share path", () => 
     }
   )
   assert.ok(materialEmbed("slides", "https://canva.com/design/DAExample/view?embed"))
-  assert.equal(materialEmbed("slides", "https://canva.com/design/DAExample/shareToken/edit"), null)
+  assert.ok(materialEmbed("slides", "https://canva.com/design/DAExample/shareToken/edit"))
   assert.equal(materialEmbed("slides", "https://canva.link/test"), null)
 })
 test("Drive files become previews, preserve resource keys, and reject folders/Docs", () => {
@@ -76,26 +76,30 @@ test("Embeds reject lookalike hosts, credentials, HTML and unsafe schemes", () =
     null
   )
   assert.equal(materialError("video", ""), null)
-  assert.equal(materialError("video", "https://example.com/movie.mp4"), null)
+  assert.ok(materialError("video", "https://example.com/movie.mp4"))
 })
 
-test("all material fields accept share, short, edit and other-host links without requiring an embed", () => {
-  for (const key of ["video", "slides", "paper"]) {
-    for (const url of [
-      "https://canva.link/xr1tgcwosi65q23",
-      "https://www.canva.com/design/DAExample/shareToken/edit",
-      "https://docs.google.com/presentation/d/example/edit?usp=sharing",
-      "https://drive.google.com/drive/folders/example_file_id",
-      "https://vimeo.com/123456789",
-      "https://example.com/research.pdf?download=1",
-      "http://example.com/shared-material",
-    ]) assert.equal(materialError(key, url), null, `${key}: ${url}`)
-    for (const invalid of ["not a link", "javascript:alert(1)", "data:text/html,test", "https://user:password@example.com", "<iframe src='https://example.com'></iframe>"]) {
-      assert.ok(materialError(key, invalid), `${key}: ${invalid}`)
+test("material-specific providers accept common share variants and reject wrong destinations", () => {
+  const accepted={video:['https://youtu.be/M7lc1UVf-VE','https://youtube.com/live/M7lc1UVf-VE'],slides:['https://canva.link/xr1tgcwosi65q23','https://www.canva.com/design/ABC/token/edit','https://www.canva.com/design/ABC/token/watch'],paper:['https://drive.google.com/file/d/file_123/view','https://drive.google.com/file/u/0/d/file_123/preview?resourcekey=token','https://drive.google.com/open?id=file_123']}
+  for(const [key,urls] of Object.entries(accepted)) for(const url of urls) assert.equal(materialError(key,url),null,`${key}: ${url}`)
+  for(const key of ['video','slides','paper']) for(const url of ['https://example.com/file','https://drive.google.com/drive/folders/abc','https://canva.com/','https://youtube.com/','javascript:alert(1)','https://drive.google.com.attacker.test/file/d/file_123/view','https://canva.com@attacker.test/design/ABC/view']) assert.ok(materialError(key,url),`${key}: ${url}`)
+  assert.ok(materialError('paper','https://docs.google.com/document/d/example/edit'))
+  assert.ok(materialError('slides','https://youtu.be/M7lc1UVf-VE'))
+  for (const [key, urls] of Object.entries(accepted)) {
+    for (const otherKey of ['video', 'slides', 'paper'].filter(value => value !== key)) {
+      for (const url of urls) {
+        assert.ok(materialError(otherKey, url), `${otherKey} must reject a ${key} provider: ${url}`)
+        assert.equal(materialEmbed(otherKey, url), null)
+      }
     }
   }
-  assert.equal(linkService("https://canva.link/xr1tgcwosi65q23").icon, "canva")
+  for (const url of ['https://docs.google.com/presentation/d/example/edit?usp=sharing','https://docs.google.com/presentation/d/e/example/pub']) {
+    assert.ok(materialError('slides', url))
+    assert.equal(materialEmbed('slides', url), null)
+  }
+  assert.equal(linkService('https://canva.link/xr1tgcwosi65q23').icon,'canva')
 })
+
 test("Additional materials support ordinary links with bounded, valid named records", () => {
   const link = { id: "one", name: "Code repository", url: "https://github.com/example/research" }
   assert.ok(validAdditionalMaterials([link]))
@@ -112,4 +116,16 @@ test("Additional materials support ordinary links with bounded, valid named reco
   assert.equal(linkService(link.url).icon, "github")
   assert.equal(linkService("https://drive.google.com/file/d/example_file_id/view").icon, "drive")
   assert.equal(linkService("https://github.com.example.com").icon, "web")
+})
+
+test("pasting Canva embed HTML extracts only a supported design URL", () => {
+  const url = "https://www.canva.com/design/ABC/shareToken/view"
+  assert.equal(canvaLinkFromPaste(` <div style="color:red"><iframe src="${url}?embed&amp;utm_source=test" allowfullscreen></iframe></div><script>alert(1)</script>`), url)
+  assert.equal(canvaLinkFromPaste(`<iframe src='${url}?embed'></iframe>`), url)
+  assert.equal(canvaLinkFromPaste(" https://canva.com/design/ABC/shareToken/edit?utm_source=share "), url)
+  assert.equal(canvaLinkFromPaste(" https://canva.link/example "), "https://canva.link/example")
+  for(const source of ["https://attacker.test/design/ABC/view", "https://canva.com.attacker.test/design/ABC/view", "https://user:pass@canva.com/design/ABC/view", "javascript:alert(1)", "data:text/html,test"])
+    assert.equal(canvaLinkFromPaste(`<iframe src="${source}"></iframe>`), null)
+  assert.equal(canvaLinkFromPaste("<script>alert(1)</script>"), null)
+  assert.equal(canvaLinkFromPaste("x".repeat(20_001)), null)
 })

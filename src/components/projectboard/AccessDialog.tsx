@@ -10,30 +10,35 @@ import { authenticate, isLocalPreview } from "../admin/demo-access"
 import { AdminSignIn } from "../admin/AdminSignIn"
 import { useLiveBackend } from "../admin/backend"
 import { mentorSignIn } from "../admin/mentor-access"
+import { judgeSignIn, previewJudgeHint } from "../judging/judge-access"
 import "../admin/admin.css"
 import "./projectboard.css"
 import "../admin/auth.css"
 
+export type AccessMode = "participant" | "mentor" | "judge" | "admin"
+
 export default function AccessDialog({
   open,
+  initialMode = "participant",
   onClose,
   onEnter,
 }: {
   open: boolean
+  initialMode?: AccessMode
   onClose: () => void
   onEnter: () => void
 }) {
   const [email, setEmail] = useState("")
   const [code, setCode] = useState("")
   const [error, setError] = useState("")
-  const [mode, setMode] = useState<"participant" | "mentor" | "admin">("participant")
+  const [mode, setMode] = useState<AccessMode>(initialMode)
   const [busy, setBusy] = useState(false)
   const titleRef = useRef<HTMLHeadingElement>(null)
   const returnFocus = useRef<HTMLElement | null>(null)
   async function submit(event: FormEvent) {
     event.preventDefault()
     setBusy(true)
-    const accepted = await (mode === "mentor" ? mentorSignIn(email, code) : authenticate(email, code)).catch(() => false)
+    const accepted = await (mode === "mentor" ? mentorSignIn(email, code) : mode === "judge" ? judgeSignIn(email, code) : authenticate(email, code)).catch(() => false)
     setBusy(false)
     if (!accepted) {
       setError(
@@ -42,6 +47,7 @@ export default function AccessDialog({
       return
     }
     if (mode === "mentor") window.location.hash = "#/mentor"
+    else if (mode === "judge") window.location.hash = "#/judging"
     else onEnter()
     onClose()
   }
@@ -69,7 +75,7 @@ export default function AccessDialog({
           setEmail("")
           setCode("")
           setError("")
-          setMode("participant")
+          setMode(initialMode)
         }}
       >
         <div className="pb-auth-body">
@@ -82,10 +88,11 @@ export default function AccessDialog({
               className="pb-auth-logo"
             />
             <DialogTitle ref={titleRef} tabIndex={-1}>
-              {mode === "admin" ? "Committee sign in" : mode === "mentor" ? "Mentor sign in" : "Sign in to MYSSP"}
+              {mode === "admin" ? "Committee sign in" : mode === "mentor" ? "Mentor sign in" : mode === "judge" ? "Judge sign in" : "Sign in to MYSSP"}
             </DialogTitle>
             <DialogDescription className="pb-auth-description">
               {mode === "admin" ? "Use your committee account." : "Use the email and access code from your invitation."}
+              {mode === "judge" && previewJudgeHint && <> Preview judge: {previewJudgeHint}</>}
             </DialogDescription>
           </div>
           <div className="pb-auth-tabs" role="group" aria-label="Sign-in type">
@@ -95,6 +102,9 @@ export default function AccessDialog({
             <button aria-pressed={mode === "mentor"} onClick={() => { setMode("mentor"); setError("") }}>
               Mentor
             </button>
+            <button aria-pressed={mode === "judge"} onClick={() => { setMode("judge"); setError("") }}>
+              Judge
+            </button>
             <button
               aria-pressed={mode === "admin"}
               onClick={() => {
@@ -102,7 +112,7 @@ export default function AccessDialog({
                 setError("")
               }}
             >
-              Admin sign in
+              Admin
             </button>
           </div>
           {mode === "admin" ? (

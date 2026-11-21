@@ -43,12 +43,22 @@ import {
 import { ProjectDetail } from "./ProjectDetail"
 import { paginate } from "./pagination"
 import { overviewError } from "./overview"
-import { libraryHash as root, boardUrl, canonicalArchiveHash, decodeProjectId } from "./paths"
+import {
+  libraryHash as root,
+  boardUrl,
+  canonicalArchiveHash,
+  decodeProjectId,
+} from "./paths"
 import "./projectboard.css"
 import { currentProject } from "../admin/demo-access"
 import { isProjectEditable, useProjectEditing } from "../admin/project-editing"
 import { useProjectBoards } from "../admin/project-registry"
-import { useBackend, useLiveBackend, saveLiveDraft, loadLiveProjectContent } from "../admin/backend"
+import {
+  useBackend,
+  useLiveBackend,
+  saveLiveDraft,
+  loadLiveProjectContent,
+} from "../admin/backend"
 import { useLibraryVisibility } from "../admin/library-visibility"
 import { useResearchFields } from "../admin/research-fields"
 import { useSubmissionDeadline } from "./use-submission-deadline"
@@ -108,12 +118,22 @@ function Cover({
   const [visible, setVisible] = useState(false)
   const summary = backend.summaries[board.id]
   const cached = backend.covers[board.id]
-  const image = useLiveBackend ? (cached?.version === summary?.version ? cached?.image : undefined) : board.coverImage
+  const image = useLiveBackend
+    ? cached?.version === summary?.version
+      ? cached?.image
+      : undefined
+    : board.coverImage
   useEffect(() => {
     if (!useLiveBackend || !element.current) return
-    const observer = new IntersectionObserver(entries => {
-      if (entries.some(entry => entry.isIntersecting)) { setVisible(true); observer.disconnect() }
-    }, { rootMargin: "200px" })
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setVisible(true)
+          observer.disconnect()
+        }
+      },
+      { rootMargin: "200px" }
+    )
     observer.observe(element.current)
     return () => observer.disconnect()
   }, [])
@@ -121,13 +141,12 @@ function Cover({
     if (useLiveBackend && visible) void loadLiveProjectContent(board.id, true)
   }, [board.id, summary?.version, visible])
   return (
-    <div ref={element} className={`pb-cover ${image ? "pb-cover-uploaded" : ""}`}>
+    <div
+      ref={element}
+      className={`pb-cover ${image ? "pb-cover-uploaded" : ""}`}
+    >
       {image ? (
-        <img
-          src={image}
-          alt={board.coverAlt || board.title}
-          loading="lazy"
-        />
+        <img src={image} alt={board.coverAlt || board.title} loading="lazy" />
       ) : (
         <span className="pb-cover-code" aria-hidden="true">
           {board.code}
@@ -199,8 +218,10 @@ function ProjectLibrary({
   libraryBoards: Board[]
   assignedProjectId: string | null
 }) {
-  const programmeYears = [...new Set(libraryBoards.map(board => board.year))].sort((a, b) => b - a)
-  const researchFields = useResearchFields(libraryBoards.map(b => b.track))
+  const programmeYears = [
+    ...new Set(libraryBoards.map((board) => board.year)),
+  ].sort((a, b) => b - a)
+  const researchFields = useResearchFields(libraryBoards.map((b) => b.track))
   const backend = useBackend()
   const reduceMotion = useReducedMotion()
   const [query, setQuery] = useState("")
@@ -222,17 +243,26 @@ function ProjectLibrary({
   ])
   const filtered = libraryBoards
     .map((board) => {
-      const content = useLiveBackend ? backend.summaries[board.id] : draft?.projectId === board.id ? draft : undefined
+      const content = useLiveBackend
+        ? backend.summaries[board.id]
+        : draft?.projectId === board.id
+          ? draft
+          : undefined
       return content
         ? {
             ...board,
             title: content.title,
-            coverImage: "coverImage" in content ? content.coverImage : undefined,
+            coverImage:
+              "coverImage" in content ? content.coverImage : undefined,
             coverAlt: content.coverAlt,
             team: board.team.map((person, index) => ({
               ...person,
-              name: !useLiveBackend && draft?.teamMembers?.[index]?.name || person.name,
-              school: !useLiveBackend && draft?.teamMembers?.[index]?.school || person.school,
+              name:
+                (!useLiveBackend && draft?.teamMembers?.[index]?.name) ||
+                person.name,
+              school:
+                (!useLiveBackend && draft?.teamMembers?.[index]?.school) ||
+                person.school,
             })),
           }
         : board
@@ -277,7 +307,11 @@ function ProjectLibrary({
         <h1 id="project-library-heading" tabIndex={-1}>
           Project Archive
         </h1>
-        {assignedProjectId && <a className="pb-button" href={boardUrl(assignedProjectId)}>My project <ArrowRight size={16} /></a>}
+        {assignedProjectId && (
+          <a className="pb-button" href={boardUrl(assignedProjectId)}>
+            My project <ArrowRight size={16} />
+          </a>
+        )}
         <label className="pb-search">
           <Search size={18} />
           <span className="pb-sr-only">Search projects</span>
@@ -552,12 +586,14 @@ export default function Projectboard({
   assignedProjectId,
   isAdmin,
   mentorProjectIds,
+  judgeProjectIds,
   onSignIn,
   onEditStateChange,
 }: {
   assignedProjectId: string | null
   isAdmin: boolean
   mentorProjectIds: string[]
+  judgeProjectIds: string[]
   onSignIn: () => void
   onEditStateChange: (state: { dirty: boolean; busy: boolean }) => void
 }) {
@@ -581,10 +617,13 @@ export default function Projectboard({
       ? assignedBoard
       : boards.find((project) => project.id === projectId)
   const deadline = useSubmissionDeadline(board?.year ?? 0)
-  const submissionVersion = board ? backend.summaries[board.id]?.version : undefined
+  const submissionVersion = board
+    ? backend.summaries[board.id]?.version
+    : undefined
   const openProjectId = board?.id
   useEffect(() => {
-    if (useLiveBackend && openProjectId) void loadLiveProjectContent(openProjectId)
+    if (useLiveBackend && openProjectId)
+      void loadLiveProjectContent(openProjectId)
   }, [openProjectId, submissionVersion])
   useEffect(() => {
     if (isWorkspace && assignedBoard)
@@ -593,7 +632,7 @@ export default function Projectboard({
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" })
   }, [hash])
-  async function save(next: Draft, expectedRevision:number) {
+  async function save(next: Draft, expectedRevision: number) {
     // The live submission RPC also enforces membership, locks and revisions.
     if (
       !assignedBoard ||
@@ -635,31 +674,81 @@ export default function Projectboard({
             <a href={root}>Return to the project archive</a>
           </main>
         ) : projectId || isWorkspace ? (
-          board && (canViewProject(visibility, board.id, assignedProjectId, isAdmin) || mentorProjectIds.includes(board.id)) ? (
+          board &&
+          (canViewProject(visibility, board.id, assignedProjectId, isAdmin) ||
+            mentorProjectIds.includes(board.id) ||
+            judgeProjectIds.includes(board.id)) ? (
             useLiveBackend && submissionVersion && !backend.drafts[board.id] ? (
               <main className="pb-main pb-empty" aria-live="polite">
                 <p>{backend.contentErrors[board.id] || "Loading project…"}</p>
-                {backend.contentErrors[board.id] && <button className="pb-button" onClick={() => void loadLiveProjectContent(board.id)}>Try again</button>}
+                {backend.contentErrors[board.id] && (
+                  <button
+                    className="pb-button"
+                    onClick={() => void loadLiveProjectContent(board.id)}
+                  >
+                    Try again
+                  </button>
+                )}
               </main>
-            ) : <>
-            {useLiveBackend && backend.contentErrors[board.id] && <div className="pb-main" role="status">
-              <p>{backend.contentErrors[board.id]}</p>
-              <button className="pb-button" onClick={() => void loadLiveProjectContent(board.id)}>Try again</button>
-            </div>}
-            <ProjectDetail
-              key={`${board.id}-${signedIn}`}
-              board={board}
-              editable={board.id === assignedProjectId && editingPermissions[board.id] === true && !deadline.closed && (!useLiveBackend || !submissionVersion || backend.draftVersions[board.id] === submissionVersion)}
-              deadline={deadline}
-              owner={board.id === assignedProjectId}
-              revision={backend.revisions[board.id] || 0}
-              savedDraft={
-                useLiveBackend ? backend.drafts[board.id] || (board.id === assignedProjectId ? newDraft(board) : undefined) : signedIn && board.id === assignedProjectId ? draft : mentorProjectIds.includes(board.id) ? loadDraft(board) : undefined
-              }
-              onSave={save}
-              onEditStateChange={onEditStateChange}
-            />
-            </>
+            ) : (
+              <>
+                {useLiveBackend && backend.contentErrors[board.id] && (
+                  <div className="pb-main" role="status">
+                    <p>{backend.contentErrors[board.id]}</p>
+                    <button
+                      className="pb-button"
+                      onClick={() => void loadLiveProjectContent(board.id)}
+                    >
+                      Try again
+                    </button>
+                  </div>
+                )}
+                <ProjectDetail
+                  key={`${board.id}-${signedIn}`}
+                  board={board}
+                  editable={
+                    board.id === assignedProjectId &&
+                    editingPermissions[board.id] === true &&
+                    !deadline.closed &&
+                    (!useLiveBackend ||
+                      !submissionVersion ||
+                      backend.draftVersions[board.id] === submissionVersion)
+                  }
+                  deadline={deadline}
+                  owner={board.id === assignedProjectId}
+                  reviewVisible={
+                    isAdmin ||
+                    board.id === assignedProjectId ||
+                    mentorProjectIds.includes(board.id)
+                  }
+                  feedbackViewer={
+                    isAdmin
+                      ? "committee"
+                      : board.id === assignedProjectId
+                        ? "team"
+                        : mentorProjectIds.includes(board.id)
+                          ? "mentor"
+                          : null
+                  }
+                  revision={backend.revisions[board.id] || 0}
+                  savedDraft={
+                    useLiveBackend
+                      ? backend.drafts[board.id] ||
+                        (board.id === assignedProjectId
+                          ? newDraft(board)
+                          : undefined)
+                      : signedIn && board.id === assignedProjectId
+                        ? draft
+                        : mentorProjectIds.includes(board.id) ||
+                            judgeProjectIds.includes(board.id)
+                          ? loadDraft(board)
+                          : undefined
+                  }
+                  onSave={save}
+                  onEditStateChange={onEditStateChange}
+                />
+              </>
+            )
           ) : (
             <main className="pb-main pb-empty">
               <h1>Project not available.</h1>

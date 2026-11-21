@@ -19,6 +19,7 @@ import { DemoDayPage } from "@/components/sections/demo-day-page"
 import { useRoute } from "@/lib/results"
 import { useDemoDayYear } from "@/lib/demo-day"
 import { signOutMentor, useMentorAccess } from "@/components/admin/mentor-access"
+import { signOutJudge, useJudgeAccess } from "@/components/judging/judge-access"
 import { setPreviewCommitteeSession, useCommitteeAccess } from "@/components/admin/committee-session"
 import {
   currentProject,
@@ -36,6 +37,7 @@ const AccessDialog = React.lazy(
 )
 const ProfilePage = React.lazy(() => import("@/components/profile/ProfilePage"))
 const MentorDashboard = React.lazy(() => import("@/components/mentor/MentorDashboard"))
+const JudgeWorkspace = React.lazy(() => import("@/components/judging/JudgeWorkspace"))
 
 function App() {
   const route = useRoute()
@@ -43,6 +45,7 @@ function App() {
   // The same session drives navigation and project permissions on every route.
   const access = useDemoAccess()
   const { current: mentor } = useMentorAccess()
+  const { judge, lineup: judgeProjectIds } = useJudgeAccess()
   const isAdmin = useCommitteeAccess()
   const [, refreshSession] = React.useReducer((n) => n + 1, 0)
   React.useEffect(() => {
@@ -50,14 +53,17 @@ function App() {
     return () => window.clearInterval(id)
   }, [])
   const assignedProjectId = currentProject()
-  const signedIn = Boolean(access.session) || isAdmin || Boolean(mentor)
+  const signedIn = Boolean(access.session) || isAdmin || Boolean(mentor) || Boolean(judge)
   const [editState, setEditState] = React.useState({ dirty: false, busy: false })
   const [signOutOpen, setSignOutOpen] = React.useState(false)
   const [signingOut, setSigningOut] = React.useState(false)
   const [signOutError, setSignOutError] = React.useState("")
   const [accessOpen, setAccessOpen] = React.useState(false)
   const [accessMounted, setAccessMounted] = React.useState(false)
-  const signIn = () => {
+  const [accessMode, setAccessMode] = React.useState<"participant" | "judge" | "mentor">("participant")
+  // Some callers pass this straight to onClick, so ignore event objects.
+  const signIn = (mode?: unknown) => {
+    setAccessMode(mode === "judge" || mode === "mentor" ? mode : "participant")
     setAccessMounted(true)
     setAccessOpen(true)
   }
@@ -68,6 +74,7 @@ function App() {
     try {
       await signOutParticipant()
       signOutMentor()
+      signOutJudge()
       setPreviewCommitteeSession(false)
       setSignOutOpen(false)
       // Stay on the current page. Hidden projects become unavailable without
@@ -90,6 +97,8 @@ function App() {
           ? `My profile | ${defaultTitle.current}`
         : route === "mentor"
           ? `Mentor projects | ${defaultTitle.current}`
+        : route === "judging"
+          ? `Judging | ${defaultTitle.current}`
         : route === "projects"
           ? `Projects | ${defaultTitle.current}`
           : route === "projectboard"
@@ -120,14 +129,18 @@ function App() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <SiteHeader signedIn={signedIn} isAdmin={isAdmin} onSignIn={signIn} onSignOut={() => {
+      <SiteHeader signedIn={signedIn} isAdmin={isAdmin} isJudge={Boolean(judge)} onSignIn={signIn} onSignOut={() => {
         setSignOutError("")
         setSignOutOpen(true)
       }} />
 
       {route === "mentor" ? (
         <React.Suspense fallback={<main className="container min-h-[70svh] pt-32" role="status">Loading mentor projects…</main>}>
-          <MentorDashboard onSignIn={signIn} />
+          <MentorDashboard onSignIn={() => signIn("mentor")} />
+        </React.Suspense>
+      ) : route === "judging" ? (
+        <React.Suspense fallback={<main className="container min-h-[70svh] pt-32" role="status">Loading judging…</main>}>
+          <JudgeWorkspace onSignIn={() => signIn("judge")} />
         </React.Suspense>
       ) : route === "profile" ? (
         <React.Suspense fallback={<main className="container min-h-[70svh] pt-32" role="status">Loading profile…</main>}>
@@ -146,6 +159,7 @@ function App() {
             assignedProjectId={assignedProjectId}
             isAdmin={isAdmin}
             mentorProjectIds={mentor?.projectIds || []}
+            judgeProjectIds={judge ? judgeProjectIds : []}
             onSignIn={signIn}
             onEditStateChange={setEditState}
           />
@@ -200,7 +214,10 @@ function App() {
           }
         >
           <AccessDialog
+            // Remount when a page asks for a different starting tab.
+            key={accessMode}
             open={accessOpen}
+            initialMode={accessMode}
             onClose={() => setAccessOpen(false)}
             onEnter={() => {
               window.location.hash = "#/project-archive/workspace"
