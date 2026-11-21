@@ -2,14 +2,15 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { stripTypeScriptTypes } from "node:module"
 import { test } from "node:test"
+import { createHash } from "node:crypto"
 
 // Exercise the live adapter with a fake transport, never a real Supabase project.
 const source = stripTypeScriptTypes(readFileSync(new URL("./backend.ts", import.meta.url), "utf8"))
   .replace(/^import .*$/gm, "")
   .replace('!isLocalPreview || import.meta.env.VITE_ACCESS_MODE === "supabase"', "true")
 let nextFixture = 0
-async function fixture() {
-  const transport = { user: "student", failRead: false, failSession: false, failSignOut: false, failSave: false, revision: 2, title: "Before save", saveCalls: 0, tables: {} }
+async function fixture(loadContent = true) {
+  const transport = { user: "student", failRead: false, failSession: false, failSignOut: false, failSave: false, revision: 2, title: "Before save", saveCalls: 0, tables: {}, queries: [], snapshots: 0, largeRecords: 0 }
   let authChanged
   const response = table => transport.failRead ? { error: new Error("Offline") } : { error: null, data:
     transport.tables[table] ?? (table === "myssp_projects" ? [{ id: "one", code: "A-1", payload: { title: "Project one" }, published: true, editing_enabled: true }] :
@@ -30,12 +31,39 @@ async function fixture() {
       },
     },
     from: table => {
-      const query = { select: () => query, eq: () => query, order: () => query, then: (resolve, reject) => Promise.resolve(response(table)).then(resolve, reject) }
+      let select, id
+      const query = {
+        select: value => { select = value; return query }, eq: (key,value) => { if (key === "project_id") id=value; return query },
+        maybeSingle: async () => {
+          transport.queries.push({table,select,id})
+          const result=response(table)
+          const row=result.data?.find(d=>d.project_id===id)
+          const data=row ? {cache_version:`draft-${row.revision}`,content:row.content,cover:row.content.coverImage,revision:row.revision} : null
+          await transport.contentGate
+          return {data,error:result.error}
+        },
+      }
       return query
     },
     rpc: async (name, args) => {
       if (name === "myssp_is_admin") return { data: false, error: null }
       if (name === "myssp_submission_deadlines") return { data: [], error: null }
+      if (name === "myssp_backend_snapshot") {
+        transport.snapshots++
+        if (transport.failRead) return {data:null,error:{message:"Offline"}}
+        const delta=(table,known={})=>response(table).data.map(record=>{
+          const version=createHash("sha256").update(JSON.stringify(record)).digest("hex")
+          const changed=known[record.id]!==version
+          transport.largeRecords+=Number(changed)
+          return {id:record.id,version,record:changed ? record : null}
+        })
+        const data={projects:delta("myssp_projects",args.known.projects),people:transport.user ? delta("myssp_participants",args.known.people) : [],
+          submissions:response("myssp_submissions").data.map(row=>({project_id:row.project_id,version:`draft-${row.revision}`,revision:row.revision,title:row.content.title,hasCover:!!row.content.coverImage})),
+          isAdmin:false,fields:[],deadlines:[],cohorts:[],adminProfile:null,
+          mentors:response("myssp_mentors").data,mentorProjects:response("myssp_mentor_projects").data}
+        await transport.snapshotGate
+        return {data,error:null}
+      }
       assert.equal(name, "myssp_save_submission")
       transport.saveCalls++
       if (transport.failSave || args.expected_revision !== transport.revision) return { error: new Error("Rejected") }
@@ -51,6 +79,7 @@ async function fixture() {
   const api = await import(`data:text/javascript;base64,${Buffer.from(prefix + source).toString("base64")}`)
   delete globalThis[key]
   await api.refreshBackend()
+  if (loadContent) await api.loadLiveProjectContent("one")
   return { api, transport }
 }
 
@@ -109,6 +138,7 @@ test("confirmed save remains visible if the following refresh fails", async () =
   assert.equal(api.getBackend().userId, "student")
   transport.failRead = false
   await api.refreshBackend()
+  await api.loadLiveProjectContent("one")
   assert.equal(api.getBackend().drafts.one.title, "Saved title")
 })
 
@@ -137,4 +167,75 @@ test("sign-out during an in-flight save cannot restore the previous session", as
   await api.saveLiveDraft({ projectId: "one", title: "Saved before sign-out" }, 2)
   assert.equal(api.getBackend().userId, null)
   assert.equal(api.liveProject(), null)
+})
+
+test("idle refreshes transfer no unchanged large rows and never fetch full submissions", async () => {
+  const {api,transport}=await fixture(false)
+  const original=transport.largeRecords
+  for (let i=0;i<120;i++) await api.refreshBackend(false)
+  assert.equal(transport.largeRecords,original)
+  assert.deepEqual(transport.queries,[])
+  assert.equal(api.getBackend().summaries.one.title,"Before save")
+  assert.deepEqual(api.getBackend().drafts,{})
+})
+
+test("project content is scoped, deduplicated and reused until its version changes", async () => {
+  const {api,transport}=await fixture(false)
+  await Promise.all([api.loadLiveProjectContent("one"),api.loadLiveProjectContent("one"),api.loadLiveProjectContent("unknown")])
+  assert.equal(transport.queries.length,1)
+  assert.equal(transport.queries[0].id,"one")
+  await api.loadLiveProjectContent("one")
+  assert.equal(transport.queries.length,1)
+  transport.revision++; transport.title="Teammate edit"
+  await api.refreshBackend()
+  assert.equal(transport.queries.length,1)
+  assert.notEqual(api.getBackend().draftVersions.one,api.getBackend().summaries.one.version)
+  await api.loadLiveProjectContent("one")
+  assert.equal(api.getBackend().drafts.one.title,"Teammate edit")
+  assert.equal(transport.queries.length,2)
+})
+
+test("archive cover requests exclude the rest of the submission", async () => {
+  const {api,transport}=await fixture(false)
+  transport.tables.myssp_submissions=[{project_id:"one",revision:3,content:{title:"Title",coverImage:"data:image/jpeg;base64,photo"}}]
+  await api.refreshBackend()
+  await api.loadLiveProjectContent("one",true)
+  assert.equal(transport.queries[0].select,"cache_version,cover:content->>coverImage")
+  assert.equal(api.getBackend().covers.one.image,"data:image/jpeg;base64,photo")
+  assert.deepEqual(api.getBackend().drafts,{})
+})
+
+test("concurrent background refreshes share one request but mutations get a trailing read", async () => {
+  const {api,transport}=await fixture(false)
+  let release
+  transport.snapshotGate=new Promise(resolve=>{release=resolve})
+  const start=transport.snapshots
+  const first=api.refreshBackend(false)
+  await Promise.resolve()
+  const second=api.refreshBackend(false)
+  assert.equal(first,second)
+  const mutation=api.refreshBackend(true)
+  release()
+  await Promise.all([first,second,mutation])
+  assert.equal(transport.snapshots-start,2)
+})
+
+test("a signed-out user's in-flight content cannot repopulate private caches", async () => {
+  const {api,transport}=await fixture(false)
+  let release
+  transport.contentGate=new Promise(resolve=>{release=resolve})
+  const request=api.loadLiveProjectContent("one")
+  await api.signOutLive()
+  release(); await request
+  assert.deepEqual(api.getBackend().drafts,{})
+  assert.deepEqual(api.getBackend().covers,{})
+})
+
+test("removing read access prunes cached pages and images even without signing out", async () => {
+  const {api,transport}=await fixture()
+  transport.tables={myssp_projects:[],myssp_participants:[],myssp_submissions:[]}
+  await api.refreshBackend()
+  assert.deepEqual(api.getBackend().drafts,{})
+  assert.deepEqual(api.getBackend().covers,{})
+  assert.deepEqual(api.getBackend().draftVersions,{})
 })

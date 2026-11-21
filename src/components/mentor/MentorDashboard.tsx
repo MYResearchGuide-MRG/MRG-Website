@@ -26,8 +26,8 @@ export default function MentorDashboard({ onSignIn }: { onSignIn: () => void }) 
     </header>
     <div className="flex items-end justify-between gap-4 border-b border-white/10 py-6"><h2 className="text-lg font-medium">Assigned projects</h2><span className="text-sm tabular-nums text-zinc-500">{assigned.length}</span></div>
     {assigned.length ? <div className="divide-y divide-white/10">{assigned.map(board => {
-      const draft = useLiveBackend ? backend.drafts[board.id] : loadDraft(board)
-      const team = draft?.teamMembers || teamProfiles(board)
+      const draft = useLiveBackend ? backend.summaries[board.id] : loadDraft(board)
+      const team = !useLiveBackend && draft && "teamMembers" in draft ? draft.teamMembers || teamProfiles(board) : teamProfiles(board)
       const completed = [draft?.video,draft?.slides,draft?.paper].filter(Boolean).length
       return <article key={board.id} className="grid gap-6 py-7 md:grid-cols-[minmax(0,1fr)_250px] md:gap-10">
         <div className="min-w-0"><div className="mb-3 flex items-center gap-3 text-xs text-zinc-400"><span className="rounded border border-white/20 px-2 py-1 text-zinc-200">{board.code}</span><span>MYSSP {board.year}</span><span>{board.track}</span></div>

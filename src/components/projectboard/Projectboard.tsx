@@ -1,6 +1,7 @@
 import {
   useEffect,
   useId,
+  useRef,
   useState,
   useSyncExternalStore,
   type ReactNode,
@@ -47,7 +48,7 @@ import "./projectboard.css"
 import { currentProject } from "../admin/demo-access"
 import { isProjectEditable, useProjectEditing } from "../admin/project-editing"
 import { useProjectBoards } from "../admin/project-registry"
-import { useBackend, useLiveBackend, saveLiveDraft } from "../admin/backend"
+import { useBackend, useLiveBackend, saveLiveDraft, loadLiveProjectContent } from "../admin/backend"
 import { useLibraryVisibility } from "../admin/library-visibility"
 import { useResearchFields } from "../admin/research-fields"
 import { useSubmissionDeadline } from "./use-submission-deadline"
@@ -102,11 +103,28 @@ function Cover({
 }: {
   board: Board & { coverImage?: string; coverAlt?: string }
 }) {
+  const backend = useBackend()
+  const element = useRef<HTMLDivElement>(null)
+  const [visible, setVisible] = useState(false)
+  const summary = backend.summaries[board.id]
+  const cached = backend.covers[board.id]
+  const image = useLiveBackend ? (cached?.version === summary?.version ? cached?.image : undefined) : board.coverImage
+  useEffect(() => {
+    if (!useLiveBackend || !element.current) return
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) { setVisible(true); observer.disconnect() }
+    }, { rootMargin: "200px" })
+    observer.observe(element.current)
+    return () => observer.disconnect()
+  }, [])
+  useEffect(() => {
+    if (useLiveBackend && visible) void loadLiveProjectContent(board.id, true)
+  }, [board.id, summary?.version, visible])
   return (
-    <div className={`pb-cover ${board.coverImage ? "pb-cover-uploaded" : ""}`}>
-      {board.coverImage ? (
+    <div ref={element} className={`pb-cover ${image ? "pb-cover-uploaded" : ""}`}>
+      {image ? (
         <img
-          src={board.coverImage}
+          src={image}
           alt={board.coverAlt || board.title}
           loading="lazy"
         />
@@ -204,17 +222,17 @@ function ProjectLibrary({
   ])
   const filtered = libraryBoards
     .map((board) => {
-      const content = useLiveBackend ? backend.drafts[board.id] : draft?.projectId === board.id ? draft : undefined
+      const content = useLiveBackend ? backend.summaries[board.id] : draft?.projectId === board.id ? draft : undefined
       return content
         ? {
             ...board,
             title: content.title,
-            coverImage: content.coverImage,
+            coverImage: "coverImage" in content ? content.coverImage : undefined,
             coverAlt: content.coverAlt,
             team: board.team.map((person, index) => ({
               ...person,
-              name: content.teamMembers?.[index]?.name ?? person.name,
-              school: content.teamMembers?.[index]?.school ?? person.school,
+              name: !useLiveBackend && draft?.teamMembers?.[index]?.name || person.name,
+              school: !useLiveBackend && draft?.teamMembers?.[index]?.school || person.school,
             })),
           }
         : board
@@ -563,6 +581,11 @@ export default function Projectboard({
       ? assignedBoard
       : boards.find((project) => project.id === projectId)
   const deadline = useSubmissionDeadline(board?.year ?? 0)
+  const submissionVersion = board ? backend.summaries[board.id]?.version : undefined
+  const openProjectId = board?.id
+  useEffect(() => {
+    if (useLiveBackend && openProjectId) void loadLiveProjectContent(openProjectId)
+  }, [openProjectId, submissionVersion])
   useEffect(() => {
     if (isWorkspace && assignedBoard)
       window.location.hash = boardUrl(assignedBoard.id)
@@ -613,10 +636,20 @@ export default function Projectboard({
           </main>
         ) : projectId || isWorkspace ? (
           board && (canViewProject(visibility, board.id, assignedProjectId, isAdmin) || mentorProjectIds.includes(board.id)) ? (
+            useLiveBackend && submissionVersion && !backend.drafts[board.id] ? (
+              <main className="pb-main pb-empty" aria-live="polite">
+                <p>{backend.contentErrors[board.id] || "Loading project…"}</p>
+                {backend.contentErrors[board.id] && <button className="pb-button" onClick={() => void loadLiveProjectContent(board.id)}>Try again</button>}
+              </main>
+            ) : <>
+            {useLiveBackend && backend.contentErrors[board.id] && <div className="pb-main" role="status">
+              <p>{backend.contentErrors[board.id]}</p>
+              <button className="pb-button" onClick={() => void loadLiveProjectContent(board.id)}>Try again</button>
+            </div>}
             <ProjectDetail
               key={`${board.id}-${signedIn}`}
               board={board}
-              editable={board.id === assignedProjectId && editingPermissions[board.id] === true && !deadline.closed}
+              editable={board.id === assignedProjectId && editingPermissions[board.id] === true && !deadline.closed && (!useLiveBackend || !submissionVersion || backend.draftVersions[board.id] === submissionVersion)}
               deadline={deadline}
               owner={board.id === assignedProjectId}
               revision={backend.revisions[board.id] || 0}
@@ -626,6 +659,7 @@ export default function Projectboard({
               onSave={save}
               onEditStateChange={onEditStateChange}
             />
+            </>
           ) : (
             <main className="pb-main pb-empty">
               <h1>Project not available.</h1>

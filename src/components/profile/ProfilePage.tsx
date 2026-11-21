@@ -127,12 +127,12 @@ export default function ProfilePage({ isAdmin, onSignIn, onSignOut }: {
       {isAdmin ? <div className="grid gap-3 sm:grid-cols-2">
         {boards.map(board => <a key={board.id} href={boardUrl(board.id)} className="group flex min-h-44 flex-col rounded-lg border border-white/10 bg-black p-5 transition-colors hover:border-white/35 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
           <div className="flex items-center justify-between gap-4 text-xs text-zinc-500"><span className="font-medium text-zinc-300">{board.code} · {board.year}</span><span>{visibility[board.id] ? "Public" : "Hidden"}</span></div>
-          <h3 className="mt-5 line-clamp-2 text-base font-medium leading-snug">{backend.drafts[board.id]?.title || board.title}</h3>
-          <span className="mt-auto flex items-center gap-2 pt-5 text-xs text-zinc-400 group-hover:text-white">{backend.drafts[board.id] ? "Submission started" : "Project brief"} <ArrowUpRight size={14} className="ml-auto" aria-hidden /></span>
+          <h3 className="mt-5 line-clamp-2 text-base font-medium leading-snug">{backend.summaries[board.id]?.title || board.title}</h3>
+          <span className="mt-auto flex items-center gap-2 pt-5 text-xs text-zinc-400 group-hover:text-white">{backend.summaries[board.id] ? "Submission started" : "Project brief"} <ArrowUpRight size={14} className="ml-auto" aria-hidden /></span>
         </a>)}
       </div> : assignedBoard ? <a href={boardUrl(assignedBoard.id)} className="group block max-w-2xl rounded-lg border border-white/10 bg-black p-6 transition-colors hover:border-white/35 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
         <div className="flex justify-between gap-4 text-xs text-zinc-500"><span>{assignedBoard.code} · MYSSP {assignedBoard.year}</span><span>{visibility[assignedBoard.id] ? "Public" : "Hidden"}</span></div>
-        <h3 className="mt-5 text-xl font-medium leading-snug">{backend.drafts[assignedBoard.id]?.title || assignedBoard.title}</h3>
+        <h3 className="mt-5 text-xl font-medium leading-snug">{backend.summaries[assignedBoard.id]?.title || assignedBoard.title}</h3>
         <p className="mt-3 text-sm text-zinc-400">{assignedBoard.track}</p>
         <span className="mt-8 flex items-center gap-2 text-sm font-medium">Open project page <ArrowUpRight size={16} className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden /></span>
       </a> : <p className="rounded-lg border border-white/10 bg-black p-6 text-sm text-zinc-400">No project is assigned to this account yet.</p>}

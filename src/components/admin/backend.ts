@@ -14,6 +14,17 @@ import type { Mentor, MentorInput } from "./mentor-model"
 // Device-only preparation stays available on localhost. Production never uses it.
 export const useLiveBackend = !isLocalPreview || import.meta.env.VITE_ACCESS_MODE === "supabase"
 export type ProjectRecord = { id: string; code: string; payload: Board; published: boolean; editing_enabled: boolean; retired: boolean; deleted_at: string | null }
+export type SubmissionSummary = Pick<Draft, "title" | "savedAt" | "slides" | "paper" | "video" | "coverAlt"> & { project_id: string; version: string; revision: number; hasCover: boolean }
+type Delta<T> = { id: string; version: string; record: T | null }
+type Cached<T> = Record<string, { version: string; record: T }>
+type PersonRecord = { id:string; user_id:string|null; name:string; email:string; project_id:string; revoked:boolean; invited_at:string|null; deleted_at:string|null; display_profile?: Assignment["displayProfile"] }
+type AdminProfile = { name:string; photo:string }
+type Snapshot = {
+  projects: Delta<ProjectRecord>[]; people: Delta<PersonRecord>[]; submissions: SubmissionSummary[];
+  isAdmin: boolean; fields: ResearchField[]; cohorts: Cohort[]; adminProfile: Delta<AdminProfile> | null;
+  mentors: {id:string;user_id:string|null;name:string;email:string;affiliation:string;revoked:boolean;invited_at:string|null;deleted_at:string|null}[];
+  mentorProjects: {mentor_id:string;project_id:string}[]; deadlines: {year:number;closes_at:string|null}[];
+}
 type State = {
   ready: boolean; error: string; isAdmin: boolean; userId: string | null;
   accountEmail: string; accountName: string; accountPhoto: string;
@@ -24,17 +35,44 @@ type State = {
   researchFields: ResearchField[]; researchFieldError: string;
   mentors: Mentor[]; mentorError: string;
   submissionDeadlines: Record<number, string | null>;
+  summaries: Record<string, SubmissionSummary>; draftVersions: Record<string, string>;
+  covers: Record<string, { version:string; image:string }>; contentErrors: Record<string,string>;
 }
-const empty: State = { ready: false, error: "", isAdmin: false, userId: null, accountEmail: "", accountName: "", accountPhoto: "", people: [], projects: [], drafts: {}, revisions: {}, visibility: {}, editing: {}, boards: [], deletedPeople: [], deletedProjects: [], cohorts: [], cohortError: "", researchFields: [], researchFieldError: "", mentors: [], mentorError: "", submissionDeadlines: {} }
+const empty: State = { ready: false, error: "", isAdmin: false, userId: null, accountEmail: "", accountName: "", accountPhoto: "", people: [], projects: [], drafts: {}, revisions: {}, visibility: {}, editing: {}, boards: [], deletedPeople: [], deletedProjects: [], cohorts: [], cohortError: "", researchFields: [], researchFieldError: "", mentors: [], mentorError: "", submissionDeadlines: {}, summaries: {}, draftVersions: {}, covers: {}, contentErrors: {} }
 let state = empty
 const listeners = new Set<() => void>()
 let epoch = 0
-function publish(next: State) { state = next; listeners.forEach(fn => fn()) }
+let identityEpoch = 0
+let projectCache: Cached<ProjectRecord> = {}, peopleCache: Cached<PersonRecord> = {}, profileCache: Cached<AdminProfile> = {}
+function publish(next: State) {
+  if (next === empty) { identityEpoch++; projectCache = {}; peopleCache = {}; profileCache = {} }
+  state = next; listeners.forEach(fn => fn())
+}
 function subscribe(fn: () => void) { listeners.add(fn); return () => { listeners.delete(fn) } }
 export const getBackend = () => state
 export const useBackend = () => useSyncExternalStore(subscribe, getBackend)
 
-export async function refreshBackend() {
+// Keep private data in memory, scoped to this auth identity. Each manifest is
+// authoritative: disappeared IDs are removed even when other rows are unchanged.
+function mergeDelta<T>(rows: Delta<T>[], previous: Cached<T>): Cached<T> {
+  return Object.fromEntries(rows.map(row => {
+    const record = row.record ?? (previous[row.id]?.version === row.version ? previous[row.id].record : undefined)
+    if (!record) throw new Error("Could not load updated records. Refresh and try again.")
+    return [row.id, {version:row.version,record}]
+  }))
+}
+function versions<T>(cache: Cached<T>) { return Object.fromEntries(Object.entries(cache).map(([id,row]) => [id,row.version])) }
+let refreshFlight: Promise<void> | null = null
+let refreshAgain = false
+// Mutations request a trailing read; timers/auth events share an existing read.
+export function refreshBackend(afterMutation = true): Promise<void> {
+  if (refreshFlight) { refreshAgain ||= afterMutation; return refreshFlight }
+  refreshFlight = (async () => {
+    do { refreshAgain = false; await readBackend() } while (refreshAgain)
+  })().finally(() => { refreshFlight = null })
+  return refreshFlight
+}
+async function readBackend() {
   if (!useLiveBackend || !supabase) return
   const ticket = ++epoch
   try {
@@ -45,32 +83,22 @@ export async function refreshBackend() {
     // Expiry/storage clearing must remove private cached data even if the next
     // public-data request fails. A temporary refresh error above is not logout.
     if (state.userId && state.userId !== userId) publish(empty)
-    const [projects, people, drafts, role, fields, mentors, mentorProjects, deadlines] = await Promise.all([
-      supabase.from("myssp_projects").select("*").eq("retired", false).order("code"),
-      userId ? supabase.from("myssp_participants").select("*") : Promise.resolve({data: [], error: null}),
-      supabase.from("myssp_submissions").select("project_id,content,revision"),
-      userId ? supabase.rpc("myssp_is_admin") : Promise.resolve({data: false, error: null}),
-      supabase.from("myssp_research_fields").select("name,prefix").order("created_at").order("name"),
-      userId ? supabase.from("myssp_mentors").select("id,user_id,name,email,affiliation,revoked,invited_at,deleted_at") : Promise.resolve({data: [], error: null}),
-      userId ? supabase.from("myssp_mentor_projects").select("mentor_id,project_id") : Promise.resolve({data: [], error: null}),
-      supabase.rpc("myssp_submission_deadlines"),
-    ])
-    if (projects.error || people.error || drafts.error || role.error) throw new Error("Database setup is incomplete or access was denied.")
-    // Older deployments remain usable while the cohort migration is being applied.
-    const cohorts = role.data === true
-      ? await supabase.from("myssp_cohorts").select("year,name").order("year", { ascending: false })
-      : { data: [], error: null }
-    const adminProfile = role.data === true && userId
-      ? await supabase.from("myssp_admin_profiles").select("name,photo").eq("user_id", userId).maybeSingle()
-      : { data: null, error: null }
+    const { data, error } = await supabase.rpc("myssp_backend_snapshot", { known: {
+      projects: versions(projectCache), people: versions(peopleCache), adminProfile: userId ? profileCache[userId]?.version : undefined,
+    } })
+    if (error) throw new Error(error.code === "PGRST202" ? "The database needs the latest read optimisation update." : "Could not refresh project access. Please try again.")
     if (ticket !== epoch) return
-    const allProjects = projects.data as ProjectRecord[]
+    const snapshot = data as Snapshot
+    const nextProjects = mergeDelta(snapshot.projects, projectCache)
+    const nextPeople = mergeDelta(snapshot.people, peopleCache)
+    const nextProfile = mergeDelta(snapshot.adminProfile ? [snapshot.adminProfile] : [], profileCache)
+    const allProjects = Object.values(nextProjects).map(row => row.record)
     const records = allProjects.filter(p => !p.deleted_at)
     const activeProjectIds = new Set(records.map(project => project.id))
-    const allPeople = (people.data || []).map(p => ({id:p.id, userId:p.user_id, name:p.name, email:p.email, projectId:p.project_id, revision:1, revoked:p.revoked, code:null, expiresAt:0, usedAt:null, invitedAt:p.invited_at ? Date.parse(p.invited_at) : null, attempts:0, lockedUntil:0, deletedAt:p.deleted_at, displayProfile:p.display_profile || {}}))
+    const allPeople = Object.values(nextPeople).map(({record:p}) => ({id:p.id, userId:p.user_id, name:p.name, email:p.email, projectId:p.project_id, revision:1, revoked:p.revoked, code:null, expiresAt:0, usedAt:null, invitedAt:p.invited_at ? Date.parse(p.invited_at) : null, attempts:0, lockedUntil:0, deletedAt:p.deleted_at, displayProfile:p.display_profile || {}}))
     const mentorAssignments = new Map<string,string[]>()
-    for (const link of mentorProjects.data || []) mentorAssignments.set(link.mentor_id, [...(mentorAssignments.get(link.mentor_id) || []), link.project_id])
-    const mentorRecords: Mentor[] = (mentors.data || []).map(mentor => ({
+    for (const link of snapshot.mentorProjects) mentorAssignments.set(link.mentor_id, [...(mentorAssignments.get(link.mentor_id) || []), link.project_id])
+    const mentorRecords: Mentor[] = snapshot.mentors.map(mentor => ({
       id: mentor.id, userId: mentor.user_id, name: mentor.name, email: mentor.email,
       affiliation: mentor.affiliation, revoked: mentor.revoked,
       invitedAt: mentor.invited_at ? Date.parse(mentor.invited_at) : null,
@@ -79,35 +107,85 @@ export async function refreshBackend() {
       // Only active pages belong in the picker, dashboard and save payload.
       projectIds: (mentorAssignments.get(mentor.id) || []).filter(id => activeProjectIds.has(id)),
     }))
+    const summaries = Object.fromEntries(snapshot.submissions.filter(s => activeProjectIds.has(s.project_id)).map(s => [s.project_id,s]))
+    const retain = <T,>(items: Record<string,T>) => Object.fromEntries(Object.entries(items).filter(([id]) => activeProjectIds.has(id) && summaries[id]))
+    projectCache = nextProjects; peopleCache = nextPeople; profileCache = nextProfile
     publish({
-      ready: true, error: "", isAdmin: role.data === true, userId,
+      ready: true, error: "", isAdmin: snapshot.isAdmin, userId,
       accountEmail: session?.user.email || "",
-      accountName: adminProfile.data?.name || (typeof session?.user.user_metadata?.full_name === "string" ? session.user.user_metadata.full_name : ""),
-      accountPhoto: adminProfile.data?.photo || "",
+      accountName: (userId && nextProfile[userId]?.record.name) || (typeof session?.user.user_metadata?.full_name === "string" ? session.user.user_metadata.full_name : ""),
+      accountPhoto: (userId && nextProfile[userId]?.record.photo) || "",
       projects: records, boards: records.map(p => ({...p.payload, id: p.id, code: p.code})),
       visibility: Object.fromEntries(records.map(p => [p.id,p.published])),
       editing: Object.fromEntries(records.map(p => [p.id,p.editing_enabled])),
-      drafts: Object.fromEntries((drafts.data || []).filter(d => {
-        const project = records.find(p => p.id === d.project_id)
-        return project && isDraft(d.content, {...project.payload, id: project.id, code: project.code})
-      }).map(d => [d.project_id,d.content])),
-      revisions: Object.fromEntries((drafts.data || []).map(d => [d.project_id,d.revision])),
+      drafts: retain(state.drafts), summaries, draftVersions: retain(state.draftVersions),
+      covers: retain(state.covers), contentErrors: retain(state.contentErrors),
+      revisions: Object.fromEntries(snapshot.submissions.map(s => [s.project_id,s.revision])),
       people: allPeople.filter(p => !p.deletedAt),
       deletedPeople: allPeople.filter(p => p.deletedAt),
       deletedProjects: allProjects.filter(p => p.deleted_at),
-      cohorts: cohorts.data || [],
-      cohortError: cohorts.error ? "New cohorts and projects need the cohort database migration. Existing projects are still available." : "",
-      researchFields: fields.error ? state.researchFields : fields.data || [],
-      researchFieldError: fields.error ? "Research fields could not be loaded. Refresh and try again." : "",
+      cohorts: snapshot.cohorts, cohortError: "",
+      researchFields: snapshot.fields, researchFieldError: "",
       mentors: mentorRecords,
-      mentorError: mentors.error || mentorProjects.error ? "Mentor accounts need the mentor database migration. Other access remains available." : "",
-      submissionDeadlines: deadlines.error ? state.submissionDeadlines : Object.fromEntries((deadlines.data || []).map((row: {year:number; closes_at:string|null}) => [row.year, row.closes_at])),
+      mentorError: "",
+      submissionDeadlines: Object.fromEntries(snapshot.deadlines.map(row => [row.year, row.closes_at])),
     })
   } catch (error) {
     // A failed refresh is not a sign-out. Preserve the current editor and let
     // server policies reject writes if permissions have changed meanwhile.
     if (ticket === epoch) publish({...state, error: error instanceof Error ? error.message : "Could not connect to the database."})
   }
+}
+
+const contentFlights = new Map<string, Promise<void>>()
+// Only the open project page needs the full submission. Archive tiles request
+// just their visible cover. Both reuse data until the server version changes.
+export function loadLiveProjectContent(projectId: string, coverOnly = false): Promise<void> {
+  if (!supabase || !useLiveBackend || !state.ready || !state.boards.some(b => b.id === projectId)) return Promise.resolve()
+  const summary = state.summaries[projectId]
+  if (!summary) return Promise.resolve()
+  if (coverOnly ? !summary.hasCover || state.covers[projectId]?.version === summary.version : state.draftVersions[projectId] === summary.version) return Promise.resolve()
+  const identity = identityEpoch
+  const key = `${identity}:${projectId}:${summary.version}:${coverOnly}`
+  const pending = contentFlights.get(key)
+  if (pending) return pending
+  const client = supabase
+  const task = (async () => {
+    const {data,error} = await client.from("myssp_submissions")
+      .select(coverOnly ? "cache_version,cover:content->>coverImage" : "cache_version,content,revision")
+      .eq("project_id",projectId).maybeSingle()
+    if (identity !== identityEpoch || !state.summaries[projectId] || !state.boards.some(b => b.id === projectId)) return
+    if (error) {
+      publish({...state,contentErrors:{...state.contentErrors,[projectId]:"Could not load this project. Please try again."}})
+      return
+    }
+    // A concurrent save/revocation can race the manifest. Recheck access rather
+    // than pairing stale content with a newer optimistic-lock revision.
+    const row = data as unknown as {cache_version:string;content?:Draft;revision?:number;cover?:string} | null
+    if (!row || row.cache_version !== state.summaries[projectId]?.version) {
+      await refreshBackend(false)
+      if (identity === identityEpoch && state.summaries[projectId]?.version === summary.version) {
+        publish({...state,contentErrors:{...state.contentErrors,[projectId]:"This project changed while loading. Please try again."}})
+      }
+      return
+    }
+    const board = state.boards.find(b => b.id === projectId)!
+    if (!coverOnly && (!row.content || !isDraft(row.content,board))) {
+      publish({...state,contentErrors:{...state.contentErrors,[projectId]:"The saved project could not be loaded. Contact the committee."}})
+      return
+    }
+    publish({...state,
+      contentErrors:{...state.contentErrors,[projectId]:""},
+      covers:{...state.covers,[projectId]:{version:row.cache_version,image:(coverOnly ? row.cover : row.content?.coverImage) || ""}},
+      ...(!coverOnly ? {drafts:{...state.drafts,[projectId]:row.content!},draftVersions:{...state.draftVersions,[projectId]:row.cache_version}} : {}),
+    })
+  })().catch(() => {
+    if (identity === identityEpoch && state.summaries[projectId]) {
+      publish({...state,contentErrors:{...state.contentErrors,[projectId]:"Could not load this project. Please try again."}})
+    }
+  }).finally(() => { contentFlights.delete(key) })
+  contentFlights.set(key,task)
+  return task
 }
 
 export async function adminSignIn(email: string, password: string) {
@@ -304,11 +382,11 @@ if (useLiveBackend && supabase) {
   supabase.auth.onAuthStateChange((event, session) => {
     if (event === "SIGNED_OUT" || (event === "SIGNED_IN" && state.userId !== session?.user.id)) { epoch++; publish(empty) }
     // Defer database calls until the auth client's lock has been released.
-    window.setTimeout(() => void refreshBackend(), 0)
+    if (event !== "TOKEN_REFRESHED") window.setTimeout(() => void refreshBackend(), 0)
   })
   void refreshBackend()
-  window.setInterval(() => { if (document.visibilityState === "visible") void refreshBackend() }, 30000)
+  window.setInterval(() => { if (document.visibilityState === "visible") void refreshBackend(false) }, 30000)
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") void refreshBackend()
+    if (document.visibilityState === "visible") void refreshBackend(false)
   })
 }

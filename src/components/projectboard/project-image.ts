@@ -7,10 +7,10 @@ async function prepareImage(file: File, kind: "project" | "portrait"): Promise<s
   try {
     const portrait = kind === "portrait"
     const sourceSize = Math.min(bitmap.width, bitmap.height)
-    const scale = Math.min(1, 1600 / bitmap.width, 1000 / bitmap.height)
+    const scale = Math.min(1, 1280 / bitmap.width, 800 / bitmap.height)
     const canvas = document.createElement("canvas")
     canvas.width = portrait
-      ? Math.min(512, sourceSize)
+      ? Math.min(320, sourceSize)
       : Math.max(1, Math.round(bitmap.width * scale))
     canvas.height = portrait ? canvas.width : Math.max(1, Math.round(bitmap.height * scale))
     const context = canvas.getContext("2d")
@@ -32,9 +32,16 @@ async function prepareImage(file: File, kind: "project" | "portrait"): Promise<s
     } else {
       context.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
     }
-    const data = canvas.toDataURL("image/jpeg", 0.8)
-    if (data.length > (portrait ? 350_000 : 1_500_000))
-      throw new Error("This image is too large to save locally. Try a smaller image.")
+    // Keep JPEG compatibility with existing validation. Bound the saved size,
+    // including base64 overhead, rather than accepting multi-megabyte photos.
+    const budget = portrait ? 90_000 : 400_000
+    let data = canvas.toDataURL("image/jpeg", 0.76)
+    for (const quality of [0.66, 0.56, 0.46]) {
+      if (data.length <= budget) break
+      data = canvas.toDataURL("image/jpeg", quality)
+    }
+    if (data.length > budget)
+      throw new Error("This image has too much detail to compress. Try a smaller image.")
     return data
   } finally {
     bitmap.close()
