@@ -10,14 +10,6 @@ export type Judge = {
 
 export const mainAwardJudges: Judge[] = [
   {
-    name: "Prof. Weng Kung Peng",
-    role: "Professor of quantum bioengineering",
-    organisation: "The University of Osaka",
-    bio: "Weng Kung is a Professor in Osaka University, and his research focuses on Complexity in Biosystem and developing Quantum Bioengineering. Prior to this, he was a Research Scientist at BioSyM-SMART, MIT and Group Leader of International Iberian Nanotechnology Laboratory. Weng Kung authored several seminal papers appeared in Nature Medicine, Communications Biology, npj Aging and Mechanisms of Disease, npj Science of Food and attracted worldwide press coverages (e.g., The Guardian, Nature). In 2014, Weng Kung was listed as one of the “100 Leading Global Thinkers” by Foreign Policy in recognition of his team disruptive technology. More recently, he won the NSFC Excellence International Young Scientist 2023.",
-    portrait: "/judges/peng.webp",
-    linkedin: "https://www.linkedin.com/in/weng-kung-peng-304256237",
-  },
-  {
     name: "Prof. Yuan-Sen Ting",
     role: "Associate Professor of Astronomy",
     organisation: "The Ohio State University",

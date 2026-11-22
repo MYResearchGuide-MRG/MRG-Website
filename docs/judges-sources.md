@@ -1,6 +1,8 @@
 # MYSSP 2026 judges
 
-The seven displayed biographies were replaced with committee-supplied text on 21 November 2026. That update preserves the supplied wording as plain text, without the pasted paragraph hyperlinks. Existing portraits, award-group assignments and separate LinkedIn profile links remain unchanged. The replacement wording was not independently fact-checked in that copy update.
+The biographies were replaced with committee-supplied text on 21 November 2026. That update preserves the supplied wording as plain text, without the pasted paragraph hyperlinks. Existing portraits, award-group assignments and separate LinkedIn profile links remain unchanged. The replacement wording was not independently fact-checked in that copy update.
+
+Prof. Weng Kung Peng withdrew from the 2026 panel and was removed from the public listing on 22 November 2026 at the committee's request. His source notes below are retained as a historical record. The current panel has three main award judges and three special award judges.
 
 The source notes below record the original research checked on 5 November 2026 and the portrait provenance. They do not independently verify every claim in the replacement biographies.
 
@@ -16,7 +18,7 @@ The source notes below record the original research checked on 5 November 2026 a
 - [Personal website](https://owenloh.github.io/): founder and physicist; former Catalon cofounder and CTO; battery health research at Imperial College London. Avoid calling him a current Catalon employee or an Oxford graduate: his current page says he exited Catalon and is on leave from the MPhys.
 - Portrait reused from the main MYResearchGuide website, `public/interviews/owen.png`.
 
-## Prof. Weng Kung Peng
+## Prof. Weng Kung Peng (withdrawn)
 
 - [LinkedIn profile](https://jp.linkedin.com/in/weng-kung-peng-304256237): professor at The University of Osaka.
 - [MyHeart interview](https://myheart.my/stories-professor-weng-kung-peng/): quantum bioengineering, magnetic resonance and malaria diagnostics.
