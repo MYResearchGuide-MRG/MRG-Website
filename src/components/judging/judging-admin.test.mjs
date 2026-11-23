@@ -4,7 +4,8 @@ import { readFileSync } from "node:fs"
 import { runInNewContext } from "node:vm"
 import ts from "typescript"
 
-function fixture() {
+function fixture(preview = false) {
+  let previewData = { judges: [], lineups: {}, switches: {}, reviews: {} }
   const transport = {
     userId: "admin",
     isAdmin: true,
@@ -74,7 +75,12 @@ function fixture() {
         : name === "../admin/backend"
           ? { getBackend: () => transport }
           : name === "./judging-preview"
-            ? { judgingPreviewMode: false }
+            ? {
+                judgingPreviewMode: preview,
+                readPreview: () => previewData,
+                writePreview: (data) => { previewData = data },
+                onPreviewChange: () => {},
+              }
             : name === "./form"
               ? { scoreKeys: [] }
               : {},
@@ -87,6 +93,7 @@ function fixture() {
   return {
     api: exports,
     transport,
+    previewData: () => previewData,
     signOut: () => {
       transport.userId = null
       transport.isAdmin = false
@@ -118,4 +125,21 @@ test("ordinary request failures do not tell admins to rerun migrations", async (
   await api.refreshCommitteeJudging()
   assert.match(api.getCommitteeJudging().error, /connection/)
   assert.doesNotMatch(api.getCommitteeJudging().error, /migration/)
+})
+
+test("preview lineup starts marking atomically and keeps feedback private until release", async () => {
+  const { api, previewData } = fixture(true)
+  await api.setLineup(2026, [])
+  assert.equal(previewData().switches[2026].judgingOpen, false)
+  await api.setLineup(2026, ["one", "two"])
+  assert.equal(previewData().switches[2026].judgingOpen, true)
+  assert.equal(previewData().switches[2026].feedbackReleased, false)
+  await assert.rejects(() => api.setLineup(2026, ["one"]), /Close judging/)
+  await api.setSwitches(2026, { judgingOpen: false, feedbackReleased: true })
+  await assert.rejects(() => api.setLineup(2026, ["one"]), /Hide released feedback/)
+  assert.equal(previewData().switches[2026].feedbackReleased, true)
+  await api.setSwitches(2026, { judgingOpen: false, feedbackReleased: false })
+  await api.setLineup(2026, ["one"])
+  assert.equal(previewData().switches[2026].judgingOpen, true)
+  assert.deepEqual(previewData().lineups[2026], ["one"])
 })

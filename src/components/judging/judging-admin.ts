@@ -437,7 +437,16 @@ export async function setLineup(year: number, projectIds: string[]) {
     const data = readPreview()
     if (data.switches[year]?.judgingOpen)
       throw new Error("Close judging before changing the lineup")
-    writePreview({ ...data, lineups: { ...data.lineups, [year]: projectIds } })
+    if (data.switches[year]?.feedbackReleased)
+      throw new Error("Hide released feedback before changing the lineup")
+    writePreview({
+      ...data,
+      lineups: { ...data.lineups, [year]: projectIds },
+      switches: {
+        ...data.switches,
+        [year]: { judgingOpen: projectIds.length > 0, feedbackReleased: false },
+      },
+    })
     return
   }
   const { error } = await requireAdmin().rpc("myssp_set_judging_lineup", {

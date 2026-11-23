@@ -111,7 +111,9 @@ function Lineup() {
     ? "Judging is open"
     : feedbackReleased
       ? "Judging is closed"
-      : "Judging opens on Demo Day"
+      : boards.length
+        ? "Marking is paused"
+        : "Waiting for the lineup"
   return (
     <main className="min-h-[72svh] pb-20">
       <header className="content-container pt-[calc(70px+3rem)] pb-2 sm:pt-[calc(70px+4.5rem)]">
@@ -253,8 +255,8 @@ function Lineup() {
 
             {!judgingOpen && !feedbackReleased && (
               <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-                You can look through the projects now. The feedback form unlocks
-                when the committee opens judging on Demo Day.
+                Marking is paused by the committee. You can still view the
+                projects and your saved feedback.
               </p>
             )}
           </section>
@@ -443,8 +445,8 @@ function JudgeNotes() {
               <strong className="block font-medium text-foreground">
                 Your feedback is anonymous to teams.
               </strong>
-              Your name is hidden, and teams see feedback only after result
-              announcement.
+              Your name is hidden. Teams see feedback when the committee
+              releases it.
             </span>
           </p>
         </div>

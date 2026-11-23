@@ -97,7 +97,8 @@ export function JudgingAdmin({
   const cohortReviews = data.reviews.filter((review) =>
     lineupIds.has(review.projectId)
   )
-  const lineupLocked = switchesFor(data, year).judgingOpen
+  const { judgingOpen, feedbackReleased } = switchesFor(data, year)
+  const lineupLocked = judgingOpen || feedbackReleased
 
   return (
     <section className="am-root jd-root" aria-label="Judging">
@@ -192,6 +193,7 @@ export function JudgingAdmin({
           <LineupEditor
             key={`${year}:${(data.lineups[year] || []).join()}`}
             locked={lineupLocked}
+            feedbackReleased={feedbackReleased}
             year={year}
             boards={boards}
             saved={data.lineups[year] || []}
@@ -271,7 +273,11 @@ function JudgingSwitches({
           <p>
             {current.judgingOpen
               ? "Judges can save and submit feedback."
-              : "Judges can view their lineup but cannot save feedback."}
+              : current.feedbackReleased
+                ? "Marking is closed. Feedback has been released."
+                : lineupSize
+                  ? "Marking is paused. Turn it on to resume."
+                  : "Save a lineup to start marking automatically."}
           </p>
         </div>
         <Switch
@@ -291,7 +297,7 @@ function JudgingSwitches({
           <p>
             {current.feedbackReleased
               ? "Teams can see each anonymous review: every score and remark."
-              : "Hidden from teams until you release it after the results announcement."}
+              : "Hidden from teams until you release it."}
           </p>
         </div>
         <Switch
@@ -1404,6 +1410,7 @@ function LineupEditor({
   saved,
   reviews,
   locked,
+  feedbackReleased,
   onNotice,
 }: {
   year: number
@@ -1411,6 +1418,7 @@ function LineupEditor({
   saved: string[]
   reviews: CommitteeReview[]
   locked: boolean
+  feedbackReleased: boolean
   onNotice: (text: string) => void
 }) {
   const cohortBoards = useMemo(
@@ -1442,7 +1450,9 @@ function LineupEditor({
     try {
       await setLineup(year, order)
       onNotice(
-        `Lineup saved. Judges now see ${order.length} project${order.length === 1 ? "" : "s"} in this order.`
+        order.length
+          ? `Lineup saved. Judges can now mark ${order.length} project${order.length === 1 ? "" : "s"}. Feedback stays hidden until you release it.`
+          : "Lineup cleared. Marking is closed."
       )
     } catch (cause) {
       setError(errorText(cause, "Could not save the lineup."))
@@ -1455,8 +1465,9 @@ function LineupEditor({
       <div>
         <p className="jd-lock-note" role="status">
           <Lock size={14} aria-hidden />
-          The lineup is locked while judging is open. Close judging to add,
-          remove or reorder projects.
+          {feedbackReleased
+            ? "Feedback has been released. Hide it before changing the lineup."
+            : "The lineup is locked while judging is open. Close judging to add, remove or reorder projects."}
         </p>
         <ol className="jd-lineup">
           {saved.map((id, index) => {
@@ -1481,9 +1492,9 @@ function LineupEditor({
       {/* Sticky, so saving never needs a scroll to the end of a long lineup. */}
       <div className={`jd-lineup-bar${dirty ? "jd-dirty" : ""}`}>
         <p className="jd-intro">
-          {dirty
-            ? "Unsaved changes to the lineup."
-            : "The lineup locks once judging opens."}
+          {order.length
+            ? "Saving starts marking and locks the lineup. Feedback stays private."
+            : "Add projects to start marking."}
         </p>
         <div className="jd-lineup-save">
           {!dirty && saved.length > 0 && (
@@ -1498,10 +1509,14 @@ function LineupEditor({
           </button>
           <button
             className="ad-button ad-primary"
-            disabled={!dirty || saving}
+            disabled={(!dirty && !order.length) || saving}
             onClick={() => void save()}
           >
-            {saving ? "Saving…" : "Save lineup"}
+            {saving
+              ? "Saving…"
+              : order.length
+                ? "Save lineup and start marking"
+                : "Save empty lineup"}
           </button>
         </div>
       </div>

@@ -13,6 +13,7 @@ const migrations = [
   "202611070001_mentor_access.sql",
   "202611070003_mentor_account_management.sql",
   "202611140001_judging.sql",
+  "202611230001_lineup_starts_judging.sql",
 ]
 
 const admin = "00000000-0000-0000-0000-000000000001"
@@ -47,7 +48,7 @@ test('versioned judge saves reject stale writes and a burst cannot overwrite the
   } finally {databases.splice(databases.indexOf(db),1);await db.close()}
 })
 
-async function setup() {
+async function setup({ automaticMarking = true } = {}) {
   const db = new PGlite()
   databases.push(db)
   await db.exec(`create role anon; create role authenticated; create role service_role bypassrls;
@@ -55,7 +56,7 @@ async function setup() {
     create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
     grant usage on schema public,auth to anon,authenticated,service_role;
     grant execute on function auth.uid() to anon,authenticated,service_role;`)
-  for (const name of migrations)
+  for (const name of automaticMarking ? migrations : migrations.slice(0, -1))
     await db.exec(readFileSync(new URL(`../migrations/${name}`, import.meta.url), "utf8"))
   await db.exec(`insert into auth.users values('${admin}','admin@example.test'),
       ('${student}','s@example.test'),('${otherStudent}','o@example.test');
@@ -117,11 +118,19 @@ test("judges read only their cohort's lineup, save their own feedback, and only 
   await as("authenticated", student)
   assert.equal(await count("myssp_judging_lineup"), 0)
 
-  // Closed by default.
+  // Saving the lineup starts marking, without an extra committee switch.
+  await as("authenticated", judgeA)
+  await db.query("select myssp_save_judge_feedback('one',$1,false)", [{ clarity: 4 }])
+  await as("authenticated", student)
+  assert.deepEqual((await db.query("select myssp_project_feedback('one') as f")).rows[0].f, { released: false })
+  // The committee can still stop marking explicitly.
+  await as("authenticated", admin)
+  await db.query("select myssp_set_judging_state(2026,false,false)")
   await as("authenticated", judgeA)
   await assert.rejects(() => db.query("select myssp_save_judge_feedback('one',$1,false)", [{ clarity: 4 }]), /Judging is closed/)
   await as("authenticated", admin)
   // Judging needs a lineup to open.
+  await db.query("select myssp_set_judging_state(2027,false,false)")
   await db.query("select myssp_set_judging_lineup(2027,$1)", [[]])
   await assert.rejects(() => db.query("select myssp_set_judging_state(2027,true,false)"), /Set the lineup/)
   await db.query("select myssp_set_judging_lineup(2027,$1)", [["next"]])
@@ -168,6 +177,7 @@ test("judges read only their cohort's lineup, save their own feedback, and only 
   // Closing judging unlocks the lineup again.
   await as("authenticated", admin)
   await db.query("select myssp_set_judging_lineup(2026,$1)", [["two", "one"]])
+  assert.equal((await db.query("select judging_open from myssp_cohorts where year=2026")).rows[0].judging_open, true)
 
   // Paused judges lose access immediately.
   await as("authenticated", admin)
@@ -176,6 +186,44 @@ test("judges read only their cohort's lineup, save their own feedback, and only 
   assert.equal(await count("myssp_projects"), 0)
   assert.equal(await count("myssp_judge_feedback"), 0)
   assert.equal(await count("myssp_judging_lineup"), 0)
+})
+
+test("empty and rejected lineups do not start marking, and released feedback cannot be silently reopened", async () => {
+  const { db, as } = await setup()
+  const switches = async () => (await db.query("select judging_open,feedback_released from myssp_cohorts where year=2026")).rows[0]
+  await as("authenticated", admin)
+  await db.query("select myssp_set_judging_lineup(2026,$1)", [[]])
+  assert.deepEqual(await switches(), { judging_open: false, feedback_released: false })
+  for (const ids of [["one", "missing"], ["one", "one"], ["next"], [null]])
+    await assert.rejects(() => db.query("select myssp_set_judging_lineup(2026,$1)", [ids]))
+  assert.deepEqual(await switches(), { judging_open: false, feedback_released: false })
+  assert.equal((await db.query("select count(*)::int as n from myssp_judging_lineup")).rows[0].n, 0)
+  await db.query("select myssp_set_judging_lineup(2026,$1)", [["one"]])
+  assert.deepEqual(await switches(), { judging_open: true, feedback_released: false })
+  assert.equal((await db.query("select published from myssp_projects where id='one'")).rows[0].published, false)
+  await db.query("select myssp_set_judging_state(2026,false,true)")
+  await assert.rejects(() => db.query("select myssp_set_judging_lineup(2026,$1)", [["two"]]), /Hide released feedback/)
+  assert.deepEqual(await switches(), { judging_open: false, feedback_released: true })
+  assert.deepEqual((await db.query("select project_id from myssp_judging_lineup")).rows.map(row => row.project_id), ["one"])
+  await db.query("select myssp_set_judging_state(2026,false,false)")
+  await db.query("select myssp_set_judging_lineup(2026,$1)", [["two"]])
+  assert.deepEqual(await switches(), { judging_open: true, feedback_released: false })
+})
+
+test("upgrade opens only the prepared unreleased 2026 lineup and leaves publication unchanged", async () => {
+  for (const released of [false, true]) {
+    const { db, as } = await setup({ automaticMarking: false })
+    await as("authenticated", admin)
+    await db.query("select myssp_set_judging_lineup(2026,$1)", [["one"]])
+    await db.query("select myssp_set_judging_lineup(2027,$1)", [["next"]])
+    await db.query("select myssp_set_judging_state(2026,false,$1)", [released])
+    await db.exec("reset role")
+    await db.exec(readFileSync(new URL("../migrations/202611230001_lineup_starts_judging.sql", import.meta.url), "utf8"))
+    assert.deepEqual((await db.query("select judging_open,feedback_released from myssp_cohorts where year=2026")).rows[0],
+      { judging_open: !released, feedback_released: released })
+    assert.equal((await db.query("select judging_open from myssp_cohorts where year=2027")).rows[0].judging_open, false)
+    assert.equal((await db.query("select count(*)::int as n from myssp_projects where published or editing_enabled")).rows[0].n, 0)
+  }
 })
 
 test("teams see every submitted review in full, labelled by judge type, only after release", async () => {

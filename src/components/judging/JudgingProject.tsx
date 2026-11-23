@@ -237,9 +237,7 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
           {!judgingOpen && (
             <span className="judge-tag judge-tag-soft-default" role="status">
               <span className="judge-tag-dot" aria-hidden />
-              {saved || feedbackReleased
-                ? "Judging is closed"
-                : "Opens on Demo Day"}
+              {feedbackReleased ? "Judging is closed" : "Marking is paused"}
             </span>
           )}
         </div>
@@ -253,8 +251,8 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
             <span className="font-medium text-foreground">
               Your feedback is anonymous to teams.
             </span>{" "}
-            Your name is hidden, and teams see feedback only after result
-            announcement.
+            Your name is hidden. Teams see feedback when the committee releases
+            it.
           </span>
         </p>
         {submitted && judgingOpen && (

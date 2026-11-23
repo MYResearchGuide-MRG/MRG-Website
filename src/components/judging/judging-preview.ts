@@ -27,6 +27,10 @@ function latestYear() {
 // A ready-made judge so the judge pages can be tried straight away.
 function seed(): PreviewData {
   const year = latestYear()
+  const lineup = getProjectBoards()
+    .filter((board) => board.year === year)
+    .sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }))
+    .map((board) => board.id)
   return {
     judges: [
       {
@@ -43,15 +47,8 @@ function seed(): PreviewData {
         code: "JUDGE1",
       },
     ],
-    lineups: {
-      [year]: getProjectBoards()
-        .filter((board) => board.year === year)
-        .sort((a, b) =>
-          a.code.localeCompare(b.code, undefined, { numeric: true })
-        )
-        .map((board) => board.id),
-    },
-    switches: { [year]: { judgingOpen: false, feedbackReleased: false } },
+    lineups: { [year]: lineup },
+    switches: { [year]: { judgingOpen: lineup.length > 0, feedbackReleased: false } },
     reviews: {},
   }
 }

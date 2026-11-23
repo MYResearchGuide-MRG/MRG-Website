@@ -64,12 +64,12 @@ export const sectionRemarks = [
   {
     key: "researchRemarks",
     label: "Review of Research Execution & Quality",
-    hint: "What was done well, what could be improved, or anything specific about the team’s research execution. This review is confidential during judging and shown to the team anonymously after results are announced.",
+    hint: "What was done well, what could be improved, or anything specific about the team’s research execution. This review stays private until the committee releases it anonymously to the team.",
   },
   {
     key: "presentationRemarks",
     label: "Review of Live Presentation & Q&A",
-    hint: "What was done well, what could be improved, or anything specific about the presentation and Q&A. This review is confidential during judging and shown to the team anonymously after results are announced.",
+    hint: "What was done well, what could be improved, or anything specific about the presentation and Q&A. This review stays private until the committee releases it anonymously to the team.",
   },
 ] as const
 export type SectionRemarksKey = (typeof sectionRemarks)[number]["key"]
