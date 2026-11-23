@@ -1,5 +1,5 @@
 {{ if .Data.myssp_access_code }}
-<p>Hey,</p>
+<p>Hi,</p>
 
 <p>Your MYSSP {{ if .Data.myssp_mentor }}mentor{{ else if .Data.myssp_judge }}Demo Day judge{{ else }}project page{{ end }} login credentials are:</p>
 
@@ -16,7 +16,7 @@ Access code: <strong>{{ .Data.myssp_access_code }}</strong></p>
 <a href="https://www.linkedin.com/company/myresearchguide">LinkedIn</a> |
 <a href="https://www.instagram.com/myresearchguide/">Instagram</a></p>
 {{ else }}
-<p>Hey,</p>
+<p>Hi,</p>
 <p>Use <a href="{{ .ConfirmationURL }}">this link</a> to reset your MYSSP account password.</p>
 <p>If you did not request this, you can ignore this email.</p>
 <p>Best wishes,<br><strong>Board of Committee, MYResearchGuide</strong></p>
