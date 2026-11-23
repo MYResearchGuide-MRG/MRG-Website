@@ -10,6 +10,7 @@ import type { Cohort, ProjectInput } from "./cohort-model"
 import type { ResearchField } from "./research-fields-model"
 import { sendInvitationBatches } from "./invitation-batches"
 import type { Mentor, MentorInput } from "./mentor-model"
+import { backendRefreshDue } from "./refresh-policy"
 
 // Device-only preparation stays available on localhost. Production never uses it.
 export const useLiveBackend = !isLocalPreview || import.meta.env.VITE_ACCESS_MODE === "supabase"
@@ -64,6 +65,7 @@ function mergeDelta<T>(rows: Delta<T>[], previous: Cached<T>): Cached<T> {
 function versions<T>(cache: Cached<T>) { return Object.fromEntries(Object.entries(cache).map(([id,row]) => [id,row.version])) }
 let refreshFlight: Promise<void> | null = null
 let refreshAgain = false
+let lastReadAt = 0
 // Mutations request a trailing read; timers/auth events share an existing read.
 export function refreshBackend(afterMutation = true): Promise<void> {
   if (refreshFlight) { refreshAgain ||= afterMutation; return refreshFlight }
@@ -74,6 +76,7 @@ export function refreshBackend(afterMutation = true): Promise<void> {
 }
 async function readBackend() {
   if (!useLiveBackend || !supabase) return
+  lastReadAt = Date.now()
   const ticket = ++epoch
   try {
     const { data: { session }, error: sessionError } = await supabase.auth.getSession()
@@ -83,7 +86,7 @@ async function readBackend() {
     // Expiry/storage clearing must remove private cached data even if the next
     // public-data request fails. A temporary refresh error above is not logout.
     if (state.userId && state.userId !== userId) publish(empty)
-    const { data, error } = await supabase.rpc("myssp_backend_snapshot", { known: {
+    const { data, error } = await supabase.rpc("myssp_backend_snapshot_v2", { known: {
       projects: versions(projectCache), people: versions(peopleCache), adminProfile: userId ? profileCache[userId]?.version : undefined,
     } })
     if (error) throw new Error(error.code === "PGRST202" ? "The database needs the latest read optimisation update." : "Could not refresh project access. Please try again.")
@@ -409,8 +412,11 @@ if (useLiveBackend && supabase) {
     if (event !== "TOKEN_REFRESHED") window.setTimeout(() => void refreshBackend(), 0)
   })
   void refreshBackend()
-  window.setInterval(() => { if (document.visibilityState === "visible") void refreshBackend(false) }, 30000)
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") void refreshBackend(false)
-  })
+  const backgroundRefresh = (foreground = false) => {
+    if (document.visibilityState === "visible" && backendRefreshDue(lastReadAt, Date.now(), Boolean(state.userId), foreground))
+      void refreshBackend(false)
+  }
+  window.setInterval(() => backgroundRefresh(), 30000)
+  document.addEventListener("visibilitychange", () => backgroundRefresh(true))
+  window.addEventListener("hashchange", () => backgroundRefresh(true))
 }

@@ -8,41 +8,36 @@ async function prepareImage(file: File, kind: "project" | "portrait"): Promise<s
     const portrait = kind === "portrait"
     const sourceSize = Math.min(bitmap.width, bitmap.height)
     const scale = Math.min(1, 1280 / bitmap.width, 800 / bitmap.height)
-    const canvas = document.createElement("canvas")
-    canvas.width = portrait
+    let width = portrait
       ? Math.min(320, sourceSize)
       : Math.max(1, Math.round(bitmap.width * scale))
-    canvas.height = portrait ? canvas.width : Math.max(1, Math.round(bitmap.height * scale))
+    let height = portrait ? width : Math.max(1, Math.round(bitmap.height * scale))
+    const canvas = document.createElement("canvas")
     const context = canvas.getContext("2d")
     if (!context) throw new Error("This browser could not process the image.")
-    context.fillStyle = "#000"
-    context.fillRect(0, 0, canvas.width, canvas.height)
-    if (portrait) {
-      context.drawImage(
-        bitmap,
-        (bitmap.width - sourceSize) / 2,
-        (bitmap.height - sourceSize) / 2,
-        sourceSize,
-        sourceSize,
-        0,
-        0,
-        canvas.width,
-        canvas.height
-      )
-    } else {
-      context.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
-    }
     // Keep JPEG compatibility with existing validation. Bound the saved size,
-    // including base64 overhead, rather than accepting multi-megabyte photos.
-    const budget = portrait ? 90_000 : 400_000
-    let data = canvas.toDataURL("image/jpeg", 0.76)
-    for (const quality of [0.66, 0.56, 0.46]) {
-      if (data.length <= budget) break
-      data = canvas.toDataURL("image/jpeg", quality)
+    // including base64 overhead. Resize detailed images instead of requiring
+    // another upload or falling back to very low JPEG quality.
+    const budget = portrait ? 60_000 : 240_000
+    for (let attempt = 0; attempt < 4; attempt++) {
+      canvas.width = width
+      canvas.height = height
+      context.fillStyle = "#000"
+      context.fillRect(0, 0, width, height)
+      if (portrait) {
+        context.drawImage(bitmap, (bitmap.width - sourceSize) / 2, (bitmap.height - sourceSize) / 2,
+          sourceSize, sourceSize, 0, 0, width, height)
+      } else {
+        context.drawImage(bitmap, 0, 0, width, height)
+      }
+      for (const quality of [0.78, 0.7, 0.62]) {
+        const data = canvas.toDataURL("image/jpeg", quality)
+        if (data.startsWith("data:image/jpeg;base64,") && data.length <= budget) return data
+      }
+      width = Math.max(1, Math.round(width * 0.8))
+      height = Math.max(1, Math.round(height * 0.8))
     }
-    if (data.length > budget)
-      throw new Error("This image has too much detail to compress. Try a smaller image.")
-    return data
+    throw new Error("This image has too much detail to compress. Try a smaller image.")
   } finally {
     bitmap.close()
   }

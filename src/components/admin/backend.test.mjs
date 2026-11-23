@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs"
 import { stripTypeScriptTypes } from "node:module"
 import { test } from "node:test"
 import { createHash } from "node:crypto"
+const policySource = stripTypeScriptTypes(readFileSync(new URL('./refresh-policy.ts', import.meta.url), 'utf8')).replace('export function', 'function')
 
 // Exercise the live adapter with a fake transport, never a real Supabase project.
 const source = stripTypeScriptTypes(readFileSync(new URL("./backend.ts", import.meta.url), "utf8"))
@@ -49,7 +50,7 @@ async function fixture(loadContent = true) {
       if (transport.rpcErrors?.[name]) return {data:null,error:transport.rpcErrors[name]}
       if (name === "myssp_is_admin") return { data: false, error: null }
       if (name === "myssp_submission_deadlines") return { data: [], error: null }
-      if (name === "myssp_backend_snapshot") {
+      if (name === "myssp_backend_snapshot_v2") {
         transport.snapshots++
         if (transport.failRead) return {data:null,error:{message:"Offline"}}
         const delta=(table,known={})=>response(table).data.map(record=>{
@@ -84,7 +85,7 @@ async function fixture(loadContent = true) {
   }
   const key = `__mysspBackendFixture${++nextFixture}`
   globalThis[key] = supabase
-  const prefix = `const supabase=globalThis.${key}; const isDraft=()=>true; const useSyncExternalStore=(_,get)=>get(); const window={setTimeout(){},setInterval(){}}; const document={visibilityState:'hidden',addEventListener(){}};\n`
+  const prefix = `${policySource}\nconst supabase=globalThis.${key}; const isDraft=()=>true; const useSyncExternalStore=(_,get)=>get(); const window={setTimeout(){},setInterval(){},addEventListener(){}}; const document={visibilityState:'hidden',addEventListener(){}};\n`
   const api = await import(`data:text/javascript;base64,${Buffer.from(prefix + source).toString("base64")}`)
   delete globalThis[key]
   await api.refreshBackend()
