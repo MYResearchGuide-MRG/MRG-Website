@@ -247,6 +247,8 @@ export async function saveOwnProfileLive(name: string, photo: string) {
 export async function setDeletedLive(kind: "participant" | "project", id: string, remove: boolean, destination?: string) {
   if (!supabase || !state.isAdmin) throw new Error("Committee sign-in required.")
   const { error } = await supabase.rpc("myssp_set_deleted", {kind, record_id:id, remove, destination:destination ?? null})
+  if (error?.code === "23505" && kind === "project" && !remove)
+    throw new Error("This code is now used by another project in the same cohort. Move that project to Trash before restoring this one.")
   if (error) throw new Error(remove ? "Could not delete this record. Refresh and try again." : "Could not restore this record. Check the destination project and try again.")
   await refreshBackend()
 }
@@ -369,6 +371,7 @@ export async function saveLiveDraft(draft:Draft, expectedRevision:number) {
 export async function splitLiveProject(split:ProjectSplit, boards:Board[], assignments:Record<string,string>) {
   if (!supabase || !state.isAdmin) return "Committee sign-in required."
   const {error} = await supabase.rpc("myssp_split_project", {parent:split.parentId, children:boards.map(b=>({id:b.id,code:b.code,payload:b})), assignments})
+  if (error?.code === "23505") return "A team code is already used by another project in this cohort. Refresh the project list and check the team codes."
   if (error) return "Could not split this project. Check every participant has a new assignment."
   await refreshBackend(); return null
 }
@@ -395,7 +398,7 @@ export async function saveLiveProject(input: ProjectInput, previous?: Board) {
     details: input, project: previous?.id || null,
     expected: previous ? Object.fromEntries(["title", "track", "mentor", "affiliation", "description"].map(key => [key, previous[key as keyof Board]])) : null,
   })
-  if (error) throw new Error(error.code === "23505" ? `${input.code} is already used in ${input.year}, including archived projects.` : state.cohortError || "Could not save this project. It may have changed; close and reopen the form.")
+  if (error) throw new Error(error.code === "23505" ? `${input.code} is already used in ${input.year} by an existing project or split parent. Choose another code.` : state.cohortError || "Could not save this project. It may have changed; close and reopen the form.")
   await refreshBackend()
   return data as string
 }

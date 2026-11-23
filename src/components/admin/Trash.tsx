@@ -103,13 +103,22 @@ export function RecordActionDialog({
   onClose: () => void
   onComplete: () => void
 }) {
-  const { boards, people } = useBackend()
+  const { boards, people, deletedProjects } = useBackend()
   const [destination, setDestination] = useState(
     boards.some((b) => b.id === action.projectId) ? action.projectId! : ""
   )
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
   const restoringPerson = !action.remove && action.kind === "participant"
+  const restoringProject = !action.remove && action.kind === "project"
+    ? deletedProjects.find((project) => project.id === action.id)
+    : undefined
+  const conflictingProject = restoringProject && boards.find((board) =>
+    board.id !== action.id && board.code === restoringProject.code && board.year === restoringProject.payload.year
+  )
+  const restoreError = conflictingProject
+    ? `${conflictingProject.code} is now used by “${conflictingProject.title}” in ${conflictingProject.year}. Move that project to Trash before restoring this one.`
+    : ""
   const assignedCount = people.filter((p) => p.projectId === action.id).length
   async function submit() {
     setBusy(true)
@@ -176,9 +185,9 @@ export function RecordActionDialog({
             {!boards.length && <small>Restore a project first.</small>}
           </label>
         )}
-        {error && (
+        {(error || restoreError) && (
           <p className="ad-form-error" role="alert">
-            {error}
+            {error || restoreError}
           </p>
         )}
         <div className="ad-modal-actions">
@@ -192,7 +201,7 @@ export function RecordActionDialog({
           </button>
           <button
             className={`ad-button ${action.remove ? "ad-danger" : "ad-primary"}`}
-            disabled={busy || (restoringPerson && !destination)}
+            disabled={busy || Boolean(restoreError) || (restoringPerson && !destination)}
             onClick={() => void submit()}
           >
             {busy ? "Saving…" : action.remove ? "Move to Trash" : "Restore"}

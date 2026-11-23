@@ -46,6 +46,7 @@ async function fixture(loadContent = true) {
       return query
     },
     rpc: async (name, args) => {
+      if (transport.rpcErrors?.[name]) return {data:null,error:transport.rpcErrors[name]}
       if (name === "myssp_is_admin") return { data: false, error: null }
       if (name === "myssp_submission_deadlines") return { data: [], error: null }
       if (name === "myssp_backend_snapshot") {
@@ -90,6 +91,36 @@ async function fixture(loadContent = true) {
   if (loadContent) await api.loadLiveProjectContent("one")
   return { api, transport }
 }
+
+test("a reused code uses only the replacement in lists while preserving the deleted record in Trash", async () => {
+  const {api,transport} = await fixture(false)
+  transport.isAdmin = true
+  const payload = {title:'Project',year:2026,team:[]}
+  transport.tables.myssp_projects = [
+    {id:'old',code:'A-6',payload,deleted_at:'2026-11-23T00:00:00Z'},
+    {id:'replacement',code:'A-6',payload,deleted_at:null,published:false,editing_enabled:false},
+  ]
+  transport.tables.myssp_mentors = [{id:'mentor',name:'Mentor',email:'mentor@example.test'}]
+  transport.tables.myssp_mentor_projects = [{mentor_id:'mentor',project_id:'old'}]
+  await api.refreshBackend()
+  const state = api.getBackend()
+  assert.deepEqual(state.boards.map(b=>b.id),['replacement'])
+  assert.deepEqual(state.projects.map(b=>b.id),['replacement'])
+  assert.deepEqual(state.deletedProjects.map(b=>b.id),['old'])
+  assert.deepEqual(state.mentors[0].projectIds,[])
+  assert.deepEqual(state.visibility,{replacement:false})
+  assert.deepEqual(state.editing,{replacement:false})
+})
+
+test("duplicate creates, splits and restores explain the conflict without blaming deleted projects", async () => {
+  const {api,transport} = await fixture(false)
+  transport.isAdmin = true
+  transport.rpcErrors = Object.fromEntries(['myssp_save_project_brief','myssp_split_project','myssp_set_deleted'].map(name=>[name,{code:'23505'}]))
+  await api.refreshBackend()
+  await assert.rejects(()=>api.saveLiveProject({code:'A-6',year:2026}),/existing project or split parent/)
+  await assert.rejects(()=>api.setDeletedLive('project','old',false),/Move that project to Trash/)
+  assert.match(await api.splitLiveProject({parentId:'parent'},[],{}),/team code is already used/)
+})
 
 test("failed refresh preserves the signed-in participant and saved work", async () => {
   const { api, transport } = await fixture()
