@@ -2,7 +2,9 @@
 
 The biographies were replaced with committee-supplied text on 21 November 2026. That update preserves the supplied wording as plain text, without the pasted paragraph hyperlinks. Existing portraits, award-group assignments and separate LinkedIn profile links remain unchanged. The replacement wording was not independently fact-checked in that copy update.
 
-Prof. Weng Kung Peng withdrew from the 2026 panel and was removed from the public listing on 22 November 2026 at the committee's request. His source notes below are retained as a historical record. The current panel has three main award judges and three special award judges.
+Prof. Weng Kung Peng withdrew from the 2026 panel and was removed from the public listing on 22 November 2026 at the committee's request. His source notes below are retained as a historical record.
+
+On 24 November 2026 the committee supplied two more main award judge biographies. Ming Yean Lim uses the feedback section’s default judge avatar by request and links to his [personal website](https://www.mlyean.xyz/). Lee Kah Chun uses the committee-supplied portrait and links to his [LinkedIn profile](https://www.linkedin.com/in/lee-kah-chun/).
 
 The source notes below record the original research checked on 5 November 2026 and the portrait provenance. They do not independently verify every claim in the replacement biographies.
 

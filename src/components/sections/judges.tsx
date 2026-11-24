@@ -1,5 +1,6 @@
-import { ArrowUpRight } from "lucide-react"
+import { ArrowUpRight, Globe } from "lucide-react"
 import { LinkedinIcon } from "@/components/layout/social-icons"
+import { JudgeAvatar } from "@/components/projectboard/JudgeAvatar"
 import type { Judge } from "@/data/judges"
 import { getDemoDayEdition } from "@/data/demo-day"
 import { useDemoDayYear } from "@/lib/demo-day"
@@ -7,19 +8,24 @@ import { DemoDayTabs } from "./demo-day-tabs"
 import styles from "./judges.module.css"
 
 function JudgeCard({ judge, special }: { judge: Judge; special?: boolean }) {
+  const ProfileIcon = judge.profile.label === "LinkedIn" ? LinkedinIcon : Globe
   return (
     <article className={styles.card}>
       {special && <p className={styles.partner}>{judge.organisation}</p>}
       <div className={styles.identity}>
-        <img
+        {judge.portrait ? <img
           className={styles.portrait}
           src={judge.portrait}
-          alt={judge.name}
+          alt=""
           width={400}
           height={400}
           loading="lazy"
           decoding="async"
-        />
+        /> : (
+          <span className={styles.portrait}>
+            <JudgeAvatar seed={1} star={special} size={96} />
+          </span>
+        )}
         <div className={styles.details}>
           <h3>{judge.name}</h3>
           <p>{judge.role}</p>
@@ -31,13 +37,13 @@ function JudgeCard({ judge, special }: { judge: Judge; special?: boolean }) {
       <p className={styles.bio}>{judge.bio}</p>
       <a
         className={styles.profile}
-        href={judge.linkedin}
+        href={judge.profile.href}
         target="_blank"
         rel="noopener noreferrer"
-        aria-label={`${judge.name} on LinkedIn (opens in a new tab)`}
+        aria-label={`${judge.name} · ${judge.profile.label} (opens in a new tab)`}
       >
-        <LinkedinIcon className={styles.linkedin} aria-hidden />
-        <span>LinkedIn</span>
+        <ProfileIcon className={styles.profileIcon} aria-hidden />
+        <span>{judge.profile.label}</span>
         <ArrowUpRight size={15} aria-hidden />
       </a>
     </article>
