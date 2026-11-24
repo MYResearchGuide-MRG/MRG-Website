@@ -1,5 +1,6 @@
 import {
   Fragment,
+  useEffect,
   useMemo,
   useState,
   type ChangeEvent,
@@ -19,7 +20,6 @@ import {
   Pencil,
   Plus,
   RefreshCw,
-  RotateCcw,
   Search,
   Star,
   Trash2,
@@ -105,9 +105,9 @@ export function JudgingAdmin({
     <section className="am-root jd-root" aria-label="Judging">
       <div className="jd-topbar">
         {!useLiveBackend && (
-          <p className="ad-notice">
-            Demo workspace. Scores, invitations and release controls here do not
-            affect live accounts.
+          <p className="jd-demo">
+            <span aria-hidden />
+            Demo mode. Changes here don't affect real judges or teams.
           </p>
         )}
         <button
@@ -311,7 +311,16 @@ function JudgingSwitches({
       (missingAnswers(review).length || !activeJudges.has(review.judgeId))
   ).length
   const completeDrafts = drafts - incompleteDrafts
+  // Every active judge scores every lineup project. Reviews from paused or
+  // removed judges don't count, and while judging is open, complete drafts
+  // count because releasing submits them.
   const expected = judges.length * lineupSize
+  const reviewsIn = reviews.filter(
+    (review) =>
+      activeJudges.has(review.judgeId) &&
+      (review.submittedAt ||
+        (current.judgingOpen && !missingAnswers(review).length))
+  ).length
   const judgingCopy = current.judgingOpen
     ? {
         title: "Judging is open",
@@ -507,8 +516,8 @@ function JudgingSwitches({
               hidden.
             </DialogDescription>
             <ul className="jd-checklist">
-              <li className={submitted < expected ? "jd-warn" : undefined}>
-                {submitted} of {expected} reviews are in.
+              <li className={reviewsIn < expected ? "jd-warn" : undefined}>
+                {reviewsIn} of {expected} reviews are in.
               </li>
               {current.judgingOpen && (
                 <li>Judges won't be able to change their scores after this.</li>
@@ -823,61 +832,47 @@ function JudgeManagement({
                   <td>
                     <span
                       className={`jd-pill ${
-                        judge.deletedAt
-                          ? "jd-pill-danger"
-                          : judge.revoked
-                            ? "jd-pill-warning"
-                            : judge.invitedAt
-                              ? "jd-pill-success"
-                              : "jd-pill-default"
+                        judge.revoked
+                          ? "jd-pill-warning"
+                          : judge.invitedAt
+                            ? "jd-pill-success"
+                            : "jd-pill-default"
                       }`}
                     >
                       <i aria-hidden />
-                      {judge.deletedAt
-                        ? "Deleted"
-                        : judge.revoked
-                          ? "Paused"
-                          : judge.invitedAt
-                            ? "Invited"
-                            : "Not invited"}
+                      {judge.revoked
+                        ? "Paused"
+                        : judge.invitedAt
+                          ? "Invited"
+                          : "Not invited"}
                     </span>
                   </td>
                   <td>
                     <div className="am-actions">
-                      {judge.deletedAt ? (
+                      <>
                         <button
+                          aria-label={`Edit ${judge.name}`}
+                          onClick={() => setEditing(judge)}
+                        >
+                          <Pencil size={15} aria-hidden /> Edit
+                        </button>
+                        <button
+                          disabled={busy || judge.revoked}
+                          onClick={() => setConfirmIds([judge.id])}
+                        >
+                          <Mail size={15} aria-hidden />{" "}
+                          {judge.invitedAt ? "Reissue" : "Invite"}
+                        </button>
+                        <button
+                          className="am-delete"
                           disabled={busy}
-                          aria-label={`Restore ${judge.name}`}
+                          aria-label={`Delete ${judge.name}`}
+                          title="Delete judge"
                           onClick={() => setDeleting(judge)}
                         >
-                          <RotateCcw size={15} aria-hidden /> Restore
+                          <Trash2 size={15} aria-hidden />
                         </button>
-                      ) : (
-                        <>
-                          <button
-                            aria-label={`Edit ${judge.name}`}
-                            onClick={() => setEditing(judge)}
-                          >
-                            <Pencil size={15} aria-hidden /> Edit
-                          </button>
-                          <button
-                            disabled={busy || judge.revoked}
-                            onClick={() => setConfirmIds([judge.id])}
-                          >
-                            <Mail size={15} aria-hidden />{" "}
-                            {judge.invitedAt ? "Reissue" : "Invite"}
-                          </button>
-                          <button
-                            className="am-delete"
-                            disabled={busy}
-                            aria-label={`Delete ${judge.name}`}
-                            title="Delete judge"
-                            onClick={() => setDeleting(judge)}
-                          >
-                            <Trash2 size={15} aria-hidden />
-                          </button>
-                        </>
-                      )}
+                      </>
                     </div>
                   </td>
                 </tr>
@@ -939,9 +934,7 @@ function JudgeManagement({
           onClose={() => setDeleting(null)}
           onSaved={() => {
             onNotice(
-              deleting.deletedAt
-                ? "Judge restored."
-                : "Judge deleted. Their sign-in no longer works; submitted reviews are kept."
+              "Judge deleted. Their sign-in no longer works; submitted reviews are kept."
             )
             setSelected((ids) => ids.filter((id) => id !== deleting.id))
             setDeleting(null)
@@ -1386,12 +1379,11 @@ function JudgeDeleteDialog({
 }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
-  const restoring = Boolean(judge.deletedAt)
   async function submit() {
     setSaving(true)
     setError("")
     try {
-      await setJudgeDeleted(judge.id, !restoring)
+      await setJudgeDeleted(judge.id, true)
       onSaved()
     } catch (cause) {
       setError(errorText(cause, "Could not update this judge."))
@@ -1407,13 +1399,10 @@ function JudgeDeleteDialog({
       }}
     >
       <DialogContent className="ad-modal am-dialog">
-        <DialogTitle>
-          {restoring ? "Restore judge?" : "Delete judge?"}
-        </DialogTitle>
+        <DialogTitle>Delete judge?</DialogTitle>
         <DialogDescription>
-          {restoring
-            ? "Restores their account and access status. A paused account stays paused."
-            : "Removes this judge from the list and blocks their sign-in. Reviews they submitted stay with the teams. You can undo this under Deleted judges."}
+          Removes this judge from the list and blocks their sign-in. Reviews
+          they submitted stay with the teams.
         </DialogDescription>
         <div className="am-confirm-list">
           <div>
@@ -1431,13 +1420,11 @@ function JudgeDeleteDialog({
             Cancel
           </button>
           <button
-            className={
-              restoring ? "ad-button ad-primary" : "ad-button am-destructive"
-            }
+            className="ad-button am-destructive"
             disabled={saving}
             onClick={() => void submit()}
           >
-            {saving ? "Saving…" : restoring ? "Restore judge" : "Delete judge"}
+            {saving ? "Deleting…" : "Delete judge"}
           </button>
         </div>
       </DialogContent>
@@ -1501,7 +1488,7 @@ function LineupEditor({
       onNotice(
         order.length
           ? "Lineup saved and judging is open. Judges can now score projects."
-          : "Lineup cleared. Marking is closed."
+          : "Lineup cleared. Judging is closed."
       )
     } catch (cause) {
       setError(errorText(cause, "Could not save the lineup."))
@@ -1539,10 +1526,7 @@ function LineupEditor({
   return (
     <div>
       {/* Sticky, so saving never needs a scroll to the end of a long lineup. */}
-      <div
-        className={dirty ? "jd-lineup-bar jd-dirty" : "jd-lineup-bar"}
-        data-guide="lineup-save"
-      >
+      <div className={dirty ? "jd-lineup-bar jd-dirty" : "jd-lineup-bar"}>
         <p className="jd-intro">
           {order.length
             ? "Judges will see projects in this order. You can't change the lineup while judging is open."
@@ -1816,7 +1800,8 @@ function Results({
           label: "Special",
           ranks: rankBy((j) => j.kind === "special"),
         },
-        { key: "all", label: "All", ranks: rankBy(() => true) },
+        // In the overview the pool is every judge, so ranks is the all-judges ranking.
+        { key: "all", label: "All", ranks },
       ]
     : []
   const activeJudges = judges.filter(
@@ -1906,7 +1891,7 @@ function Results({
           ? `Every judge's total score out of ${MAX_TOTAL}, for every project. Ranks compare averages from main judges, special award judges and all judges. Pick an award to see its averages.`
           : `Scores are totals out of ${MAX_TOTAL}, from submitted reviews only. Rankings can change until every review is in. Select a project to read its reviews.`}
       </p>
-      <div className="am-table-wrap" data-guide="results-table">
+      <div className="am-table-wrap">
         <table className="jd-table">
           <thead>
             <tr className="jd-head-group">
@@ -2255,24 +2240,23 @@ function JudgingSteps({
     }
   }
   const doneSteps = guideSteps.map((step) => step.done(progress))
-  const doneCount = doneSteps.filter(Boolean).length
   const nextIndex = doneSteps.indexOf(false)
+  // A new object per click, so clicking the same step again re-runs the effect.
+  const [pending, setPending] = useState<{ targets: string[] } | null>(null)
+  // Runs after the commit that switched tabs, so the target is on the page.
+  useEffect(() => {
+    if (pending) spotlight(pending.targets)
+  }, [pending])
 
   const go = (step: GuideStep) => {
     if (step.section) onSection(step.section)
-    // Wait for the tab to render before looking for the highlighted element.
-    window.setTimeout(() => spotlight(step.targets(progress)), 80)
+    setPending({ targets: step.targets(progress) })
   }
 
   return (
     <section className="jd-steps" aria-labelledby="judging-steps-title">
       <header>
-        <h3 id="judging-steps-title">
-          How to run judging
-          <span>
-            {doneCount} of {guideSteps.length} done
-          </span>
-        </h3>
+        <h3 id="judging-steps-title">How to run judging</h3>
         <button
           className="jd-steps-toggle"
           aria-expanded={!hidden}

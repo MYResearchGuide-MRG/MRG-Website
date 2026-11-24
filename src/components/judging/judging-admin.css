@@ -462,9 +462,22 @@
   gap: 10px;
   margin-bottom: 18px;
 }
-.jd-topbar .ad-notice {
+/* Demo mode: a quiet line of text, not a warning box. */
+.jd-demo {
+  display: flex;
   flex: 1 1 320px;
+  align-items: center;
+  gap: 8px;
   margin: 0;
+  color: #8a8a8a;
+  font-size: 13px;
+}
+.jd-demo span {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #6b6b6b;
 }
 .jd-refresh {
   flex: none;
@@ -823,9 +836,9 @@
   align-items: flex-start;
   gap: 6px;
   padding: 12px;
-  border: 1px solid #262626;
+  border: 1px solid transparent;
   border-radius: 8px;
-  background: #1a1a1a;
+  background: transparent;
   color: inherit;
   font: inherit;
   text-align: left;
@@ -834,7 +847,15 @@
     border-color 0.15s,
     background 0.15s;
 }
+/* Only the up-next step sits in a card; the others show one on hover. */
 .jd-step:hover {
+  background: #1a1a1a;
+}
+.jd-step-next {
+  border-color: #262626;
+  background: #1a1a1a;
+}
+.jd-step-next:hover {
   border-color: #3a3a3a;
   background: #1f1f1f;
 }
@@ -897,15 +918,7 @@
 .jd-step-done strong {
   color: #bdbdbd;
 }
-/* Up next: violet outline so the admin knows where to start. */
-.jd-step-next {
-  border-color: #6f61a8;
-  background: #1b1828;
-}
-.jd-step-next:hover {
-  border-color: #8d7fd0;
-  background: #201c30;
-}
+/* Up next: violet number and label so the admin knows where to start. */
 .jd-step-next .jd-step-mark {
   border-color: #c9bdf5;
   background: #c9bdf5;
