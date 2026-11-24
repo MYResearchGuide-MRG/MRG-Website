@@ -11,17 +11,17 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
-  CircleDashed,
   Download,
   Gavel,
   GripVertical,
   Lock,
   Mail,
-  PencilLine,
   Pencil,
   Plus,
+  RefreshCw,
   RotateCcw,
   Search,
+  Star,
   Trash2,
   Upload,
   X,
@@ -34,6 +34,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import type { Board } from "../projectboard/data"
+import { AdminSelect } from "../admin/AdminSelect"
 import { useLiveBackend } from "../admin/backend"
 import { useCohorts } from "../admin/project-registry"
 import {
@@ -102,18 +103,36 @@ export function JudgingAdmin({
 
   return (
     <section className="am-root jd-root" aria-label="Judging">
-      {!useLiveBackend && (
-        <p className="ad-notice">
-          Demo workspace. Scores, invitations and release controls here do not
-          affect live accounts.
-        </p>
+      <div className="jd-topbar">
+        {!useLiveBackend && (
+          <p className="ad-notice">
+            Demo workspace. Scores, invitations and release controls here do not
+            affect live accounts.
+          </p>
+        )}
+        <button
+          className="ad-button jd-refresh"
+          onClick={() => void refreshCommitteeJudging()}
+        >
+          <RefreshCw size={14} aria-hidden /> Refresh
+        </button>
+      </div>
+      {data.ready && (
+        <JudgingSteps
+          progress={{
+            judges: cohortJudges.length,
+            uninvited: cohortJudges.filter(
+              (judge) => !judge.invitedAt && !judge.revoked
+            ).length,
+            lineup: lineup.length,
+            submitted: cohortReviews.filter((review) => review.submittedAt)
+              .length,
+            judgingOpen,
+            feedbackReleased,
+          }}
+          onSection={setSection}
+        />
       )}
-      <button
-        className="ad-button"
-        onClick={() => void refreshCommitteeJudging()}
-      >
-        Refresh judging
-      </button>
       {data.error && (
         <p className="ad-notice" role="status">
           {data.error}
@@ -138,8 +157,8 @@ export function JudgingAdmin({
       <div className="jd-tabs" role="tablist" aria-label="Judging sections">
         {(
           [
-            ["judges", `Judges · ${cohortJudges.length}`],
-            ["lineup", `Lineup · ${lineup.length}`],
+            ["judges", "Judges"],
+            ["lineup", "Project lineup"],
             ["results", "Progress & results"],
           ] as const
         ).map(([id, label]) => (
@@ -198,6 +217,7 @@ export function JudgingAdmin({
             boards={boards}
             saved={data.lineups[year] || []}
             reviews={cohortReviews}
+            judgeCount={cohortJudges.filter((judge) => !judge.revoked).length}
             onNotice={setNotice}
           />
         ) : (
@@ -216,6 +236,49 @@ export function JudgingAdmin({
 }
 
 // Switches -----------------------------------------------------------------------------
+
+// Shared by the Judging switch and the lineup's save button, which both open judging.
+function OpenJudgingDetails({
+  judgeCount,
+  lineupSize,
+  feedbackReleased = false,
+}: {
+  judgeCount: number
+  lineupSize: number
+  feedbackReleased?: boolean
+}) {
+  return (
+    <>
+      <DialogDescription>
+        {lineupSize === 0
+          ? "There are no projects to judge yet."
+          : `Your ${judgeCount === 1 ? "judge" : `${judgeCount} judges`} can start scoring the ${lineupSize} project${lineupSize === 1 ? "" : "s"} in the lineup.`}
+      </DialogDescription>
+      <ul className="jd-checklist">
+        {lineupSize === 0 && (
+          <li className="jd-warn">
+            Add projects in the Project lineup tab first.
+          </li>
+        )}
+        {lineupSize > 0 && judgeCount === 0 && (
+          <li className="jd-warn">
+            You haven't added any judges yet, so no one can score.
+          </li>
+        )}
+        <li>
+          While judging is open, you can't add, remove or reorder projects. You
+          can close judging at any time to make changes.
+        </li>
+        {feedbackReleased && (
+          <li className="jd-warn">
+            Teams won't see their feedback while judging is open. You can
+            release it again once judging closes.
+          </li>
+        )}
+      </ul>
+    </>
+  )
+}
 function JudgingSwitches({
   year,
   reviews,
@@ -248,6 +311,27 @@ function JudgingSwitches({
       (missingAnswers(review).length || !activeJudges.has(review.judgeId))
   ).length
   const completeDrafts = drafts - incompleteDrafts
+  const expected = judges.length * lineupSize
+  const judgingCopy = current.judgingOpen
+    ? {
+        title: "Judging is open",
+        text: "Judges can score projects and submit reviews. The project lineup is locked until you close judging.",
+      }
+    : {
+        title: "Judging is closed",
+        text: "Judges can't score projects yet. Open judging to let judges start judging.",
+      }
+  const feedbackCopy = current.feedbackReleased
+    ? {
+        title: "Feedback released to teams",
+        text: "Each team can read its own reviews, with every score and remark. Judge names stay hidden.",
+      }
+    : {
+        title: "Feedback not yet released to teams",
+        text: current.judgingOpen
+          ? "Teams can't see their judges' feedback yet. Releasing it will close judging first."
+          : "Release feedback when you're ready for teams to see it.",
+      }
   async function change(
     next: typeof current,
     message: string,
@@ -267,18 +351,10 @@ function JudgingSwitches({
   }
   return (
     <div className="jd-switches">
-      <div className="jd-switch-card">
+      <div className="jd-switch-card" data-guide="judging-switch">
         <div>
-          <strong>Judging</strong>
-          <p>
-            {current.judgingOpen
-              ? "Judges can save and submit feedback."
-              : current.feedbackReleased
-                ? "Marking is closed. Feedback has been released."
-                : lineupSize
-                  ? "Marking is paused. Turn it on to resume."
-                  : "Save a lineup to start marking automatically."}
-          </p>
+          <strong>{judgingCopy.title}</strong>
+          <p>{judgingCopy.text}</p>
         </div>
         <Switch
           label="Judging open"
@@ -291,14 +367,10 @@ function JudgingSwitches({
           }
         />
       </div>
-      <div className="jd-switch-card">
+      <div className="jd-switch-card" data-guide="feedback-switch">
         <div>
-          <strong>Feedback to teams</strong>
-          <p>
-            {current.feedbackReleased
-              ? "Teams can see each anonymous review: every score and remark."
-              : "Hidden from teams until you release it."}
-          </p>
+          <strong>{feedbackCopy.title}</strong>
+          <p>{feedbackCopy.text}</p>
         </div>
         <Switch
           label="Feedback released"
@@ -329,11 +401,31 @@ function JudgingSwitches({
           <DialogContent className="ad-modal am-dialog">
             <DialogTitle>Close judging?</DialogTitle>
             <DialogDescription>
-              {completeDrafts} complete draft{completeDrafts === 1 ? "" : "s"}{" "}
-              will be submitted automatically. {incompleteDrafts} incomplete
-              draft{incompleteDrafts === 1 ? " stays" : "s stay"} saved but will
-              not count towards results. Judges will no longer be able to edit.
+              Judges won't be able to score projects or change their reviews
+              until you open judging again.
             </DialogDescription>
+            {(completeDrafts > 0 || incompleteDrafts > 0) && (
+              <ul className="jd-checklist">
+                {completeDrafts > 0 && (
+                  <li>
+                    {completeDrafts === 1
+                      ? "1 finished draft"
+                      : `${completeDrafts} finished drafts`}{" "}
+                    will be submitted for the judges, so{" "}
+                    {completeDrafts === 1 ? "it counts" : "they count"} towards
+                    results.
+                  </li>
+                )}
+                {incompleteDrafts > 0 && (
+                  <li className="jd-warn">
+                    {incompleteDrafts === 1
+                      ? "1 unfinished draft"
+                      : `${incompleteDrafts} unfinished drafts`}{" "}
+                    will be kept but won't count towards results.
+                  </li>
+                )}
+              </ul>
+            )}
             <div className="ad-modal-actions">
               <button
                 className="ad-button"
@@ -348,7 +440,7 @@ function JudgingSwitches({
                 onClick={() =>
                   void change(
                     { ...current, judgingOpen: false },
-                    "Judging closed. Complete drafts were submitted; incomplete drafts remain saved."
+                    "Judging is closed. Judges can no longer change their reviews."
                   )
                 }
               >
@@ -367,34 +459,11 @@ function JudgingSwitches({
         >
           <DialogContent className="ad-modal am-dialog">
             <DialogTitle>Open judging?</DialogTitle>
-            <DialogDescription>
-              Judges will be able to save and submit feedback on every project
-              in the lineup.
-            </DialogDescription>
-            <ul className="jd-checklist">
-              {lineupSize === 0 ? (
-                <li className="jd-warn">
-                  The lineup is empty. Add projects in the Lineup tab before
-                  opening judging.
-                </li>
-              ) : (
-                <li>
-                  {lineupSize} project{lineupSize === 1 ? "" : "s"} in the
-                  lineup, {judges.length} active judge
-                  {judges.length === 1 ? "" : "s"}.
-                </li>
-              )}
-              <li>
-                The lineup locks while judging is open: no adding, removing or
-                reordering projects. Close judging to change it.
-              </li>
-              {current.feedbackReleased && (
-                <li className="jd-warn">
-                  Feedback is hidden from teams again while judging is open.
-                  Release it again after you close judging.
-                </li>
-              )}
-            </ul>
+            <OpenJudgingDetails
+              judgeCount={judges.length}
+              lineupSize={lineupSize}
+              feedbackReleased={current.feedbackReleased}
+            />
             {error && (
               <p className="ad-error" role="alert">
                 {error}
@@ -414,11 +483,11 @@ function JudgingSwitches({
                 onClick={() =>
                   void change(
                     { judgingOpen: true, feedbackReleased: false },
-                    "Judging opened. Judges can now save and submit feedback. The lineup is locked."
+                    "Judging is open. Judges can now score projects."
                   )
                 }
               >
-                {busy ? "Opening…" : "Open judging and lock lineup"}
+                {busy ? "Opening…" : "Open judging"}
               </button>
             </div>
           </DialogContent>
@@ -432,51 +501,26 @@ function JudgingSwitches({
           }}
         >
           <DialogContent className="ad-modal am-dialog">
-            <DialogTitle>
-              {current.judgingOpen
-                ? "Close judging and release feedback?"
-                : "Release feedback to teams?"}
-            </DialogTitle>
+            <DialogTitle>Release feedback to teams?</DialogTitle>
             <DialogDescription>
-              Each team will see every submitted review in full, all eight
-              scores and both section reviews, in random order. Reviews are
-              labelled only “Main judge” or “Special award judge”; names stay
+              Each team will see its own scores and comments. Judge names stay
               hidden.
             </DialogDescription>
             <ul className="jd-checklist">
-              <li>
-                {submitted} submitted review{submitted === 1 ? "" : "s"} across{" "}
-                {lineupSize} project{lineupSize === 1 ? "" : "s"} (
-                {judges.length * lineupSize} expected).
+              <li className={submitted < expected ? "jd-warn" : undefined}>
+                {submitted} of {expected} reviews are in.
               </li>
               {current.judgingOpen && (
-                <li>
-                  Judging is still open. Releasing closes it first, so no review
-                  can change once teams see it.
-                </li>
-              )}
-              {current.judgingOpen && completeDrafts > 0 && (
-                <li>
-                  {completeDrafts} complete draft
-                  {completeDrafts === 1 ? " is" : "s are"} not submitted yet.
-                  Closing judging submits {completeDrafts === 1 ? "it" : "them"}{" "}
-                  automatically.
-                </li>
+                <li>Judges won't be able to change their scores after this.</li>
               )}
               {incompleteDrafts > 0 && (
                 <li className="jd-warn">
-                  {incompleteDrafts} draft
-                  {incompleteDrafts === 1 ? " is" : "s are"} incomplete and
-                  won’t reach the team.
+                  {incompleteDrafts} unfinished draft
+                  {incompleteDrafts === 1 ? " won't" : "s won't"} be shared.
                 </li>
               )}
               <li>
-                No notification email is sent. Teams view feedback after signing
-                in to their project page.
-              </li>
-              <li>
-                Discard any test reviews before releasing. Released reviews stay
-                visible to teams, even if a judge is deleted later.
+                Teams won't get an email. They'll see it on their project page.
               </li>
             </ul>
             {error && (
@@ -489,9 +533,8 @@ function JudgingSwitches({
                 type="checkbox"
                 checked={releaseChecked}
                 onChange={(event) => setReleaseChecked(event.target.checked)}
-              />{" "}
-              I checked coverage and reviewed the comments for identifying or
-              inappropriate content.
+              />
+              <span>I've read the comments and they're okay to share.</span>
             </label>
             <div className="ad-modal-actions">
               <button
@@ -511,17 +554,11 @@ function JudgingSwitches({
                 onClick={() =>
                   void change(
                     { judgingOpen: false, feedbackReleased: true },
-                    current.judgingOpen
-                      ? "Judging closed and feedback released. Teams can now see it on their project page."
-                      : "Feedback released. Teams can now see it on their project page."
+                    "Feedback released. Teams can now see it on their project page."
                   )
                 }
               >
-                {busy
-                  ? "Releasing…"
-                  : current.judgingOpen
-                    ? "Close judging and release"
-                    : "Release feedback"}
+                {busy ? "Releasing…" : "Release feedback"}
               </button>
             </div>
           </DialogContent>
@@ -590,7 +627,7 @@ function JudgeManagement({
 }) {
   const { judges } = useCommitteeJudging()
   const [query, setQuery] = useState("")
-  const [filter, setFilter] = useState<"cohort" | "all" | "deleted">("cohort")
+  const [allCohorts, setAllCohorts] = useState(false)
   const [editing, setEditing] = useState<CommitteeJudge | "new" | null>(null)
   const [importOpen, setImportOpen] = useState(false)
   const [deleting, setDeleting] = useState<CommitteeJudge | null>(null)
@@ -600,10 +637,8 @@ function JudgeManagement({
   const [busy, setBusy] = useState(false)
   const shown = judges.filter(
     (judge) =>
-      (filter === "deleted"
-        ? judge.deletedAt
-        : !judge.deletedAt &&
-          (filter === "all" || judge.cohortYear === year)) &&
+      !judge.deletedAt &&
+      (allCohorts || judge.cohortYear === year) &&
       `${judge.name} ${judge.email} ${judge.affiliation}`
         .toLowerCase()
         .includes(query.trim().toLowerCase())
@@ -620,6 +655,7 @@ function JudgeManagement({
   const cohort = judges.filter(
     (judge) => judge.cohortYear === year && !judge.deletedAt
   )
+  const uninvited = cohort.filter((judge) => !judge.invitedAt && !judge.revoked)
 
   async function send() {
     if (!invitees.length || busy) return
@@ -648,21 +684,23 @@ function JudgeManagement({
 
   return (
     <>
-      <div className="am-summary">
-        <span>
-          <strong>{cohort.length}</strong> judges for {year}
-        </span>
-        <span>
-          <strong>
-            {cohort.filter((judge) => judge.invitedAt && !judge.revoked).length}
-          </strong>{" "}
-          invited
-        </span>
-        <span>
-          <strong>{cohort.filter((judge) => !judge.revoked).length}</strong>{" "}
-          active
-        </span>
-      </div>
+      {uninvited.length > 0 && (
+        <div className="jd-uninvited" data-guide="access-codes">
+          <Mail size={15} aria-hidden />
+          <span>
+            {uninvited.length} judge
+            {uninvited.length === 1 ? " hasn't" : "s haven't"} been sent an
+            access code.
+          </span>
+          <button
+            className="ad-button"
+            disabled={busy}
+            onClick={() => setConfirmIds(uninvited.map((judge) => judge.id))}
+          >
+            Send access code{uninvited.length === 1 ? "" : "s"}
+          </button>
+        </div>
+      )}
       <div className="am-toolbar">
         <label className="am-search">
           <Search size={16} aria-hidden />
@@ -673,17 +711,18 @@ function JudgeManagement({
             aria-label="Search judges"
           />
         </label>
-        <select
-          aria-label="Filter judges"
-          value={filter}
-          onChange={(event) => setFilter(event.target.value as typeof filter)}
-        >
-          <option value="cohort">{year} judges</option>
-          <option value="all">All cohorts</option>
-          <option value="deleted">Deleted judges</option>
-        </select>
+        <AdminSelect
+          label="Show judges from"
+          value={allCohorts ? "all" : "cohort"}
+          onChange={(value) => setAllCohorts(value === "all")}
+          options={[
+            { value: "cohort", label: `${year} cohort` },
+            { value: "all", label: "All cohorts" },
+          ]}
+        />
         <button
           className="ad-button ad-primary"
+          data-guide="add-judge"
           onClick={() => setEditing("new")}
         >
           <Plus size={15} aria-hidden /> Add judge
@@ -705,7 +744,7 @@ function JudgeManagement({
           <button onClick={() => setSelected([])}>Clear</button>
         </div>
       )}
-      <div className="am-table-wrap">
+      <div className="am-table-wrap" data-guide="judges-table">
         <table className="am-table">
           <thead>
             <tr>
@@ -732,7 +771,7 @@ function JudgeManagement({
                 />
               </th>
               <th>Judge</th>
-              <th>Reviews submitted</th>
+              <th className="jd-num">Reviews submitted</th>
               <th>Access</th>
               <th>
                 <span className="sr-only">Actions</span>
@@ -762,15 +801,18 @@ function JudgeManagement({
                     />
                   </td>
                   <td>
-                    <strong>{judge.name}</strong>
-                    {judge.kind === "special" && (
-                      <span className="jd-kind">Special award</span>
-                    )}
-                    <span>
-                      {judge.affiliation || "Affiliation not added"}
-                      {judge.cohortYear !== year &&
-                        ` · ${judge.cohortYear} cohort`}
-                    </span>
+                    <div className="jd-judge-name">
+                      <strong>{judge.name}</strong>
+                      {judge.kind === "special" && (
+                        <span className="jd-kind">Special award</span>
+                      )}
+                      {judge.cohortYear !== year && (
+                        <span className="jd-kind jd-kind-cohort">
+                          {judge.cohortYear} cohort
+                        </span>
+                      )}
+                    </div>
+                    <span>{judge.affiliation || "Affiliation not added"}</span>
                     <span className="am-email">{judge.email}</span>
                   </td>
                   <td className="jd-num">
@@ -780,9 +822,17 @@ function JudgeManagement({
                   </td>
                   <td>
                     <span
-                      className={`am-status ${judge.revoked || judge.deletedAt ? "am-status-muted" : ""}`}
+                      className={`jd-pill ${
+                        judge.deletedAt
+                          ? "jd-pill-danger"
+                          : judge.revoked
+                            ? "jd-pill-warning"
+                            : judge.invitedAt
+                              ? "jd-pill-success"
+                              : "jd-pill-default"
+                      }`}
                     >
-                      <i />
+                      <i aria-hidden />
                       {judge.deletedAt
                         ? "Deleted"
                         : judge.revoked
@@ -839,20 +889,15 @@ function JudgeManagement({
           <div className="am-empty">
             <Gavel size={24} aria-hidden />
             <h2>
-              {filter === "deleted"
-                ? "No deleted judges"
-                : `No judges for ${year} yet`}
+              {allCohorts ? "No judges yet" : `No judges for ${year} yet`}
             </h2>
             <p>
-              {filter === "deleted"
-                ? "Deleted judges appear here so you can restore them."
-                : "Add each judge, then send their access codes when the lineup is ready."}
+              Add each judge, then send their access codes when the lineup is
+              ready.
             </p>
-            {filter !== "deleted" && (
-              <button className="ad-button" onClick={() => setEditing("new")}>
-                Add judge
-              </button>
-            )}
+            <button className="ad-button" onClick={() => setEditing("new")}>
+              Add judge
+            </button>
           </div>
         )}
       </div>
@@ -1190,7 +1235,7 @@ function JudgeEditor({
         if (!open && !saving) onClose()
       }}
     >
-      <DialogContent className="ad-modal am-dialog am-editor">
+      <DialogContent className="ad-modal am-dialog am-editor jd-dialog-select">
         <DialogTitle>{judge ? "Edit judge" : "Add judge"}</DialogTitle>
         <DialogDescription>
           Judges see only their cohort’s Demo Day lineup. Mentors and
@@ -1411,6 +1456,7 @@ function LineupEditor({
   reviews,
   locked,
   feedbackReleased,
+  judgeCount,
   onNotice,
 }: {
   year: number
@@ -1419,6 +1465,7 @@ function LineupEditor({
   reviews: CommitteeReview[]
   locked: boolean
   feedbackReleased: boolean
+  judgeCount: number
   onNotice: (text: string) => void
 }) {
   const cohortBoards = useMemo(
@@ -1430,6 +1477,7 @@ function LineupEditor({
   )
   const [adding, setAdding] = useState("")
   const [saving, setSaving] = useState(false)
+  const [confirming, setConfirming] = useState(false)
   const [error, setError] = useState("")
   const dirty = order.join() !== saved.join()
   const remaining = cohortBoards.filter((board) => !order.includes(board.id))
@@ -1449,9 +1497,10 @@ function LineupEditor({
     setError("")
     try {
       await setLineup(year, order)
+      setConfirming(false)
       onNotice(
         order.length
-          ? `Lineup saved. Judges can now mark ${order.length} project${order.length === 1 ? "" : "s"}. Feedback stays hidden until you release it.`
+          ? "Lineup saved and judging is open. Judges can now score projects."
           : "Lineup cleared. Marking is closed."
       )
     } catch (cause) {
@@ -1469,7 +1518,7 @@ function LineupEditor({
             ? "Feedback has been released. Hide it before changing the lineup."
             : "The lineup is locked while judging is open. Close judging to add, remove or reorder projects."}
         </p>
-        <ol className="jd-lineup">
+        <ol className="jd-lineup" data-guide="lineup">
           {saved.map((id, index) => {
             const board = cohortBoards.find((item) => item.id === id)
             return (
@@ -1490,11 +1539,14 @@ function LineupEditor({
   return (
     <div>
       {/* Sticky, so saving never needs a scroll to the end of a long lineup. */}
-      <div className={`jd-lineup-bar${dirty ? "jd-dirty" : ""}`}>
+      <div
+        className={dirty ? "jd-lineup-bar jd-dirty" : "jd-lineup-bar"}
+        data-guide="lineup-save"
+      >
         <p className="jd-intro">
           {order.length
-            ? "Saving starts marking and locks the lineup. Feedback stays private."
-            : "Add projects to start marking."}
+            ? "Judges will see projects in this order. You can't change the lineup while judging is open."
+            : "Add projects, then save to open judging."}
         </p>
         <div className="jd-lineup-save">
           {!dirty && saved.length > 0 && (
@@ -1510,12 +1562,15 @@ function LineupEditor({
           <button
             className="ad-button ad-primary"
             disabled={(!dirty && !order.length) || saving}
-            onClick={() => void save()}
+            // An empty lineup doesn't open judging, so it saves straight away.
+            onClick={() =>
+              order.length ? (setError(""), setConfirming(true)) : void save()
+            }
           >
             {saving
               ? "Saving…"
               : order.length
-                ? "Save lineup and start marking"
+                ? "Save lineup and open judging"
                 : "Save empty lineup"}
           </button>
         </div>
@@ -1527,6 +1582,7 @@ function LineupEditor({
         values={order}
         onReorder={setOrder}
         className="jd-lineup"
+        data-guide="lineup"
       >
         {order.map((id, index) => {
           const board = cohortBoards.find((item) => item.id === id)
@@ -1553,7 +1609,7 @@ function LineupEditor({
         </div>
       )}
       {remaining.length > 0 && (
-        <div className="jd-lineup-add">
+        <div className="jd-lineup-add" data-guide="lineup-add">
           <select
             aria-label="Project to add"
             value={adding}
@@ -1597,10 +1653,47 @@ function LineupEditor({
           hides it from judges. Feedback already given is kept.
         </p>
       )}
-      {error && (
+      {error && !confirming && (
         <p className="ad-error" role="alert">
           {error}
         </p>
+      )}
+      {confirming && (
+        <Dialog
+          open
+          onOpenChange={(open) => {
+            if (!open && !saving) setConfirming(false)
+          }}
+        >
+          <DialogContent className="ad-modal am-dialog">
+            <DialogTitle>Save lineup and open judging?</DialogTitle>
+            <OpenJudgingDetails
+              judgeCount={judgeCount}
+              lineupSize={order.length}
+            />
+            {error && (
+              <p className="ad-error" role="alert">
+                {error}
+              </p>
+            )}
+            <div className="ad-modal-actions">
+              <button
+                className="ad-button"
+                disabled={saving}
+                onClick={() => setConfirming(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="ad-button ad-primary"
+                disabled={saving}
+                onClick={() => void save()}
+              >
+                {saving ? "Opening…" : "Save and open judging"}
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   )
@@ -1696,12 +1789,36 @@ function Results({
   const [open, setOpen] = useState<string | null>(null)
   const [discarding, setDiscarding] = useState<CommitteeReview | null>(null)
   const [award, setAward] = useState("main")
-  const pool = judgesForAward(allJudges, award)
+  // "all" is an overview of every judge's scores, with three rankings.
+  const overview = award === "all"
+  const pool = overview
+    ? [...allJudges].sort(
+        (a, b) => Number(a.kind === "special") - Number(b.kind === "special")
+      )
+    : judgesForAward(allJudges, award)
   const reviews = allReviews.filter((review) =>
     pool.some((judge) => judge.id === review.judgeId)
   )
   const results = lineup.map((board) => projectResult(board.id, reviews))
   const ranks = rankResults(results)
+  // The overview ranks projects three ways: by main judges, by special award
+  // judges together, and by every judge together.
+  const rankBy = (include: (judge: CommitteeJudge) => boolean) => {
+    const ids = new Set(allJudges.filter(include).map((judge) => judge.id))
+    const scoped = allReviews.filter((review) => ids.has(review.judgeId))
+    return rankResults(lineup.map((board) => projectResult(board.id, scoped)))
+  }
+  const overviewRanks = overview
+    ? [
+        { key: "main", label: "Main", ranks: rankBy((j) => j.kind === "main") },
+        {
+          key: "special",
+          label: "Special",
+          ranks: rankBy((j) => j.kind === "special"),
+        },
+        { key: "all", label: "All", ranks: rankBy(() => true) },
+      ]
+    : []
   const activeJudges = judges.filter(
     (judge) => !judge.revoked && pool.some((item) => item.id === judge.id)
   )
@@ -1713,7 +1830,8 @@ function Results({
         !activeJudges.includes(judge) &&
         reviews.some((review) => review.judgeId === judge.id)
     ),
-  ]
+  ].sort((a, b) => Number(a.kind === "special") - Number(b.kind === "special"))
+
   const submitted = reviews.filter((review) => review.submittedAt).length
   const judgeName = (id: string) =>
     allJudges.find((judge) => judge.id === id)?.name || "Unknown judge"
@@ -1747,67 +1865,122 @@ function Results({
     )
   return (
     <>
-      <label className="ad-field">
-        Award results
-        <select
-          aria-label="Award results"
+      <div className="jd-results-bar" data-guide="results-bar">
+        <AdminSelect
+          label="Award results"
           value={award}
-          onChange={(event) => setAward(event.target.value)}
-        >
-          <option value="main">Main award</option>
-          {allJudges
-            .filter(
-              (judge) => judge.kind === "special" && judge.cohortYear === year
-            )
-            .map((judge) => (
-              <option key={judge.id} value={judge.id}>
-                Special award · {judge.affiliation || judge.name}
-              </option>
-            ))}
-        </select>
-      </label>
-      <div className="am-summary jd-results-head">
-        <span>
-          <strong>{submitted}</strong> of {activeJudges.length * lineup.length}{" "}
-          reviews submitted
-        </span>
-        <span>
-          <strong>{reviews.length - submitted}</strong> drafts
-        </span>
+          onChange={setAward}
+          options={[
+            { value: "all", label: "All judges (overview)" },
+            { value: "main", label: "Main award" },
+            ...allJudges
+              .filter(
+                (judge) => judge.kind === "special" && judge.cohortYear === year
+              )
+              .map((judge) => ({
+                value: judge.id,
+                label: `Special award · ${judge.affiliation || judge.name}`,
+              })),
+          ]}
+        />
+        <div className="jd-results-stats">
+          <span>
+            <strong>{submitted}</strong> of{" "}
+            {activeJudges.length * lineup.length} reviews submitted
+          </span>
+          <span>
+            <strong>{reviews.length - submitted}</strong>{" "}
+            {reviews.length - submitted === 1 ? "draft" : "drafts"}
+          </span>
+        </div>
         <button
-          className="ad-button"
+          className="ad-button jd-export"
           disabled={!reviews.length}
           onClick={download}
         >
           <Download size={15} aria-hidden /> Export CSV
         </button>
       </div>
-      <p className="jd-intro">
-        Scores use submitted reviews only. Total is out of {MAX_TOTAL} (8
-        criteria × 5), averaged within the selected award only. Rankings are
-        provisional until coverage is complete. Select a project to see each
-        review.
+      <p className="jd-intro jd-results-note">
+        {overview
+          ? `Every judge's total score out of ${MAX_TOTAL}, for every project. Ranks compare averages from main judges, special award judges and all judges. Pick an award to see its averages.`
+          : `Scores are totals out of ${MAX_TOTAL}, from submitted reviews only. Rankings can change until every review is in. Select a project to read its reviews.`}
       </p>
-      <div className="am-table-wrap">
+      <div className="am-table-wrap" data-guide="results-table">
         <table className="jd-table">
           <thead>
+            <tr className="jd-head-group">
+              <th rowSpan={2}>Order</th>
+              <th rowSpan={2}>Project</th>
+              {columns.length > 0 && (
+                <th colSpan={columns.length} className="jd-group-label">
+                  Judge scores, out of {MAX_TOTAL}
+                </th>
+              )}
+              {!overview && (
+                <th rowSpan={2} className="jd-num jd-center">
+                  Average
+                  <small>out of {MAX_TOTAL}</small>
+                </th>
+              )}
+              {overview ? (
+                <th colSpan={3} className="jd-group-label jd-rank-first">
+                  Rank by judges
+                </th>
+              ) : (
+                <th rowSpan={2} className="jd-num jd-center">
+                  Rank
+                </th>
+              )}
+            </tr>
             <tr>
-              <th>#</th>
-              <th>Project</th>
               {columns.map((judge) => (
                 <th
                   key={judge.id}
                   className="jd-judge-col"
-                  title={`${judge.name} · ${judge.email}`}
+                  title={`${judge.name}${judge.kind === "special" ? " · Special award" : ""} · ${judge.email}`}
                 >
-                  {judge.name.replace(
-                    /^((assoc\.?\s+)?prof\.?|dr\.?|mr\.?|ms\.?|mrs\.?)\s+/i,
-                    ""
-                  )}
+                  <span
+                    className={
+                      judge.kind === "special"
+                        ? "jd-judge-head jd-judge-special"
+                        : "jd-judge-head"
+                    }
+                  >
+                    {judge.kind === "special" && (
+                      <>
+                        <Star size={11} aria-hidden />
+                        <span className="sr-only">Special award judge: </span>
+                      </>
+                    )}
+                    {judge.name.replace(
+                      /^((assoc\.?\s+)?prof\.?|dr\.?|mr\.?|ms\.?|mrs\.?)\s+/i,
+                      ""
+                    )}
+                  </span>
                 </th>
               ))}
-              <th className="jd-num">Avg total</th>
-              <th className="jd-num">Rank</th>
+              {overviewRanks.map((rank) => (
+                <th
+                  key={rank.key}
+                  className={
+                    rank.key === "main"
+                      ? "jd-judge-col jd-rank-col jd-rank-first"
+                      : "jd-judge-col jd-rank-col"
+                  }
+                >
+                  <span
+                    className={
+                      rank.key === "special"
+                        ? "jd-judge-head jd-judge-special"
+                        : "jd-judge-head"
+                    }
+                  >
+                    {rank.key === "special" && <Star size={11} aria-hidden />}
+                    {rank.label}
+                  </span>
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -1826,23 +1999,27 @@ function Results({
                   >
                     <td>{index + 1}</td>
                     <td>
-                      <button
-                        className="jd-expand"
-                        aria-expanded={expanded}
-                        aria-label={`${expanded ? "Hide" : "Show"} reviews for ${board.code}`}
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          setOpen(expanded ? null : board.id)
-                        }}
-                      >
-                        {expanded ? (
-                          <ChevronDown size={14} aria-hidden />
-                        ) : (
-                          <ChevronRight size={14} aria-hidden />
-                        )}
-                        <span className="jd-code">{board.code}</span>
-                      </button>
-                      <span className="jd-title">{board.title}</span>
+                      <div className="jd-project-cell">
+                        <button
+                          className="jd-expand"
+                          aria-expanded={expanded}
+                          aria-label={`${expanded ? "Hide" : "Show"} reviews for ${board.code}`}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            setOpen(expanded ? null : board.id)
+                          }}
+                        >
+                          {expanded ? (
+                            <ChevronDown size={14} aria-hidden />
+                          ) : (
+                            <ChevronRight size={14} aria-hidden />
+                          )}
+                          <span className="jd-code">{board.code}</span>
+                        </button>
+                        <span className="jd-title" title={board.title}>
+                          {board.title}
+                        </span>
+                      </div>
                     </td>
                     {columns.map((judge) => {
                       const review = projectReviews.find(
@@ -1850,18 +2027,37 @@ function Results({
                       )
                       return (
                         <td key={judge.id} className="jd-judge-col">
-                          <ReviewDot review={review} judge={judge.name} />
+                          <ScoreCell review={review} judge={judge.name} />
                         </td>
                       )
                     })}
-                    <td className="jd-num">
-                      {result.averageTotal?.toFixed(1) ?? "–"}
-                    </td>
-                    <td className="jd-num">{ranks.get(board.id) ?? "–"}</td>
+                    {!overview && (
+                      <td className="jd-num jd-center jd-average">
+                        {result.averageTotal?.toFixed(1) ?? "–"}
+                      </td>
+                    )}
+                    {overview ? (
+                      overviewRanks.map((rank) => (
+                        <td
+                          key={rank.key}
+                          className={
+                            rank.key === "main"
+                              ? "jd-num jd-center jd-rank-first"
+                              : "jd-num jd-center"
+                          }
+                        >
+                          {rank.ranks.get(board.id) ?? "–"}
+                        </td>
+                      ))
+                    ) : (
+                      <td className="jd-num jd-center">
+                        {ranks.get(board.id) ?? "–"}
+                      </td>
+                    )}
                   </tr>
                   {expanded && (
                     <tr className="jd-detail-row">
-                      <td colSpan={columns.length + 4}>
+                      <td colSpan={columns.length + (overview ? 5 : 4)}>
                         {projectReviews.length ? (
                           <div className="jd-detail">
                             {result.averages && (
@@ -1958,27 +2154,199 @@ function Results({
   )
 }
 
-function ReviewDot({
+/** One judge's total for one project: a number once submitted, otherwise its status. */
+type GuideProgress = {
+  judges: number
+  uninvited: number
+  lineup: number
+  submitted: number
+  judgingOpen: boolean
+  feedbackReleased: boolean
+}
+
+type GuideStep = {
+  phase: string
+  title: string
+  text: string
+  section?: Section
+  // Highlight the first of these that is on the page.
+  targets: (progress: GuideProgress) => string[]
+  done: (progress: GuideProgress) => boolean
+}
+
+const guideSteps: GuideStep[] = [
+  {
+    phase: "Before the event",
+    title: "Add judges",
+    text: "Add your judges, then send each one their access code to sign in.",
+    section: "judges",
+    targets: (progress) =>
+      progress.judges ? ["access-codes", "judges-table"] : ["add-judge"],
+    done: (progress) => progress.judges > 0 && progress.uninvited === 0,
+  },
+  {
+    phase: "Before the event",
+    title: "Set up the lineup",
+    text: "Add your projects, then drag and drop them into the order they’ll present.",
+    section: "lineup",
+    targets: () => ["lineup-add", "lineup"],
+    done: (progress) => progress.lineup > 0,
+  },
+  {
+    phase: "On demo day",
+    title: "Open judging",
+    text: "Save your lineup, or switch on Judging to let judges start scoring.",
+    targets: () => ["judging-switch"],
+    done: (progress) =>
+      progress.judgingOpen ||
+      progress.submitted > 0 ||
+      progress.feedbackReleased,
+  },
+  {
+    phase: "After demo day",
+    title: "Look at the results",
+    text: "Check each project’s average score and ranking here.",
+    section: "results",
+    targets: () => ["results-bar"],
+    done: (progress) => progress.feedbackReleased,
+  },
+  {
+    phase: "When you're ready",
+    title: "Release feedback",
+    text: "Once all the scores are in, turn on Feedback so teams (participants & mentors) can read their reviews.",
+    targets: () => ["feedback-switch"],
+    done: (progress) => progress.feedbackReleased,
+  },
+]
+
+function spotlight(targets: string[]) {
+  const element = targets
+    .map((target) => document.querySelector(`[data-guide="${target}"]`))
+    .find(Boolean)
+  if (!(element instanceof HTMLElement)) return
+  element.scrollIntoView({ behavior: "smooth", block: "center" })
+  element.classList.remove("jd-spotlight")
+  // Restart the animation when the same target is shown twice in a row.
+  void element.offsetWidth
+  element.classList.add("jd-spotlight")
+  window.setTimeout(() => element.classList.remove("jd-spotlight"), 2600)
+}
+
+function JudgingSteps({
+  progress,
+  onSection,
+}: {
+  progress: GuideProgress
+  onSection: (section: Section) => void
+}) {
+  const [hidden, setHiddenState] = useState(() => {
+    try {
+      return localStorage.getItem("myssp-judging-steps") === "hidden"
+    } catch {
+      return false
+    }
+  })
+  const setHidden = (value: boolean) => {
+    setHiddenState(value)
+    try {
+      localStorage.setItem("myssp-judging-steps", value ? "hidden" : "shown")
+    } catch {
+      // Remembering this is only a convenience.
+    }
+  }
+  const doneSteps = guideSteps.map((step) => step.done(progress))
+  const doneCount = doneSteps.filter(Boolean).length
+  const nextIndex = doneSteps.indexOf(false)
+
+  const go = (step: GuideStep) => {
+    if (step.section) onSection(step.section)
+    // Wait for the tab to render before looking for the highlighted element.
+    window.setTimeout(() => spotlight(step.targets(progress)), 80)
+  }
+
+  return (
+    <section className="jd-steps" aria-labelledby="judging-steps-title">
+      <header>
+        <h3 id="judging-steps-title">
+          How to run judging
+          <span>
+            {doneCount} of {guideSteps.length} done
+          </span>
+        </h3>
+        <button
+          className="jd-steps-toggle"
+          aria-expanded={!hidden}
+          aria-controls="judging-steps-list"
+          onClick={() => setHidden(!hidden)}
+        >
+          {hidden ? "Show steps" : "Hide steps"}
+          <ChevronDown size={14} aria-hidden />
+        </button>
+      </header>
+      {!hidden && (
+        <ol id="judging-steps-list">
+          {guideSteps.map((step, index) => {
+            const done = doneSteps[index]
+            const next = index === nextIndex
+            return (
+              <li key={step.title}>
+                <button
+                  className={
+                    done
+                      ? "jd-step jd-step-done"
+                      : next
+                        ? "jd-step jd-step-next"
+                        : "jd-step"
+                  }
+                  aria-current={next ? "step" : undefined}
+                  onClick={() => go(step)}
+                >
+                  <span className="jd-step-top">
+                    <span className="jd-step-mark" aria-hidden>
+                      {done ? <Check size={13} /> : index + 1}
+                    </span>
+                    <span className="jd-step-phase">
+                      {done ? "Done" : next ? "Up next" : step.phase}
+                    </span>
+                  </span>
+                  <strong>{step.title}</strong>
+                  <span className="jd-step-text">{step.text}</span>
+                  <span className="jd-step-go">
+                    Go there <ChevronRight size={13} aria-hidden />
+                  </span>
+                </button>
+              </li>
+            )
+          })}
+        </ol>
+      )}
+    </section>
+  )
+}
+
+function ScoreCell({
   review,
   judge,
 }: {
   review?: CommitteeReview
   judge: string
 }) {
-  const status = !review
+  const total = review?.submittedAt ? reviewTotal(review) : null
+  const label = !review
     ? "Not started"
     : review.submittedAt
-      ? "Submitted"
-      : "Draft"
-  const Icon = !review ? CircleDashed : review.submittedAt ? Check : PencilLine
+      ? `Submitted, ${total ?? "–"} out of ${MAX_TOTAL}`
+      : "Draft, not counted yet"
   return (
     <span
-      className={`jd-dot jd-dot-${status.split(" ")[0].toLowerCase()}`}
-      title={`${judge}: ${status}`}
+      className={`jd-score ${!review ? "jd-score-empty" : review.submittedAt ? "" : "jd-score-draft"}`}
+      title={`${judge}: ${label}`}
     >
-      <Icon size={13} aria-hidden />
+      <span aria-hidden>
+        {!review ? "–" : review.submittedAt ? (total ?? "–") : "Draft"}
+      </span>
       <span className="sr-only">
-        {judge}: {status}
+        {judge}: {label}
       </span>
     </span>
   )
