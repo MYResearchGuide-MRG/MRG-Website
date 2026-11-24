@@ -1,12 +1,12 @@
 import { useState } from "react"
-import { RotateCcw, Trash2 } from "lucide-react"
+import { RotateCcw, Trash2, X } from "lucide-react"
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { setDeletedLive, useBackend } from "./backend"
+import { purgeDeletedLive, setDeletedLive, useBackend } from "./backend"
 import { AdminSelect } from "./AdminSelect"
 
 export type RecordAction = {
@@ -14,6 +14,8 @@ export type RecordAction = {
   id: string
   label: string
   remove: boolean
+  /** Permanently delete a record that is already in Trash. */
+  purge?: boolean
   projectId?: string
 }
 
@@ -44,20 +46,37 @@ export function Trash({
                 <p>{project.payload.title}</p>
                 <small>Restores hidden, with editing locked.</small>
               </div>
-              <button
-                className="ad-button"
-                aria-label={`Restore ${project.code}`}
-                onClick={() =>
-                  onAction({
-                    kind: "project",
-                    id: project.id,
-                    label: project.code,
-                    remove: false,
-                  })
-                }
-              >
-                <RotateCcw size={15} /> Restore
-              </button>
+              <div className="ad-trash-actions">
+                <button
+                  className="ad-button"
+                  aria-label={`Restore ${project.code}`}
+                  onClick={() =>
+                    onAction({
+                      kind: "project",
+                      id: project.id,
+                      label: project.code,
+                      remove: false,
+                    })
+                  }
+                >
+                  <RotateCcw size={15} /> Restore
+                </button>
+                <button
+                  className="ad-button ad-danger"
+                  aria-label={`Delete ${project.code} forever`}
+                  onClick={() =>
+                    onAction({
+                      kind: "project",
+                      id: project.id,
+                      label: project.code,
+                      remove: true,
+                      purge: true,
+                    })
+                  }
+                >
+                  <X size={15} /> Delete forever
+                </button>
+              </div>
             </article>
           ))}
         </section>
@@ -71,21 +90,38 @@ export function Trash({
                 <strong>{person.name}</strong>
                 <p>{person.email}</p>
               </div>
-              <button
-                className="ad-button"
-                aria-label={`Restore ${person.name}`}
-                onClick={() =>
-                  onAction({
-                    kind: "participant",
-                    id: person.id,
-                    label: person.name,
-                    projectId: person.projectId,
-                    remove: false,
-                  })
-                }
-              >
-                <RotateCcw size={15} /> Restore
-              </button>
+              <div className="ad-trash-actions">
+                <button
+                  className="ad-button"
+                  aria-label={`Restore ${person.name}`}
+                  onClick={() =>
+                    onAction({
+                      kind: "participant",
+                      id: person.id,
+                      label: person.name,
+                      projectId: person.projectId,
+                      remove: false,
+                    })
+                  }
+                >
+                  <RotateCcw size={15} /> Restore
+                </button>
+                <button
+                  className="ad-button ad-danger"
+                  aria-label={`Delete ${person.name} forever`}
+                  onClick={() =>
+                    onAction({
+                      kind: "participant",
+                      id: person.id,
+                      label: person.name,
+                      remove: true,
+                      purge: true,
+                    })
+                  }
+                >
+                  <X size={15} /> Delete forever
+                </button>
+              </div>
             </article>
           ))}
         </section>
@@ -109,6 +145,7 @@ export function RecordActionDialog({
   )
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
+  const purging = Boolean(action.purge)
   const restoringPerson = !action.remove && action.kind === "participant"
   const restoringProject = !action.remove && action.kind === "project"
     ? deletedProjects.find((project) => project.id === action.id)
@@ -124,12 +161,14 @@ export function RecordActionDialog({
     setBusy(true)
     setError("")
     try {
-      await setDeletedLive(
-        action.kind,
-        action.id,
-        action.remove,
-        restoringPerson ? destination : undefined
-      )
+      if (purging) await purgeDeletedLive(action.kind, action.id)
+      else
+        await setDeletedLive(
+          action.kind,
+          action.id,
+          action.remove,
+          restoringPerson ? destination : undefined
+        )
       onComplete()
     } catch (err) {
       setError(
@@ -154,10 +193,15 @@ export function RecordActionDialog({
         }}
       >
         <DialogTitle>
-          {action.remove ? "Delete" : "Restore"} {action.label}?
+          {purging ? "Permanently delete" : action.remove ? "Delete" : "Restore"}{" "}
+          {action.label}?
         </DialogTitle>
         <DialogDescription>
-          {action.remove
+          {purging
+            ? action.kind === "participant"
+              ? "This erases their name, email and profile photo for good. It cannot be undone."
+              : `This erases the project page, its submission and images, review notes, judge feedback${assignedCount ? ` and its ${assignedCount} assigned participant${assignedCount === 1 ? "" : "s"}` : ""} for good. It cannot be undone.`
+            : action.remove
             ? action.kind === "participant"
               ? "This removes them from the student list and stops their project access. Their team's work is kept. You can restore them from Trash."
               : `This hides the project and stops access for its ${assignedCount} assigned participant${assignedCount === 1 ? "" : "s"}. Materials and assignments are kept in Trash.`
@@ -204,7 +248,13 @@ export function RecordActionDialog({
             disabled={busy || Boolean(restoreError) || (restoringPerson && !destination)}
             onClick={() => void submit()}
           >
-            {busy ? "Saving…" : action.remove ? "Move to Trash" : "Restore"}
+            {busy
+              ? "Saving…"
+              : purging
+                ? "Delete forever"
+                : action.remove
+                  ? "Move to Trash"
+                  : "Restore"}
           </button>
         </div>
       </DialogContent>
