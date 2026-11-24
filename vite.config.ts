@@ -68,6 +68,25 @@ function serveProjectCovers(server: ViteDevServer | PreviewServer) {
   })
 }
 
+function projectImages(): Plugin {
+  let backendOrigin: string | undefined
+  return {
+    name: "project-cover-previews",
+    configResolved({ env }) {
+      if (env.VITE_SUPABASE_URL) backendOrigin = new URL(env.VITE_SUPABASE_URL).origin
+    },
+    transformIndexHtml() {
+      return backendOrigin ? [{
+        tag: "link",
+        attrs: { rel: "preconnect", href: backendOrigin, crossorigin: "anonymous" },
+        injectTo: "head-prepend",
+      }] : []
+    },
+    configureServer: serveProjectCovers,
+    configurePreviewServer: serveProjectCovers,
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -91,11 +110,7 @@ export default defineConfig({
         })
       },
     },
-    {
-      name: "project-cover-previews",
-      configureServer: serveProjectCovers,
-      configurePreviewServer: serveProjectCovers,
-    },
+    projectImages(),
   ],
   resolve: {
     alias: {
