@@ -40,3 +40,27 @@ test("a review is complete only with every score and both section reviews", () =
   assert.equal(validScore(2.5), false)
   assert.equal(validScore(5), true)
 })
+
+test("a research-only review needs only the research scores and review", async () => {
+  const { maxTotalFor, presentationKeys, withoutPresentation } = await import(
+    `data:text/javascript,${encodeURIComponent(stripTypeScriptTypes(source))}`
+  )
+  assert.equal(maxTotalFor(false), 40)
+  assert.equal(maxTotalFor(true), 15)
+  const answers = emptyAnswers()
+  assert.equal(missingAnswers(answers, true).length, 4)
+  answers.data_collection = 4
+  answers.analysis = 4
+  answers.findings_validity = 4
+  answers.researchRemarks = "Well executed."
+  assert.deepEqual(missingAnswers(answers, true), [])
+  assert.equal(missingAnswers(answers).length, 6)
+  const cleared = withoutPresentation({
+    ...answers,
+    clarity: 5,
+    presentationRemarks: "x",
+  })
+  assert.ok(presentationKeys.every((key) => cleared[key] === null))
+  assert.equal(cleared.presentationRemarks, "")
+  assert.equal(cleared.analysis, 4)
+})

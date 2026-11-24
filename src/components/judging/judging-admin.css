@@ -353,68 +353,6 @@
   gap: 14px;
   padding: 16px 18px 20px 54px;
 }
-.jd-averages {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 16px;
-  font-size: 11.5px;
-  color: #9a9a9a;
-}
-.jd-averages strong {
-  color: #f0f0f0;
-  font-variant-numeric: tabular-nums;
-}
-.jd-review {
-  padding-top: 12px;
-  border-top: 1px solid #222;
-}
-.jd-review-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 6px 14px;
-  font-size: 12.5px;
-}
-.jd-discard {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  margin-left: auto;
-  color: #b88;
-  font-size: 11px;
-}
-.jd-discard:hover {
-  color: #f3a5a5;
-}
-.jd-discard:focus-visible {
-  outline: 2px solid #fff;
-  outline-offset: 2px;
-  border-radius: 3px;
-}
-.jd-scores {
-  display: flex;
-  gap: 4px;
-  margin-top: 8px;
-}
-.jd-scores span {
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 24px;
-  border: 1px solid #333;
-  border-radius: 4px;
-  font-size: 11.5px;
-  font-variant-numeric: tabular-nums;
-  color: #ddd;
-}
-.jd-remark {
-  margin-top: 8px;
-  max-width: 720px;
-  white-space: pre-wrap;
-  font-size: 12.5px;
-  line-height: 1.6;
-  color: #d6d6d6;
-}
 
 .jd-code {
   flex: none;
@@ -992,4 +930,273 @@
 }
 .jd-table .jd-rank-first {
   border-left: 1px solid #2d2d2d;
+}
+
+/* Judges who miss Demo Day review the research only. */
+.jd-kind.jd-kind-remote,
+.am-table td:nth-child(2) .jd-kind.jd-kind-remote {
+  border-color: #5a4a2a;
+  background: #221c10;
+  color: #f0d79a;
+}
+.jd-judge-remote {
+  display: block;
+  margin-top: 2px;
+  color: #f0d79a;
+  font-size: 10px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.jd-partial {
+  margin-left: 1px;
+  color: #9a9a9a;
+  font-size: 0.78em;
+  font-weight: 400;
+}
+/* Judges table: the judge column takes the spare width. */
+.jd-judges-table th:nth-child(3),
+.jd-judges-table td:nth-child(3) {
+  width: 150px;
+}
+.jd-judges-table th:nth-child(4),
+.jd-judges-table td:nth-child(4) {
+  width: 90px;
+}
+.jd-judges-table th:nth-child(5),
+.jd-judges-table td:nth-child(5) {
+  width: 130px;
+}
+.am-table.jd-judges-table th:last-child {
+  width: 90px;
+}
+.jd-attend {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #d8d8d8;
+  font-size: 12px;
+  cursor: pointer;
+}
+.jd-attend em {
+  font-style: normal;
+}
+.jd-attend.is-locked {
+  cursor: not-allowed;
+  color: #9a9a9a;
+}
+.jd-attend.is-locked input {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.jd-attend svg {
+  color: #7a7a7a;
+}
+.jd-editor-access {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px;
+  border: 1px solid #303030;
+  border-radius: 6px;
+  background: #121212;
+}
+.jd-editor-access span {
+  display: grid;
+  gap: 2px;
+}
+.jd-editor-access strong {
+  font-size: 12px;
+}
+.jd-editor-access small {
+  color: #a0a0a0;
+  font-size: 11px;
+}
+.jd-editor-access .ad-button {
+  flex: none;
+}
+.ad-modal-actions .jd-editor-delete {
+  margin-right: auto;
+}
+@media (max-width: 1050px) {
+  .jd-judges-table td:nth-child(n) {
+    width: auto;
+  }
+  .jd-judges-table td.jd-num {
+    text-align: left;
+    color: #b3b3b3;
+    font-size: 12px;
+  }
+  .jd-judges-table td.jd-num::before {
+    content: attr(data-label) ": ";
+    color: #8f8f8f;
+  }
+}
+
+
+/* Expanded project: one card per judge. Plain blocks, so nothing inherits
+   the results table's cell styles. */
+.jd-detail {
+  display: grid;
+  gap: 8px;
+  padding: 10px 14px 14px;
+}
+.jd-review-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid #262626;
+  border-radius: 8px;
+  background: #0a0a0a;
+  text-align: left;
+  white-space: normal;
+}
+.jd-review-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+}
+.jd-review-card-who {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.jd-review-card-who strong {
+  color: #f2f2f2;
+  font-size: 14px;
+  font-weight: 600;
+}
+.jd-review-card-total {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.jd-review-card-total span {
+  color: #8f8f8f;
+  font-size: 11px;
+}
+.jd-review-card-total strong {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.jd-review-card small,
+.jd-review-section-head small {
+  margin-left: 1px;
+  color: #7d7d7d;
+  font-size: 0.75em;
+  font-weight: 400;
+}
+.jd-review-card-sections {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.jd-review-card-sections.is-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+.jd-review-section {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid #202020;
+  border-radius: 6px;
+  background: #0e0e0e;
+}
+.jd-review-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.jd-review-section-head h4 {
+  color: #cfcfcf;
+  font-size: 12px;
+  font-weight: 600;
+}
+.jd-review-section-head span {
+  color: #f2f2f2;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.jd-review-ratings {
+  display: grid;
+  gap: 0;
+}
+.jd-review-ratings div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 4px 0;
+  border-top: 1px solid #1c1c1c;
+}
+.jd-review-ratings dt {
+  color: #b5b5b5;
+  font-size: 12px;
+}
+.jd-review-ratings dd {
+  margin: 0;
+  color: #f0f0f0;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.jd-review-comment {
+  display: grid;
+  gap: 2px;
+  padding-top: 6px;
+  border-top: 1px solid #1c1c1c;
+}
+.jd-review-comment span {
+  color: #8f8f8f;
+  font-size: 11px;
+}
+.jd-review-comment p {
+  color: #d6d6d6;
+  font-size: 12.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.jd-review-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.jd-review-card-actions .ad-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 0;
+  height: 30px;
+  padding: 0 10px;
+  font-size: 11.5px;
+}
+@media (max-width: 900px) {
+  .jd-review-card-sections {
+    grid-template-columns: 1fr;
+  }
+  .jd-detail {
+    padding: 8px;
+  }
+}
+/* The results table can scroll sideways; keep the review cards pinned to the
+   visible width so scores and actions never sit off-screen. */
+.jd-results-wrap {
+  container-type: inline-size;
+}
+.jd-results-wrap .jd-detail {
+  position: sticky;
+  left: 0;
+  box-sizing: border-box;
+  width: 100cqw;
 }

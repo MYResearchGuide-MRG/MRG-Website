@@ -12,6 +12,7 @@ import {
 import {
   missingAnswers,
   scoreKeys,
+  withoutPresentation,
   type FeedbackAnswers,
   type ScoreKey,
 } from "./form"
@@ -22,8 +23,12 @@ export type Judge = {
   name: string
   email: string
   affiliation: string
+  /** False for a judge who reviews the research only. */
+  attendsDemoDay: boolean
 }
 export type JudgeReview = FeedbackAnswers & {
+  /** Has no presentation answers; saved by a judge not attending Demo Day. */
+  researchOnly: boolean
   projectId: string
   submittedAt: string | null
   updatedAt: string
@@ -80,9 +85,17 @@ export function answersFromReview(review: JudgeReview): FeedbackAnswers {
   }
 }
 
-export function reviewComplete(review: JudgeReview | undefined) {
+/** Whether this judge reviews the research only. */
+export const researchOnlyJudge = (judge: Judge | null) =>
+  Boolean(judge && !judge.attendsDemoDay)
+
+export function reviewComplete(
+  review: JudgeReview | undefined,
+  researchOnly = review?.researchOnly ?? false
+) {
   return Boolean(
-    review && missingAnswers(answersFromReview(review)).length === 0
+    review &&
+      missingAnswers(answersFromReview(review), researchOnly).length === 0
   )
 }
 
@@ -116,6 +129,7 @@ function loadPreview() {
       name: found.name,
       email: found.email,
       affiliation: found.affiliation,
+      attendsDemoDay: found.attendsDemoDay,
     },
     lineup: found
       ? (data.lineups[found.cohortYear] || []).filter((id) => active.has(id))
@@ -133,6 +147,7 @@ type FeedbackRow = Record<ScoreKey, number | null> & {
   project_id: string
   research_remarks: string
   presentation_remarks: string
+  research_only: boolean
   submitted_at: string | null
   updated_at: string
 }
@@ -144,6 +159,7 @@ function fromRow(row: FeedbackRow): JudgeReview {
     >),
     researchRemarks: row.research_remarks,
     presentationRemarks: row.presentation_remarks,
+    researchOnly: Boolean(row.research_only),
     projectId: row.project_id,
     submittedAt: row.submitted_at,
     updatedAt: row.updated_at,
@@ -166,7 +182,7 @@ export async function refreshJudging() {
     }
     const judges = await supabase
       .from("myssp_judges")
-      .select("id,cohort_year,name,email,affiliation")
+      .select("id,cohort_year,name,email,affiliation,attends_demo_day")
       .eq("user_id", userId)
       .eq("revoked", false)
       .is("deleted_at", null)
@@ -183,6 +199,7 @@ export async function refreshJudging() {
       name: judges.data.name,
       email: judges.data.email,
       affiliation: judges.data.affiliation,
+      attendsDemoDay: judges.data.attends_demo_day !== false,
     }
     const [lineup, feedback, judging] = await Promise.all([
       supabase
@@ -278,6 +295,9 @@ export async function saveReview(
 ): Promise<JudgeReview> {
   const identity = state.judge?.id
   if (!identity) throw new Error("Sign in as a judge to save.")
+  // The database drops presentation answers for these judges too.
+  const researchOnly = researchOnlyJudge(state.judge)
+  if (researchOnly) answers = withoutPresentation(answers)
   const previous = state.reviews[projectId]
   let now = new Date().toISOString()
   let submittedAt: string | null
@@ -294,7 +314,7 @@ export async function saveReview(
       throw new Error(
         "This review has already been submitted and can no longer be changed."
       )
-    if (submit && missingAnswers(answers).length)
+    if (submit && missingAnswers(answers, researchOnly).length)
       throw new Error("Answer every score and add a remark.")
     submittedAt = submit ? now : null
   } else {
@@ -313,6 +333,7 @@ export async function saveReview(
     throw new Error("Your session changed. Sign in again before continuing.")
   const review: JudgeReview = {
     ...answers,
+    researchOnly,
     projectId,
     submittedAt,
     updatedAt: now,
@@ -338,7 +359,11 @@ export async function submitAllReviews() {
   if (!current.judgingOpen)
     throw new Error("Judging is closed. Your last saved answers are kept.")
   const incomplete = current.lineup.filter(
-    (projectId) => !reviewComplete(current.reviews[projectId])
+    (projectId) =>
+      !reviewComplete(
+        current.reviews[projectId],
+        researchOnlyJudge(current.judge)
+      )
   )
   if (incomplete.length)
     throw new Error(

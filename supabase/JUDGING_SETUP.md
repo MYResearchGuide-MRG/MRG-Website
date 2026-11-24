@@ -13,6 +13,8 @@ Completed on 19 November 2026 for project `szyafrbnzfxbephkwubg`:
 
 The release combines PR #10 with the newer production changes for 30-day sign-ins, deadline controls, submission review and supported material links. Real invitation delivery and a judge's browser sign-in have not been exercised in this rollout.
 
+Update, 24 November 2026: `202611240001_judge_demo_day_attendance.sql` was applied live through the SQL editor by the committee. Do not rerun it. A check afterwards confirmed `myssp_judges.attends_demo_day`, `myssp_judge_feedback.research_only` and `myssp_unsubmit_judge_feedback` exist. Existing judges default to attending and existing reviews to full reviews. Deploy the matching frontend after this migration, never before.
+
 ## Deploy
 
 Update, 21 November 2026: the frontend release includes the current production branch changes. `202611210004_material_link_providers.sql`, `202611210005_judging_save_versions.sql` and `202611210006_material_provider_policy.sql` were applied live in this audit. Do not rerun them. The browser must use `myssp_save_judge_review_v2` with `expected_updated_at`; the old direct save RPC is no longer executable by authenticated clients. No live judges or scores existed at installation, and judging and feedback release remain off. Deploy the new frontend before real judge invitations. See `docs/SYSTEM_AUDIT_2026-11-21.md` for verification and limits.

@@ -7,6 +7,7 @@ import { sendInvitationBatches } from "../admin/invitation-batches"
 import {
   missingAnswers,
   scoreKeys,
+  withoutPresentation,
   type JudgeKind,
   type ScoreKey,
 } from "./form"
@@ -24,6 +25,9 @@ import {
   readPreview,
   writePreview,
 } from "./judging-preview"
+
+const attendanceLocked =
+  "This judge has already submitted reviews, so whether they attend Demo Day can no longer change."
 
 type State = {
   ready: boolean
@@ -104,6 +108,7 @@ type JudgeRow = {
   email: string
   affiliation: string
   kind: JudgeKind
+  attends_demo_day: boolean
   revoked: boolean
   invited_at: string | null
   deleted_at: string | null
@@ -113,6 +118,7 @@ type FeedbackRow = Record<ScoreKey, number | null> & {
   project_id: string
   research_remarks: string
   presentation_remarks: string
+  research_only: boolean
   submitted_at: string | null
   updated_at: string
 }
@@ -163,7 +169,7 @@ async function readCommitteeJudging() {
     supabase
       .from("myssp_judges")
       .select(
-        "id,user_id,cohort_year,name,email,affiliation,kind,revoked,invited_at,deleted_at"
+        "id,user_id,cohort_year,name,email,affiliation,kind,attends_demo_day,revoked,invited_at,deleted_at"
       )
       .order("name"),
     supabase
@@ -232,6 +238,7 @@ async function readCommitteeJudging() {
       email: row.email,
       affiliation: row.affiliation,
       kind: row.kind,
+      attendsDemoDay: row.attends_demo_day !== false,
       revoked: row.revoked,
       deletedAt: row.deleted_at,
       invitedAt: row.invited_at ? Date.parse(row.invited_at) : null,
@@ -261,6 +268,7 @@ async function readCommitteeJudging() {
           projectId: row.project_id,
           researchRemarks: row.research_remarks,
           presentationRemarks: row.presentation_remarks,
+          researchOnly: Boolean(row.research_only),
           submittedAt: row.submitted_at,
           updatedAt: row.updated_at,
         }))
@@ -298,8 +306,32 @@ export async function saveJudge(input: JudgeInput, id?: string) {
       if (!previous || previous.deletedAt)
         throw new Error("Restore this judge before editing their details.")
       const emailChanged = previous.email !== clean.email
+      // Same rule as the database: attendance is fixed once a review is
+      // submitted, and changing it moves drafts to the new format.
+      let reviews = data.reviews
+      if (previous.attendsDemoDay !== clean.attendsDemoDay) {
+        const own = data.reviews[id] || {}
+        if (Object.values(own).some((review) => review.submittedAt))
+          throw new Error(attendanceLocked)
+        reviews = {
+          ...data.reviews,
+          [id]: Object.fromEntries(
+            Object.entries(own).map(([projectId, review]) => [
+              projectId,
+              clean.attendsDemoDay
+                ? { ...review, researchOnly: false }
+                : {
+                    ...review,
+                    ...withoutPresentation(review),
+                    researchOnly: true,
+                  },
+            ])
+          ),
+        }
+      }
       writePreview({
         ...data,
+        reviews,
         judges: data.judges.map((judge) =>
           judge.id === id
             ? {
@@ -337,8 +369,12 @@ export async function saveJudge(input: JudgeInput, id?: string) {
     judge_affiliation: clean.affiliation,
     access_revoked: clean.revoked,
     judge_kind: clean.kind,
+    judge_attends: clean.attendsDemoDay,
   })
-  if (error) throw failure(error, "Could not save this judge.")
+  if (error)
+    throw error.message.includes("can no longer change")
+      ? new Error(attendanceLocked)
+      : failure(error, "Could not save this judge.")
   await refreshCommitteeJudging()
 }
 
@@ -367,6 +403,7 @@ export async function importJudges(inputs: JudgeInput[]) {
       affiliation: input.affiliation.trim(),
       cohort_year: input.cohortYear,
       kind: input.kind,
+      attends_demo_day: input.attendsDemoDay,
     })),
   })
   if (error)
@@ -488,7 +525,7 @@ export async function setSwitches(year: number, next: JudgingSwitches) {
               active.has(judgeId) &&
               !review.submittedAt &&
               lineup.has(projectId) &&
-              !missingAnswers(review).length
+              !missingAnswers(review, review.researchOnly).length
                 ? { ...review, submittedAt: now }
                 : review,
             ])
@@ -528,6 +565,41 @@ export async function discardReview(judgeId: string, projectId: string) {
     project: projectId,
   })
   if (error) throw failure(error, "Could not discard this review.")
+  await refreshCommitteeJudging()
+}
+
+/** Returns a submitted review to a draft, keeping its answers, until feedback is released. */
+export async function unsubmitReview(judgeId: string, projectId: string) {
+  if (judgingPreviewMode) {
+    const data = readPreview()
+    const review = data.reviews[judgeId]?.[projectId]
+    const year = data.judges.find((judge) => judge.id === judgeId)?.cohortYear
+    if (year !== undefined && data.switches[year]?.feedbackReleased)
+      throw new Error(
+        "Hide feedback from teams before returning a review to draft."
+      )
+    if (!review?.submittedAt) throw new Error("This review is already a draft.")
+    writePreview({
+      ...data,
+      reviews: {
+        ...data.reviews,
+        [judgeId]: {
+          ...data.reviews[judgeId],
+          [projectId]: {
+            ...review,
+            submittedAt: null,
+            updatedAt: new Date().toISOString(),
+          },
+        },
+      },
+    })
+    return
+  }
+  const { error } = await requireAdmin().rpc("myssp_unsubmit_judge_feedback", {
+    target_judge: judgeId,
+    project: projectId,
+  })
+  if (error) throw failure(error, "Could not return this review to draft.")
   await refreshCommitteeJudging()
 }
 

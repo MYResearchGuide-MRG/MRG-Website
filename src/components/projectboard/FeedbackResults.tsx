@@ -4,8 +4,8 @@ import { Tabs } from "radix-ui"
 import {
   judgingSections,
   sectionRemarks,
+  sectionsFor,
   SCORE_MAX,
-  scoreKeys,
   type JudgeKind,
   type ReleasedFeedback,
   type TeamReview,
@@ -14,13 +14,13 @@ import {
   feedbackScore,
   groupFeedback,
   mainAwardSummary,
+  reviewMax,
   reviewTotal,
 } from "./feedback-summary"
 import { JudgeAvatar } from "./JudgeAvatar"
 import "./project-feedback.css"
 
 const labels = { main: "Main award", special: "Special award" }
-const maxTotal = scoreKeys.length * SCORE_MAX
 
 /** Same presentation for real released feedback and the fictional local demo. */
 export function FeedbackResults({
@@ -112,7 +112,7 @@ export function FeedbackResults({
                         <span>Average total</span>
                         <p>
                           {feedbackScore(summary.total)}
-                          <span> / {maxTotal}</span>
+                          <span> / {summary.maxTotal}</span>
                         </p>
                       </div>
                       <div className="pf-section-totals">
@@ -142,7 +142,7 @@ export function FeedbackResults({
                                   <span className="pf-score-track" aria-hidden>
                                     <span
                                       style={{
-                                        width: `${(summary.criteria[criterion.key] / SCORE_MAX) * 100}%`,
+                                        width: `${((summary.criteria[criterion.key] ?? 0) / SCORE_MAX) * 100}%`,
                                       }}
                                     />
                                   </span>
@@ -196,7 +196,7 @@ export function FeedbackResults({
                           <span>Special award review {i + 1}</span>
                           <strong>
                             {reviewTotal(review) ?? "—"}
-                            <small> / {maxTotal}</small>
+                            <small> / {reviewMax(review)}</small>
                           </strong>
                           <ArrowUpRight size={16} aria-hidden />
                         </button>
@@ -298,13 +298,21 @@ export function IndividualReview({
           <span>Total score</span>
           <strong>
             {total ?? "—"}
-            <small> / {maxTotal}</small>
+            <small> / {reviewMax(review)}</small>
           </strong>
         </div>
       </header>
+      {review.researchOnly && (
+        <p className="pf-note pf-research-only">
+          This judge couldn’t attend Demo Day, so they reviewed your research
+          only. Their review has no presentation scores.
+        </p>
+      )}
       <div className="pf-sections">
-        {judgingSections.map((section, i) => {
-          const remark = review[sectionRemarks[i].key]?.trim()
+        {sectionsFor(Boolean(review.researchOnly)).map((section) => {
+          const remark = review[
+            sectionRemarks.find((item) => item.part === section.part)!.key
+          ]?.trim()
           return (
             <section key={section.title} className="pf-section">
               <div className="pf-section-heading">
@@ -313,7 +321,7 @@ export function IndividualReview({
                   {total === null
                     ? "—"
                     : section.criteria.reduce(
-                        (sum, criterion) => sum + review[criterion.key],
+                        (sum, criterion) => sum + (review[criterion.key] ?? 0),
                         0
                       )}
                   <small> / {section.criteria.length * SCORE_MAX}</small>
@@ -329,7 +337,9 @@ export function IndividualReview({
                           <span
                             key={d}
                             className={
-                              d < review[criterion.key] ? "on" : undefined
+                              d < (review[criterion.key] ?? 0)
+                                ? "on"
+                                : undefined
                             }
                           />
                         ))}

@@ -65,6 +65,7 @@ test("project results average submitted reviews only", () => {
     drafts: 0,
     averages: null,
     averageTotal: null,
+    maxTotal: 40,
   })
   assert.equal(reviewTotal(review("a", "p1", null)), null)
 })
@@ -161,12 +162,49 @@ test("CSV export quotes text and neutralises spreadsheet formulas", () => {
   )
   assert.match(
     header,
-    /Total \(\/40\),Research review,Presentation review,Submitted at$/
+    /Attended Demo Day,Total,Out of,Research review,Presentation review,Submitted at$/
   )
   assert.ok(
     row.startsWith(
-      '1,A-1,"Trees, graphs",Prof. A,a@uni.edu,Special award judge,Submitted,4,4,4,4,4,4,4,4,32,'
+      '1,A-1,"Trees, graphs",Prof. A,a@uni.edu,Special award judge,Submitted,4,4,4,4,4,4,4,4,Yes,32,40,'
     )
   )
   assert.ok(row.includes(`"'=HYPERLINK(""x"") said ""great""\nline 2"`))
+})
+
+test("research-only reviews count towards research but not presentation", () => {
+  // Two judges at Demo Day and one who reviewed the research only.
+  const reviews = [
+    review("a", "p1", 4), // 12 research + 20 presentation
+    review("b", "p1", 5), // 15 + 25
+    review("c", "p1", 3, {
+      researchOnly: true,
+      structure: null,
+      clarity: null,
+      qa_depth: null,
+      visual_aids: null,
+      time_management: null,
+    }), // 9 research
+  ]
+  assert.equal(reviewTotal(reviews[2]), 9)
+  const result = projectResult("p1", reviews)
+  assert.equal(result.averages.analysis, 4) // (4 + 5 + 3) / 3
+  assert.equal(result.averages.clarity, 4.5) // (4 + 5) / 2
+  assert.equal(result.maxTotal, 40)
+  // Research (12 + 15 + 9) / 3 = 12, presentation (20 + 25) / 2 = 22.5.
+  assert.equal(result.averageTotal, 34.5)
+  // With full reviews only, the total is the mean of the judges' totals.
+  assert.equal(projectResult("p1", reviews.slice(0, 2)).averageTotal, 36)
+
+  // Before any attending judge submits, the project is scored out of 15.
+  const early = projectResult("p1", [reviews[2]])
+  assert.equal(early.averageTotal, 9)
+  assert.equal(early.maxTotal, 15)
+  // Rankings compare shares of the maximum: 9/15 = 60% is below 36/40 = 90%.
+  const ranks = rankResults([
+    { ...early, projectId: "early" },
+    projectResult("p1", reviews.slice(0, 2)),
+  ])
+  assert.equal(ranks.get("p1"), 1)
+  assert.equal(ranks.get("early"), 2)
 })

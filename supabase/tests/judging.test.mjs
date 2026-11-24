@@ -14,6 +14,7 @@ const migrations = [
   "202611070003_mentor_account_management.sql",
   "202611140001_judging.sql",
   "202611230001_lineup_starts_judging.sql",
+  "202611240001_judge_demo_day_attendance.sql",
 ]
 
 const admin = "00000000-0000-0000-0000-000000000001"
@@ -56,7 +57,7 @@ async function setup({ automaticMarking = true } = {}) {
     create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
     grant usage on schema public,auth to anon,authenticated,service_role;
     grant execute on function auth.uid() to anon,authenticated,service_role;`)
-  for (const name of automaticMarking ? migrations : migrations.slice(0, -1))
+  for (const name of automaticMarking ? migrations : migrations.slice(0, migrations.indexOf("202611230001_lineup_starts_judging.sql")))
     await db.exec(readFileSync(new URL(`../migrations/${name}`, import.meta.url), "utf8"))
   await db.exec(`insert into auth.users values('${admin}','admin@example.test'),
       ('${student}','s@example.test'),('${otherStudent}','o@example.test');
@@ -266,8 +267,8 @@ test("teams see every submitted review in full, labelled by judge type, only aft
   const byRemark = reviews => Object.fromEntries(reviews.map(review => [review.researchRemarks, review]))
   assert.equal(released.released, true)
   assert.equal(released.reviews.length, 2)
-  assert.deepEqual(byRemark(released.reviews)["Remark A"], { kind: "main", data_collection: 2, analysis: 2, findings_validity: 2, structure: 2, clarity: 2, qa_depth: 2, visual_aids: 2, time_management: 2, researchRemarks: "Remark A", presentationRemarks: "Remark A" })
-  assert.deepEqual(byRemark(released.reviews)["Remark B"], { kind: "special", data_collection: 5, analysis: 5, findings_validity: 5, structure: 5, clarity: 4, qa_depth: 5, visual_aids: 5, time_management: 5, researchRemarks: "Remark B", presentationRemarks: "Remark B" })
+  assert.deepEqual(byRemark(released.reviews)["Remark A"], { kind: "main", researchOnly: false, data_collection: 2, analysis: 2, findings_validity: 2, structure: 2, clarity: 2, qa_depth: 2, visual_aids: 2, time_management: 2, researchRemarks: "Remark A", presentationRemarks: "Remark A" })
+  assert.deepEqual(byRemark(released.reviews)["Remark B"], { kind: "special", researchOnly: false, data_collection: 5, analysis: 5, findings_validity: 5, structure: 5, clarity: 4, qa_depth: 5, visual_aids: 5, time_management: 5, researchRemarks: "Remark B", presentationRemarks: "Remark B" })
   assert.ok(!("averages" in released))
   for (const id of [a, b, "A", "B"]) assert.ok(!JSON.stringify(released).includes(`"${id}"`))
 
@@ -401,4 +402,89 @@ test("mentors read released feedback for their own projects only", async () => {
   const released = (await db.query("select myssp_project_feedback('one') as f")).rows[0].f
   assert.deepEqual(released.reviews.map(review => review.researchRemarks), ["For the mentor"])
   await assert.rejects(() => db.query("select myssp_project_feedback('two')"), /Not allowed/)
+})
+
+test("judges who skip Demo Day submit research-only reviews, and attendance locks once they submit", async () => {
+  const { db, as, a, b, userA, userB } = await openJudging()
+  const research = { data_collection: 4, analysis: 3, findings_validity: 5, research_remarks: "Solid data" }
+  await as("authenticated", admin)
+  assert.equal((await db.query("select attends_demo_day from myssp_judges where id=$1", [a])).rows[0].attends_demo_day, true)
+  // An earlier draft with presentation answers loses them when the judge is marked absent.
+  await as("authenticated", userA)
+  await db.query("select myssp_save_judge_feedback('one',$1,false)", [full(4, "Draft")])
+  await as("authenticated", admin)
+  // Omitting attendance keeps it unchanged.
+  await db.query("select myssp_save_judge($1,2026,'A','a3@judge.test','',false,'main')", [a])
+  assert.equal((await db.query("select attends_demo_day from myssp_judges where id=$1", [a])).rows[0].attends_demo_day, true)
+  await db.query("select myssp_save_judge($1,2026,'A','a3@judge.test','',false,'main',false)", [a])
+  await db.exec("reset role")
+  const draft = (await db.query("select * from myssp_judge_feedback where judge_id=$1 and project_id='one'", [a])).rows[0]
+  assert.equal(draft.research_only, true)
+  assert.equal(draft.structure, null)
+  assert.equal(draft.presentation_remarks, "")
+  assert.equal(draft.data_collection, 4)
+
+  // Research answers alone complete the review; presentation answers sent anyway are dropped.
+  await as("authenticated", userA)
+  await db.query("select myssp_save_judge_feedback('one',$1,true)", [{ ...research, structure: 5, presentation_remarks: "Ignored" }])
+  await assert.rejects(() => db.query("select myssp_save_judge_feedback('two',$1,true)", [{ data_collection: 4 }]), /Answer every score/)
+  await db.exec("reset role")
+  const saved = (await db.query("select * from myssp_judge_feedback where judge_id=$1 and project_id='one'", [a])).rows[0]
+  assert.ok(saved.submitted_at)
+  assert.equal(saved.structure, null)
+  assert.equal(saved.presentation_remarks, "")
+
+  // Attending judges still need every presentation answer.
+  await as("authenticated", userB)
+  await assert.rejects(() => db.query("select myssp_save_judge_feedback('one',$1,true)", [research]), /Answer every score/)
+
+  // Attendance cannot change after a submitted review.
+  await as("authenticated", admin)
+  await assert.rejects(() => db.query("select myssp_save_judge($1,2026,'A','a3@judge.test','',false,'main',true)", [a]), /can no longer change/)
+  // Other details can still change.
+  await db.query("select myssp_save_judge($1,2026,'A2','a3@judge.test','',false,'main')", [a])
+
+  // Closing judging auto-submits complete research-only drafts.
+  await as("authenticated", userA)
+  await db.query("select myssp_save_judge_feedback('two',$1,false)", [research])
+  await as("authenticated", admin)
+  await db.query("select myssp_set_judging_state(2026,false,true)")
+  await db.exec("reset role")
+  assert.ok(await submittedAt(db, a, "two"))
+
+  // Teams see which reviews had no presentation part.
+  await as("authenticated", student)
+  const released = (await db.query("select myssp_project_feedback('one') as f")).rows[0].f
+  assert.deepEqual(released.reviews.map(review => [review.researchOnly, review.structure]), [[true, null]])
+
+  // CSV import accepts optional attendance.
+  await as("authenticated", admin)
+  await db.query("select myssp_import_judges($1)", [JSON.stringify([{ name: "Remote", email: "remote@judge.test", affiliation: "", cohort_year: 2026, kind: "main", attends_demo_day: false }])])
+  assert.equal((await db.query("select attends_demo_day from myssp_judges where email='remote@judge.test'")).rows[0].attends_demo_day, false)
+  await assert.rejects(() => db.query("select myssp_import_judges($1)", [JSON.stringify([{ name: "Bad", email: "bad@judge.test", affiliation: "", cohort_year: 2026, attends_demo_day: "no" }])]), /true or false/)
+})
+
+test("the committee can return a submitted review to draft until feedback is released", async () => {
+  const { db, as, a, userA } = await openJudging()
+  await as("authenticated", userA)
+  await db.query("select myssp_save_judge_feedback('one',$1,true)", [full(4, "Submitted")])
+  await assert.rejects(() => db.query("select myssp_unsubmit_judge_feedback($1,'one')", [a]), /Admin required/)
+  await as("authenticated", admin)
+  await assert.rejects(() => db.query("select myssp_unsubmit_judge_feedback($1,'two')", [a]), /not found/)
+  await db.query("select myssp_unsubmit_judge_feedback($1,'one')", [a])
+  await db.exec("reset role")
+  const row = (await db.query("select submitted_at, analysis, research_remarks from myssp_judge_feedback where judge_id=$1 and project_id='one'", [a])).rows[0]
+  assert.equal(row.submitted_at, null)
+  assert.equal(row.analysis, 4)
+  assert.equal(row.research_remarks, "Submitted")
+  // Drafts are already drafts.
+  await as("authenticated", admin)
+  await assert.rejects(() => db.query("select myssp_unsubmit_judge_feedback($1,'one')", [a]), /not found/)
+  // The judge can edit and resubmit it.
+  await as("authenticated", userA)
+  await db.query("select myssp_save_judge_feedback('one',$1,true)", [full(5, "Changed")])
+  // Once released, it stays put.
+  await as("authenticated", admin)
+  await db.query("select myssp_set_judging_state(2026,false,true)")
+  await assert.rejects(() => db.query("select myssp_unsubmit_judge_feedback($1,'one')", [a]), /Hide feedback/)
 })

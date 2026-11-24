@@ -41,6 +41,7 @@ function seed(): PreviewData {
         email: "judge@preview.local",
         affiliation: "Local preview",
         kind: "main",
+        attendsDemoDay: true,
         revoked: false,
         invitedAt: Date.now(),
         deletedAt: null,
@@ -59,10 +60,12 @@ export function readPreview(): PreviewData {
   try {
     const stored = localStorage.getItem(storageKey)
     cache = stored ? (JSON.parse(stored) as PreviewData) : seed()
-    // Judges stored before judge types existed are main judges.
+    // Judges stored before judge types or attendance existed are main
+    // judges who attend Demo Day.
     cache.judges = cache.judges.map((judge) => ({
       ...judge,
       kind: judge.kind ?? "main",
+      attendsDemoDay: judge.attendsDemoDay ?? true,
     }))
     // Reviews stored before section-specific remarks only have `remarks`;
     // copy it into both sections, as the database migration did.
@@ -77,6 +80,7 @@ export function readPreview(): PreviewData {
               projectId,
               {
                 ...review,
+                researchOnly: review.researchOnly ?? false,
                 researchRemarks:
                   typeof review.researchRemarks === "string"
                     ? review.researchRemarks

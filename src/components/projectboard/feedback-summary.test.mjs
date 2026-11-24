@@ -86,3 +86,21 @@ test("individual reviews display every criterion and both original comments safe
   assert.equal(html.includes("<script>"), false)
   assert.ok(html.includes("&lt;script&gt;"))
 })
+
+test("research-only reviews count towards research only and render without a presentation section", () => {
+  const remote = review("main", 3, { researchOnly: true, structure: null, clarity: null, qa_depth: null, visual_aids: null, time_management: null, presentationRemarks: "" })
+  assert.equal(reviewTotal(remote), 9)
+  assert.equal(summary.reviewMax(remote), 15)
+  const result = mainAwardSummary([review("main", 4), review("main", 5), remote])
+  // Research (12 + 15 + 9) / 3 = 12, presentation (20 + 25) / 2 = 22.5.
+  assert.deepEqual(result.sections, [12, 22.5])
+  assert.equal(result.total, 34.5)
+  assert.equal(result.maxTotal, 40)
+  const alone = mainAwardSummary([remote])
+  assert.equal(alone.maxTotal, 15)
+  assert.deepEqual(alone.sections, [9, null])
+  const html = renderToStaticMarkup(createElement(IndividualReview, { review: remote, number: 1 }))
+  assert.ok(html.includes("reviewed your research"))
+  assert.ok(!html.includes("Live Presentation"))
+  assert.ok(html.includes("/ <!-- -->15") || html.includes("/ 15"))
+})

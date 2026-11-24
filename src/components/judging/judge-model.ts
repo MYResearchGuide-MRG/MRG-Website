@@ -2,7 +2,9 @@
 import {
   judgingSections,
   judgeKindLabels,
+  maxTotalFor,
   scoreKeys,
+  scoreKeysFor,
   SCORE_MAX,
   type JudgeKind,
   type ScoreKey,
@@ -17,18 +19,26 @@ export type CommitteeJudge = {
   email: string
   affiliation: string
   kind: JudgeKind
+  /** Judges who miss Demo Day review the research only. */
+  attendsDemoDay: boolean
   revoked: boolean
   invitedAt: number | null
   deletedAt: string | null
 }
 export type JudgeInput = Pick<
   CommitteeJudge,
-  "name" | "email" | "affiliation" | "kind" | "revoked" | "cohortYear"
+  | "name"
+  | "email"
+  | "affiliation"
+  | "kind"
+  | "attendsDemoDay"
+  | "revoked"
+  | "cohortYear"
 >
 export type JudgeImportRow = JudgeInput & { line: number; error: string }
 
 export const judgeCsvTemplate =
-  "name,email,affiliation,judge_type\r\nDr. Example,judge@example.com,Example University,main\r\n"
+  "name,email,affiliation,judge_type,attends_demo_day\r\nDr. Example,judge@example.com,Example University,main,yes\r\n"
 
 export function parseJudgeCsv(
   text: string,
@@ -50,6 +60,7 @@ export function parseJudgeCsv(
             email: "",
             affiliation: "",
             kind: "main",
+            attendsDemoDay: true,
             revoked: false,
             cohortYear,
             error:
@@ -59,9 +70,14 @@ export function parseJudgeCsv(
       : []
   }
   const seen = new Set(existing.map((judge) => judge.email.toLowerCase()))
+  // Optional column, so older CSVs without it still import.
+  const hasAttendance = headers.includes("attendsdemoday")
   return records.slice(1).map((record) => {
     const value = (key: string) =>
       record.cells[headers.indexOf(key)]?.trim() || ""
+    const attendance = hasAttendance
+      ? value("attendsdemoday").toLowerCase()
+      : ""
     const kindValue = value("judgetype")
       .toLowerCase()
       .replace(/[\s_-]+/g, "")
@@ -74,6 +90,7 @@ export function parseJudgeCsv(
         kindValue === "special" || kindValue === "specialawardjudge"
           ? "special"
           : "main",
+      attendsDemoDay: !["no", "n", "false", "0"].includes(attendance),
       revoked: false,
       cohortYear,
       error: "",
@@ -87,6 +104,11 @@ export function parseJudgeCsv(
       )
     )
       row.error = "Judge type must be main or special."
+    else if (
+      attendance &&
+      !["yes", "y", "true", "1", "no", "n", "false", "0"].includes(attendance)
+    )
+      row.error = "Attends Demo Day must be yes or no."
     else row.error = judgeInputError(row, existing)
     if (!row.error && seen.has(row.email))
       row.error =
@@ -122,11 +144,18 @@ export type CommitteeReview = Record<ScoreKey, number | null> & {
   projectId: string
   researchRemarks: string
   presentationRemarks: string
+  /** From a judge who did not attend Demo Day: research scores only. */
+  researchOnly: boolean
   submittedAt: string | null
   updatedAt: string
 }
 
 export const MAX_TOTAL = scoreKeys.length * SCORE_MAX
+
+/** Highest possible total for this review: 40, or 15 if research only. */
+export function reviewMax(review: Pick<CommitteeReview, "researchOnly">) {
+  return maxTotalFor(review.researchOnly)
+}
 
 export function judgeInputError(
   input: JudgeInput,
@@ -152,7 +181,7 @@ export function judgeInputError(
 
 export function reviewTotal(review: CommitteeReview): number | null {
   let total = 0
-  for (const key of scoreKeys) {
+  for (const key of scoreKeysFor(review.researchOnly)) {
     const score = review[key]
     if (score === null) return null
     total += score
@@ -166,9 +195,17 @@ export type ProjectResult = {
   projectId: string
   submitted: number
   drafts: number
-  averages: Record<ScoreKey, number> | null
-  /** Mean of each judge's total out of MAX_TOTAL. */
+  /** Rounded per-criterion averages; null for a criterion nobody scored yet. */
+  averages: Record<ScoreKey, number | null> | null
+  /**
+   * Sum of each criterion's average, out of maxTotal. Each criterion is
+   * averaged over the judges who scored it, so research-only reviews count
+   * towards research but not presentation. With full reviews only, this is
+   * the mean of the judges' totals.
+   */
   averageTotal: number | null
+  /** 40, or 15 while only research-only reviews are in. */
+  maxTotal: number
 }
 
 /** Only submitted reviews count towards scores. */
@@ -185,43 +222,58 @@ export function projectResult(
       drafts: mine.length,
       averages: null,
       averageTotal: null,
+      maxTotal: MAX_TOTAL,
     }
+  const exact = new Map<ScoreKey, number>()
+  for (const key of scoreKeys) {
+    const scores = submitted
+      .filter((review) => scoreKeysFor(review.researchOnly).includes(key))
+      .map((review) => review[key])
+      .filter((score): score is number => score !== null)
+    if (scores.length)
+      exact.set(key, scores.reduce((a, b) => a + b, 0) / scores.length)
+  }
   const averages = Object.fromEntries(
-    scoreKeys.map((key) => [
-      key,
-      round(
-        submitted.reduce((sum, review) => sum + (review[key] ?? 0), 0) /
-          submitted.length
-      ),
-    ])
-  ) as Record<ScoreKey, number>
-  const totals = submitted
-    .map(reviewTotal)
-    .filter((total): total is number => total !== null)
+    scoreKeys.map((key) => {
+      const value = exact.get(key)
+      return [key, value === undefined ? null : round(value)]
+    })
+  ) as Record<ScoreKey, number | null>
   return {
     projectId,
     submitted: submitted.length,
     drafts: mine.length - submitted.length,
     averages,
-    averageTotal: totals.length
-      ? totals.reduce((a, b) => a + b, 0) / totals.length
+    averageTotal: exact.size
+      ? [...exact.values()].reduce((a, b) => a + b, 0)
       : null,
+    maxTotal: exact.size * SCORE_MAX,
   }
 }
 
-/** Ranks by average total, highest first; ties share a rank. Unscored projects have none. */
+/**
+ * Ranks by average total as a share of its maximum, highest first; ties share
+ * a rank. Unscored projects have none. Once every review is in, all maxima are
+ * equal and this is a plain ranking by total.
+ */
 export function rankResults(
-  results: readonly ProjectResult[]
+  results: readonly Pick<
+    ProjectResult,
+    "projectId" | "averageTotal" | "maxTotal"
+  >[]
 ): Map<string, number> {
+  const share = (result: (typeof results)[number]) =>
+    result.averageTotal! / (result.maxTotal || MAX_TOTAL)
   const scored = results
     .filter((result) => result.averageTotal !== null)
-    .sort((a, b) => b.averageTotal! - a.averageTotal!)
+    .sort((a, b) => share(b) - share(a))
   const ranks = new Map<string, number>()
   scored.forEach((result, index) => {
     const previous = scored[index - 1]
     ranks.set(
       result.projectId,
-      previous && previous.averageTotal === result.averageTotal
+      // Sums of averages can differ in the last bits when the scores tie.
+      previous && Math.abs(share(previous) - share(result)) < 1e-9
         ? ranks.get(previous.projectId)!
         : index + 1
     )
@@ -257,7 +309,9 @@ export function feedbackCsv(
     "Judge type",
     "Status",
     ...scoreKeys.map((key) => criterionLabels[key]),
-    `Total (/${MAX_TOTAL})`,
+    "Attended Demo Day",
+    "Total",
+    "Out of",
     "Research review",
     "Presentation review",
     "Submitted at",
@@ -281,7 +335,9 @@ export function feedbackCsv(
         judge ? judgeKindLabels[judge.kind ?? "main"] : "",
         review.submittedAt ? "Submitted" : "Draft",
         ...scoreKeys.map((key) => review[key]),
+        review.researchOnly ? "No" : "Yes",
         reviewTotal(review),
+        reviewMax(review),
         review.researchRemarks,
         review.presentationRemarks,
         review.submittedAt,

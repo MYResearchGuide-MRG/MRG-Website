@@ -20,6 +20,7 @@ import {
   Pencil,
   Plus,
   RefreshCw,
+  RotateCcw,
   Search,
   Star,
   Trash2,
@@ -39,12 +40,14 @@ import { useLiveBackend } from "../admin/backend"
 import { useCohorts } from "../admin/project-registry"
 import {
   judgeKindLabels,
+  maxTotalFor,
   missingAnswers,
-  scoreKeys,
+  presentationKeys,
+  sectionsFor,
+  SCORE_MAX,
   type JudgeKind,
 } from "./form"
 import {
-  criterionLabels,
   feedbackCsv,
   judgeCsvTemplate,
   judgeInputError,
@@ -53,6 +56,7 @@ import {
   parseJudgeCsv,
   projectResult,
   rankResults,
+  reviewMax,
   reviewTotal,
   type CommitteeJudge,
   type CommitteeReview,
@@ -60,6 +64,7 @@ import {
 } from "./judge-model"
 import {
   discardReview,
+  unsubmitReview,
   importJudges,
   inviteJudges,
   previewJudgeCode,
@@ -227,6 +232,8 @@ export function JudgingAdmin({
             judges={cohortJudges}
             allJudges={data.judges}
             reviews={cohortReviews}
+            judgingOpen={judgingOpen}
+            feedbackReleased={feedbackReleased}
             onNotice={setNotice}
           />
         )}
@@ -308,7 +315,8 @@ function JudgingSwitches({
   const incompleteDrafts = reviews.filter(
     (review) =>
       !review.submittedAt &&
-      (missingAnswers(review).length || !activeJudges.has(review.judgeId))
+      (missingAnswers(review, review.researchOnly).length ||
+        !activeJudges.has(review.judgeId))
   ).length
   const completeDrafts = drafts - incompleteDrafts
   // Every active judge scores every lineup project. Reviews from paused or
@@ -319,7 +327,8 @@ function JudgingSwitches({
     (review) =>
       activeJudges.has(review.judgeId) &&
       (review.submittedAt ||
-        (current.judgingOpen && !missingAnswers(review).length))
+        (current.judgingOpen &&
+          !missingAnswers(review, review.researchOnly).length))
   ).length
   const judgingCopy = current.judgingOpen
     ? {
@@ -619,6 +628,7 @@ const blankJudge = (year: number): JudgeInput => ({
   email: "",
   affiliation: "",
   kind: "main",
+  attendsDemoDay: true,
   revoked: false,
   cohortYear: year,
 })
@@ -634,7 +644,7 @@ function JudgeManagement({
   lineupSize: number
   onNotice: (text: string) => void
 }) {
-  const { judges } = useCommitteeJudging()
+  const { judges, reviews: allReviews } = useCommitteeJudging()
   const [query, setQuery] = useState("")
   const [allCohorts, setAllCohorts] = useState(false)
   const [editing, setEditing] = useState<CommitteeJudge | "new" | null>(null)
@@ -644,6 +654,53 @@ function JudgeManagement({
   const [confirmIds, setConfirmIds] = useState<string[]>([])
   const [previewId, setPreviewId] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [attendanceSaving, setAttendanceSaving] = useState<string | null>(null)
+  const attendanceLocked = (judge: CommitteeJudge) =>
+    allReviews.some(
+      (review) => review.judgeId === judge.id && review.submittedAt
+    )
+  async function toggleAttendance(judge: CommitteeJudge) {
+    const attends = !judge.attendsDemoDay
+    const losesScores =
+      !attends &&
+      allReviews.some(
+        (review) =>
+          review.judgeId === judge.id &&
+          (presentationKeys.some((key) => review[key] !== null) ||
+            review.presentationRemarks.trim())
+      )
+    if (
+      losesScores &&
+      !window.confirm(
+        `${judge.name} has presentation scores in their drafts. Marking them as not at Demo Day clears those scores. Continue?`
+      )
+    )
+      return
+    setAttendanceSaving(judge.id)
+    try {
+      await saveJudge(
+        {
+          name: judge.name,
+          email: judge.email,
+          affiliation: judge.affiliation,
+          kind: judge.kind,
+          revoked: judge.revoked,
+          cohortYear: judge.cohortYear,
+          attendsDemoDay: attends,
+        },
+        judge.id
+      )
+      onNotice(
+        attends
+          ? `${judge.name} will attend Demo Day and score research and the presentation, out of ${MAX_TOTAL}.`
+          : `${judge.name} won't attend Demo Day and will score the research only, out of ${maxTotalFor(true)}.`
+      )
+    } catch (cause) {
+      onNotice(errorText(cause, "Could not update Demo Day attendance."))
+    } finally {
+      setAttendanceSaving(null)
+    }
+  }
   const shown = judges.filter(
     (judge) =>
       !judge.deletedAt &&
@@ -754,7 +811,7 @@ function JudgeManagement({
         </div>
       )}
       <div className="am-table-wrap" data-guide="judges-table">
-        <table className="am-table">
+        <table className="am-table jd-judges-table">
           <thead>
             <tr>
               <th>
@@ -780,7 +837,12 @@ function JudgeManagement({
                 />
               </th>
               <th>Judge</th>
-              <th className="jd-num">Reviews submitted</th>
+              <th
+                title={`Untick for a judge who will score the research only (out of ${maxTotalFor(true)}), without the presentation`}
+              >
+                Demo Day
+              </th>
+              <th className="jd-num">Reviews</th>
               <th>Access</th>
               <th>
                 <span className="sr-only">Actions</span>
@@ -824,7 +886,33 @@ function JudgeManagement({
                     <span>{judge.affiliation || "Affiliation not added"}</span>
                     <span className="am-email">{judge.email}</span>
                   </td>
-                  <td className="jd-num">
+                  <td>
+                    <label
+                      className={`jd-attend${attendanceLocked(judge) ? "is-locked" : ""}`}
+                      title={
+                        attendanceLocked(judge)
+                          ? "Locked because this judge has already submitted reviews"
+                          : judge.attendsDemoDay
+                            ? `Scores research and presentation, out of ${MAX_TOTAL}. Untick if they can't attend.`
+                            : `Scores research only, out of ${maxTotalFor(true)}`
+                      }
+                    >
+                      <input
+                        type="checkbox"
+                        aria-label={`${judge.name} attends Demo Day`}
+                        checked={judge.attendsDemoDay}
+                        disabled={
+                          attendanceSaving !== null || attendanceLocked(judge)
+                        }
+                        onChange={() => void toggleAttendance(judge)}
+                      />
+                      <em>Attending</em>
+                      {attendanceLocked(judge) && (
+                        <Lock size={12} aria-label="Locked" />
+                      )}
+                    </label>
+                  </td>
+                  <td className="jd-num" data-label="Reviews submitted">
                     {judge.cohortYear === year
                       ? `${submitted} / ${lineupSize}`
                       : "–"}
@@ -849,30 +937,12 @@ function JudgeManagement({
                   </td>
                   <td>
                     <div className="am-actions">
-                      <>
-                        <button
-                          aria-label={`Edit ${judge.name}`}
-                          onClick={() => setEditing(judge)}
-                        >
-                          <Pencil size={15} aria-hidden /> Edit
-                        </button>
-                        <button
-                          disabled={busy || judge.revoked}
-                          onClick={() => setConfirmIds([judge.id])}
-                        >
-                          <Mail size={15} aria-hidden />{" "}
-                          {judge.invitedAt ? "Reissue" : "Invite"}
-                        </button>
-                        <button
-                          className="am-delete"
-                          disabled={busy}
-                          aria-label={`Delete ${judge.name}`}
-                          title="Delete judge"
-                          onClick={() => setDeleting(judge)}
-                        >
-                          <Trash2 size={15} aria-hidden />
-                        </button>
-                      </>
+                      <button
+                        aria-label={`Edit ${judge.name}`}
+                        onClick={() => setEditing(judge)}
+                      >
+                        <Pencil size={15} aria-hidden /> Edit
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -902,6 +972,15 @@ function JudgeManagement({
           judge={editing === "new" ? undefined : editing}
           year={year}
           existing={judges}
+          busy={busy}
+          onSendCode={(judge) => {
+            setEditing(null)
+            setConfirmIds([judge.id])
+          }}
+          onDelete={(judge) => {
+            setEditing(null)
+            setDeleting(judge)
+          }}
           onClose={() => setEditing(null)}
           onSaved={(emailChanged) => {
             onNotice(
@@ -1099,7 +1178,9 @@ function JudgeImport({
         </div>
         <p className="am-hint">
           Columns: <code>name,email,affiliation,judge_type</code>. Judge type
-          must be <code>main</code> or <code>special</code>.
+          must be <code>main</code> or <code>special</code>. Optional{" "}
+          <code>attends_demo_day</code>: <code>yes</code> or <code>no</code>{" "}
+          (blank means yes).
         </p>
         <textarea
           aria-label="Paste judge CSV rows"
@@ -1132,9 +1213,11 @@ function JudgeImport({
                   </span>
                   <span>
                     {row.error ||
-                      (row.kind === "special"
-                        ? "Special award judge"
-                        : "Main judge")}
+                      `${
+                        row.kind === "special"
+                          ? "Special award judge"
+                          : "Main judge"
+                      }${row.attendsDemoDay ? "" : " · Not at Demo Day"}`}
                   </span>
                 </p>
               ))}
@@ -1176,12 +1259,18 @@ function JudgeEditor({
   judge,
   year,
   existing,
+  busy,
+  onSendCode,
+  onDelete,
   onClose,
   onSaved,
 }: {
   judge?: CommitteeJudge
   year: number
   existing: CommitteeJudge[]
+  busy: boolean
+  onSendCode: (judge: CommitteeJudge) => void
+  onDelete: (judge: CommitteeJudge) => void
   onClose: () => void
   onSaved: (emailChanged: boolean) => void
 }) {
@@ -1193,6 +1282,7 @@ function JudgeEditor({
           email: judge.email,
           affiliation: judge.affiliation,
           kind: judge.kind,
+          attendsDemoDay: judge.attendsDemoDay,
           revoked: judge.revoked,
           cohortYear: judge.cohortYear,
         }
@@ -1340,12 +1430,47 @@ function JudgeEditor({
               </span>
             </label>
           )}
+          {judge && (
+            <div className="jd-editor-access">
+              <span>
+                <strong>Access code</strong>
+                <small>
+                  {judge.revoked
+                    ? "Restore access before sending a code."
+                    : emailChanged
+                      ? "Save the new email first, then send a code."
+                      : judge.invitedAt
+                        ? "Email a new code. The previous code stops working."
+                        : "Email this judge their sign-in code."}
+                </small>
+              </span>
+              <button
+                type="button"
+                className="ad-button"
+                disabled={saving || busy || judge.revoked || emailChanged}
+                onClick={() => onSendCode(judge)}
+              >
+                <Mail size={15} aria-hidden />
+                {judge.invitedAt ? "Reissue code" : "Send code"}
+              </button>
+            </div>
+          )}
           {error && (
             <p className="ad-error" role="alert">
               {error}
             </p>
           )}
           <div className="ad-modal-actions">
+            {judge && (
+              <button
+                type="button"
+                className="ad-button am-destructive jd-editor-delete"
+                disabled={saving || busy}
+                onClick={() => onDelete(judge)}
+              >
+                <Trash2 size={15} aria-hidden /> Delete judge
+              </button>
+            )}
             <button
               type="button"
               className="ad-button"
@@ -1761,6 +1886,8 @@ function Results({
   judges,
   allJudges,
   reviews: allReviews,
+  judgingOpen,
+  feedbackReleased,
   onNotice,
 }: {
   year: number
@@ -1768,10 +1895,13 @@ function Results({
   judges: CommitteeJudge[]
   allJudges: CommitteeJudge[]
   reviews: CommitteeReview[]
+  judgingOpen: boolean
+  feedbackReleased: boolean
   onNotice: (text: string) => void
 }) {
   const [open, setOpen] = useState<string | null>(null)
   const [discarding, setDiscarding] = useState<CommitteeReview | null>(null)
+  const [unsubmitting, setUnsubmitting] = useState<CommitteeReview | null>(null)
   const [award, setAward] = useState("main")
   // "all" is an overview of every judge's scores, with three rankings.
   const overview = award === "all"
@@ -1817,6 +1947,10 @@ function Results({
     ),
   ].sort((a, b) => Number(a.kind === "special") - Number(b.kind === "special"))
 
+  const hasRemote = columns.some((judge) => !judge.attendsDemoDay)
+  const remoteNote = hasRemote
+    ? ` Judges not at Demo Day score research only, out of ${maxTotalFor(true)}. A project's average adds the research average from every judge to the presentation average from judges who attended.`
+    : ""
   const submitted = reviews.filter((review) => review.submittedAt).length
   const judgeName = (id: string) =>
     allJudges.find((judge) => judge.id === id)?.name || "Unknown judge"
@@ -1888,10 +2022,10 @@ function Results({
       </div>
       <p className="jd-intro jd-results-note">
         {overview
-          ? `Every judge's total score out of ${MAX_TOTAL}, for every project. Ranks compare averages from main judges, special award judges and all judges. Pick an award to see its averages.`
-          : `Scores are totals out of ${MAX_TOTAL}, from submitted reviews only. Rankings can change until every review is in. Select a project to read its reviews.`}
+          ? `Every judge's total score out of ${MAX_TOTAL}, for every project. Ranks compare averages from main judges, special award judges and all judges. Pick an award to see its averages.${remoteNote}`
+          : `Scores are totals out of ${MAX_TOTAL}, from submitted reviews only. Rankings can change until every review is in. Select a project to read its reviews.${remoteNote}`}
       </p>
-      <div className="am-table-wrap">
+      <div className="am-table-wrap jd-results-wrap">
         <table className="jd-table">
           <thead>
             <tr className="jd-head-group">
@@ -1923,7 +2057,7 @@ function Results({
                 <th
                   key={judge.id}
                   className="jd-judge-col"
-                  title={`${judge.name}${judge.kind === "special" ? " · Special award" : ""} · ${judge.email}`}
+                  title={`${judge.name}${judge.kind === "special" ? " · Special award" : ""}${judge.attendsDemoDay ? "" : ` · Not at Demo Day, research only out of ${maxTotalFor(true)}`} · ${judge.email}`}
                 >
                   <span
                     className={
@@ -1943,6 +2077,11 @@ function Results({
                       ""
                     )}
                   </span>
+                  {!judge.attendsDemoDay && (
+                    <small className="jd-judge-remote">
+                      Research only · /{maxTotalFor(true)}
+                    </small>
+                  )}
                 </th>
               ))}
               {overviewRanks.map((rank) => (
@@ -2019,6 +2158,15 @@ function Results({
                     {!overview && (
                       <td className="jd-num jd-center jd-average">
                         {result.averageTotal?.toFixed(1) ?? "–"}
+                        {result.averageTotal !== null &&
+                          result.maxTotal !== MAX_TOTAL && (
+                            <small
+                              className="jd-partial"
+                              title="Only research-only reviews are in so far"
+                            >
+                              /{result.maxTotal}
+                            </small>
+                          )}
                       </td>
                     )}
                     {overview ? (
@@ -2044,68 +2192,15 @@ function Results({
                     <tr className="jd-detail-row">
                       <td colSpan={columns.length + (overview ? 5 : 4)}>
                         {projectReviews.length ? (
-                          <div className="jd-detail">
-                            {result.averages && (
-                              <p className="jd-averages">
-                                {scoreKeys.map((key) => (
-                                  <span key={key}>
-                                    {criterionLabels[key]}{" "}
-                                    <strong>{result.averages![key]}</strong>
-                                  </span>
-                                ))}
-                              </p>
-                            )}
-                            {projectReviews.map((review) => (
-                              <div key={review.judgeId} className="jd-review">
-                                <div className="jd-review-head">
-                                  <strong>{judgeName(review.judgeId)}</strong>
-                                  {allJudges.find(
-                                    (judge) => judge.id === review.judgeId
-                                  )?.kind === "special" && (
-                                    <span className="jd-kind">
-                                      Special award
-                                    </span>
-                                  )}
-                                  <span
-                                    className={
-                                      review.submittedAt ? "jd-ok" : "jd-muted"
-                                    }
-                                  >
-                                    {review.submittedAt
-                                      ? `Submitted · ${reviewTotal(review)}/${MAX_TOTAL}`
-                                      : "Draft, not counted"}
-                                  </span>
-                                  <button
-                                    className="jd-discard"
-                                    onClick={() => setDiscarding(review)}
-                                  >
-                                    <Trash2 size={13} aria-hidden /> Discard
-                                  </button>
-                                </div>
-                                <p className="jd-scores">
-                                  {scoreKeys.map((key) => (
-                                    <span
-                                      key={key}
-                                      title={criterionLabels[key]}
-                                    >
-                                      {review[key] ?? "–"}
-                                    </span>
-                                  ))}
-                                </p>
-                                <div className="jd-review-remarks">
-                                  <p>
-                                    <strong>Research review:</strong>{" "}
-                                    {review.researchRemarks || "No review yet."}
-                                  </p>
-                                  <p>
-                                    <strong>Presentation review:</strong>{" "}
-                                    {review.presentationRemarks ||
-                                      "No review yet."}
-                                  </p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
+                          <ProjectReviewDetail
+                            reviews={projectReviews}
+                            judgeOf={(id) =>
+                              allJudges.find((judge) => judge.id === id)
+                            }
+                            feedbackReleased={feedbackReleased}
+                            onUnsubmit={setUnsubmitting}
+                            onDiscard={setDiscarding}
+                          />
                         ) : (
                           <p className="jd-muted jd-detail">
                             No reviews for this project yet.
@@ -2132,6 +2227,24 @@ function Results({
           onDone={() => {
             onNotice("Review discarded.")
             setDiscarding(null)
+          }}
+        />
+      )}
+      {unsubmitting && (
+        <UnsubmitDialog
+          review={unsubmitting}
+          judge={judgeName(unsubmitting.judgeId)}
+          project={
+            lineup.find((board) => board.id === unsubmitting.projectId)?.code ||
+            ""
+          }
+          judgingOpen={judgingOpen}
+          onClose={() => setUnsubmitting(null)}
+          onDone={() => {
+            onNotice(
+              `${judgeName(unsubmitting.judgeId)}'s review is a draft again and no longer counts until it is resubmitted.`
+            )
+            setUnsubmitting(null)
           }}
         />
       )}
@@ -2319,7 +2432,7 @@ function ScoreCell({
   const label = !review
     ? "Not started"
     : review.submittedAt
-      ? `Submitted, ${total ?? "–"} out of ${MAX_TOTAL}`
+      ? `Submitted, ${total ?? "–"} out of ${reviewMax(review)}${review.researchOnly ? ", research only" : ""}`
       : "Draft, not counted yet"
   return (
     <span
@@ -2328,11 +2441,204 @@ function ScoreCell({
     >
       <span aria-hidden>
         {!review ? "–" : review.submittedAt ? (total ?? "–") : "Draft"}
+        {review?.submittedAt && review.researchOnly && (
+          <small className="jd-partial">/{reviewMax(review)}</small>
+        )}
       </span>
       <span className="sr-only">
         {judge}: {label}
       </span>
     </span>
+  )
+}
+
+/** One project's reviews: a card per judge with their ratings, comments and actions. */
+function ProjectReviewDetail({
+  reviews,
+  judgeOf,
+  feedbackReleased,
+  onUnsubmit,
+  onDiscard,
+}: {
+  reviews: CommitteeReview[]
+  judgeOf: (id: string) => CommitteeJudge | undefined
+  feedbackReleased: boolean
+  onUnsubmit: (review: CommitteeReview) => void
+  onDiscard: (review: CommitteeReview) => void
+}) {
+  return (
+    <div className="jd-detail">
+      {reviews.map((review) => {
+        const judge = judgeOf(review.judgeId)
+        const total = reviewTotal(review)
+        return (
+          <article key={review.judgeId} className="jd-review-card">
+            <header className="jd-review-card-head">
+              <div className="jd-review-card-who">
+                <strong>{judge?.name || "Unknown judge"}</strong>
+                {judge?.kind === "special" && (
+                  <span className="jd-kind">Special award</span>
+                )}
+                {review.researchOnly && (
+                  <span
+                    className="jd-kind jd-kind-remote"
+                    title="Research only: no presentation scores"
+                  >
+                    Not at Demo Day
+                  </span>
+                )}
+                <span
+                  className={`jd-pill ${review.submittedAt ? "jd-pill-success" : "jd-pill-default"}`}
+                >
+                  <i aria-hidden />
+                  {review.submittedAt ? "Submitted" : "Draft, not counted"}
+                </span>
+              </div>
+              <div className="jd-review-card-total">
+                <span>Total</span>
+                <strong>
+                  {total ?? "–"}
+                  <small>/{reviewMax(review)}</small>
+                </strong>
+              </div>
+            </header>
+            <div
+              className={`jd-review-card-sections${review.researchOnly ? "is-single" : ""}`}
+            >
+              {sectionsFor(review.researchOnly).map((section) => {
+                const keys = section.criteria.map((criterion) => criterion.key)
+                const scores = keys.map((key) => review[key])
+                const subtotal = scores.every((score) => score !== null)
+                  ? (scores as number[]).reduce((a, b) => a + b, 0)
+                  : null
+                const remarks =
+                  section.part === "research"
+                    ? review.researchRemarks
+                    : review.presentationRemarks
+                return (
+                  <section key={section.title} className="jd-review-section">
+                    <div className="jd-review-section-head">
+                      <h4>{section.title}</h4>
+                      <span>
+                        {subtotal ?? "–"}
+                        <small>/{keys.length * SCORE_MAX}</small>
+                      </span>
+                    </div>
+                    <dl className="jd-review-ratings">
+                      {section.criteria.map((criterion) => (
+                        <div key={criterion.key}>
+                          <dt>{criterion.label}</dt>
+                          <dd>
+                            {review[criterion.key] ?? "–"}
+                            <small>/{SCORE_MAX}</small>
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                    <div className="jd-review-comment">
+                      <span>Comments</span>
+                      <p>{remarks.trim() || "No comments yet."}</p>
+                    </div>
+                  </section>
+                )
+              })}
+            </div>
+            <footer className="jd-review-card-actions">
+              {review.submittedAt && (
+                <button
+                  className="ad-button"
+                  disabled={feedbackReleased}
+                  title={
+                    feedbackReleased
+                      ? "Hide feedback from teams first"
+                      : "Let the judge change and resubmit this review"
+                  }
+                  onClick={() => onUnsubmit(review)}
+                >
+                  <RotateCcw size={14} aria-hidden /> Return to draft
+                </button>
+              )}
+              <button
+                className="ad-button am-destructive"
+                onClick={() => onDiscard(review)}
+              >
+                <Trash2 size={14} aria-hidden /> Discard
+              </button>
+            </footer>
+          </article>
+        )
+      })}
+    </div>
+  )
+}
+
+function UnsubmitDialog({
+  review,
+  judge,
+  project,
+  judgingOpen,
+  onClose,
+  onDone,
+}: {
+  review: CommitteeReview
+  judge: string
+  project: string
+  judgingOpen: boolean
+  onClose: () => void
+  onDone: () => void
+}) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState("")
+  async function submit() {
+    setBusy(true)
+    setError("")
+    try {
+      await unsubmitReview(review.judgeId, review.projectId)
+      onDone()
+    } catch (cause) {
+      setError(errorText(cause, "Could not return this review to draft."))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <Dialog
+      open
+      onOpenChange={(next) => {
+        if (!next && !busy) onClose()
+      }}
+    >
+      <DialogContent className="ad-modal am-dialog">
+        <DialogTitle>Return this review to draft?</DialogTitle>
+        <DialogDescription>
+          {judge}’s review for {project} becomes a draft again, so they can
+          change it and submit it again. Their scores and comments are kept. It
+          won’t count in the results until it’s resubmitted.
+        </DialogDescription>
+        <p className="am-email-notice">
+          {judgingOpen
+            ? "Let the judge know so they can resubmit. Closing judging submits it again automatically if it is still complete."
+            : "Judging is closed, so the judge can only edit it after you reopen judging. Closing judging again submits it automatically if it is still complete."}
+        </p>
+        {error && (
+          <p className="ad-error" role="alert">
+            {error}
+          </p>
+        )}
+        <div className="ad-modal-actions">
+          <button className="ad-button" disabled={busy} onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            className="ad-button ad-primary"
+            disabled={busy}
+            onClick={() => void submit()}
+          >
+            {busy ? "Returning…" : "Return to draft"}
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
