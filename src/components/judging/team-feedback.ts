@@ -39,12 +39,13 @@ export function previewFeedback(
       const kind =
         data.judges.find((judge) => judge.id === judgeId)?.kind ?? "main"
       const scores = Object.fromEntries(
-        scoreKeys.map((key) => [key, review[key] ?? 0])
-      ) as Record<ScoreKey, number>
+        scoreKeys.map((key) => [key, review[key] ?? null])
+      ) as Record<ScoreKey, number | null>
       return [
         {
           ...scores,
           kind,
+          researchOnly: review.researchOnly,
           researchRemarks: review.researchRemarks,
           presentationRemarks: review.presentationRemarks,
         },

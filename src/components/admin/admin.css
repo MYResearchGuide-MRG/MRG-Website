@@ -1208,6 +1208,7 @@
 .ad-trash-row p {font-size:13px;color:#aaa;margin:6px 0}
 .ad-trash-row small {font-size:12px;color:#888}
 .ad-trash-row .ad-button {flex-shrink:0}
+.ad-trash-actions {display:flex;flex-wrap:wrap;gap:8px;flex-shrink:0}
 .ad-restore-project {display:grid;gap:10px;font-size:13px;margin-top:8px}
 .ad-restore-project select {width:100%;min-width:0;padding:12px;background:#111;border:1px solid #333;border-radius:5px;color:#eee}
 .ad-form-error {font-size:13px;color:#ff9e9e}

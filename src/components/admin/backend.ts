@@ -276,6 +276,12 @@ export async function setDeletedLive(kind: "participant" | "project", id: string
   if (error) throw new Error(remove ? "Could not delete this record. Refresh and try again." : "Could not restore this record. Check the destination project and try again.")
   await refreshBackend()
 }
+export async function purgeDeletedLive(kind: "participant" | "project", id: string) {
+  if (!supabase || !state.isAdmin) throw new Error("Committee sign-in required.")
+  const { error } = await supabase.rpc("myssp_purge_deleted", {kind, record_id:id})
+  if (error) throw new Error("Could not permanently delete this record. Refresh and try again.")
+  await refreshBackend()
+}
 export async function importLiveParticipants(rows: ImportRow[]) {
   if (!supabase || !state.isAdmin) return false
   const {error} = await supabase.rpc("myssp_import_participants", {rows:rows.map(r => ({name:r.name,email:r.email,project_id:r.projectId}))})

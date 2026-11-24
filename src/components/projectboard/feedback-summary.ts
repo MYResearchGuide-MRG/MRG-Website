@@ -1,6 +1,8 @@
 import {
   judgingSections,
+  maxTotalFor,
   scoreKeys,
+  scoreKeysFor,
   validScore,
   type ScoreKey,
   type TeamReview,
@@ -14,33 +16,55 @@ export function groupFeedback(reviews: TeamReview[]) {
   }
 }
 
+/** Total over the criteria this review covers; research-only reviews skip the presentation. */
 export function reviewTotal(review: TeamReview): number | null {
-  return scoreKeys.every((key) => validScore(review[key]))
-    ? scoreKeys.reduce((sum, key) => sum + review[key], 0)
+  const keys = scoreKeysFor(Boolean(review.researchOnly))
+  return keys.every((key) => validScore(review[key]))
+    ? keys.reduce((sum, key) => sum + review[key]!, 0)
     : null
 }
 
-/** Special awards must never enter the shared main-award average. */
+/** 40, or 15 for a judge who reviewed the research only. */
+export const reviewMax = (review: TeamReview) =>
+  maxTotalFor(Boolean(review.researchOnly))
+
+/**
+ * Special awards must never enter the shared main-award average. Each
+ * criterion is averaged over the judges who scored it, so a research-only
+ * review counts towards research but not presentation, matching the
+ * committee's results.
+ */
 export function mainAwardSummary(reviews: TeamReview[]) {
   const main = reviews.filter(
     (review) => review.kind === "main" && reviewTotal(review) !== null
   )
   if (!main.length) return null
   const criteria = Object.fromEntries(
-    scoreKeys.map((key) => [
-      key,
-      main.reduce((sum, review) => sum + review[key], 0) / main.length,
-    ])
-  ) as Record<ScoreKey, number>
+    scoreKeys.map((key) => {
+      const scores = main
+        .map((review) => review[key])
+        .filter((score): score is number => validScore(score))
+      return [
+        key,
+        scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : null,
+      ]
+    })
+  ) as Record<ScoreKey, number | null>
+  const sum = (keys: ScoreKey[]) => {
+    const values = keys
+      .map((key) => criteria[key])
+      .filter((value): value is number => value !== null)
+    return values.length ? values.reduce((a, b) => a + b, 0) : null
+  }
+  const scored = scoreKeys.filter((key) => criteria[key] !== null)
   return {
     count: main.length,
     criteria,
-    total: scoreKeys.reduce((sum, key) => sum + criteria[key], 0),
+    total: sum(scoreKeys)!,
+    /** 40, or 15 when every main review is research only. */
+    maxTotal: maxTotalFor(scored.length < scoreKeys.length),
     sections: judgingSections.map((section) =>
-      section.criteria.reduce(
-        (sum, criterion) => sum + criteria[criterion.key],
-        0
-      )
+      sum(section.criteria.map((criterion) => criterion.key))
     ),
   }
 }

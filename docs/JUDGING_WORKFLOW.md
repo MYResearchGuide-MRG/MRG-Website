@@ -16,6 +16,33 @@ Updated 23 November 2026.
    Release closes marking; changing a released lineup requires hiding feedback
    first. Closing marking unlocks an unreleased lineup for changes.
 
+## Judges who cannot attend Demo Day
+
+In the **Judges** table, untick **Demo Day** for a judge who will
+review from the project pages only. They see only Research Execution & Quality
+(3 scores and one review, out of 15) and no presentation section. Attendance
+locks once the judge submits a review; changing it earlier clears any
+presentation answers from their drafts. The CSV import accepts an optional
+`attends_demo_day` column (`yes` or `no`, blank means yes).
+
+Scoring stays out of 40. Each criterion is averaged over the judges who scored
+it, so a project's total is the research average from every judge plus the
+presentation average from judges who attended. When every judge attends, this
+equals the mean of the judges' totals, as before. Results show a remote
+judge's review as, for example, 9/15. Teams see that review labelled as
+research only, and their main award average uses the same rule. Rankings
+compare each total as a share of its maximum, which only matters while a
+project has research-only reviews alone.
+
+In **Progress & results**, expanding a project shows a card for each judge:
+their total, ratings and comments for each section, then **Return to draft**
+and **Discard**. **Return to draft**
+turns a submitted review back into a draft, keeping its answers, so the judge
+can change and resubmit it. It is unavailable once feedback is released.
+
+Backend migration: `202611240001_judge_demo_day_attendance.sql`. Applied to the live MYSSP
+database on 24 November 2026; do not rerun it.
+
 There is no Demo Day date gate. Empty lineups do not open marking, and saving an
 invalid lineup changes neither the order nor the marking state. Archive
 publication and student editing are independent controls.

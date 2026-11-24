@@ -835,7 +835,7 @@ export default function AdminPanel() {
           onComplete={() => {
             // The table reconciles selected IDs against the current roster.
             setNotice(
-              `${recordAction.label} ${recordAction.remove ? "moved to Trash" : "restored"}.`
+              `${recordAction.label} ${recordAction.purge ? "permanently deleted" : recordAction.remove ? "moved to Trash" : "restored"}.`
             )
             setRecordAction(null)
           }}

@@ -14,10 +14,10 @@ import { teamProfiles, type Board, type Draft } from "../projectboard/data"
 import { projectShareUrl } from "../projectboard/paths"
 import {
   emptyAnswers,
-  judgingSections,
   REMARKS_MAX,
   RUBRIC_URL,
   sectionRemarks,
+  sectionsFor,
   scoreKeys,
   scoreLabels,
   SCORE_MAX,
@@ -28,6 +28,7 @@ import {
 } from "./form"
 import {
   getJudgeAccess,
+  researchOnlyJudge,
   reviewStatus,
   saveReview,
   useJudgeAccess,
@@ -69,13 +70,19 @@ type SaveState =
   | { kind: "error"; message: string }
 
 export default function JudgingProject({ projectId }: { projectId: string }) {
-  const { reviews, judgingOpen, feedbackReleased } = useJudgeAccess()
+  const { judge, reviews, judgingOpen, feedbackReleased } = useJudgeAccess()
   const boards = useLineupBoards()
   const index = boards.findIndex((board) => board.id === projectId)
   const board = boards[index]
   const content = useProjectContent(board)
   const saved = reviews[projectId]
   const submitted = Boolean(saved?.submittedAt)
+  // Judges who are not at Demo Day review the research only. A submitted
+  // review keeps the format it was submitted in.
+  const researchOnly = submitted
+    ? Boolean(saved?.researchOnly)
+    : researchOnlyJudge(judge)
+  const sections = sectionsFor(researchOnly)
 
   const [answers, setAnswers] = useState(() => answersOf(saved))
   const [saveState, setSaveState] = useState<SaveState>(() =>
@@ -179,8 +186,11 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
   const previous = boards[index - 1]
   const next = boards[index + 1]
   const status = reviewStatus(saved)
-  const missing = missingKeys(answers)
-  const total = scoreKeys.length + sectionRemarks.length
+  const missing = missingKeys(answers, researchOnly)
+  const total = sections.reduce(
+    (sum, section) => sum + section.criteria.length + 1,
+    0
+  )
   const answered = total - missing.length
 
   function jumpToMissing() {
@@ -255,6 +265,18 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
             it.
           </span>
         </p>
+        {researchOnly && (
+          <p
+            className="judge-research-only mt-4 rounded-lg border border-border px-4 py-3 text-sm text-muted-foreground"
+            role="note"
+          >
+            <span className="font-medium text-foreground">
+              You’re reviewing the research only.
+            </span>{" "}
+            As you won’t be at Demo Day, there is no presentation section. Score
+            the project from its page and submission above.
+          </p>
+        )}
         {submitted && judgingOpen && (
           <p className="mt-4 flex items-start gap-2 rounded-lg border border-emerald-400/30 bg-emerald-400/[0.06] px-4 py-3 text-sm text-foreground">
             <Check
@@ -269,8 +291,10 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
           disabled={!judgingOpen || submitted}
           className="mt-8 min-w-0 space-y-6 disabled:opacity-60"
         >
-          {judgingSections.map((section, sectionIndex) => {
-            const review = sectionRemarks[sectionIndex]
+          {sections.map((section, sectionIndex) => {
+            const review = sectionRemarks.find(
+              (remark) => remark.part === section.part
+            )!
             const sectionKeys = [
               ...section.criteria.map((criterion) => criterion.key),
               review.key,
@@ -485,14 +509,14 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
   )
 }
 
-function missingKeys(answers: FeedbackAnswers) {
+function missingKeys(answers: FeedbackAnswers, researchOnly: boolean) {
   const keys: (ScoreKey | (typeof sectionRemarks)[number]["key"])[] = []
-  judgingSections.forEach((section, i) => {
+  sectionsFor(researchOnly).forEach((section) => {
     section.criteria.forEach((criterion) => {
       if (!validScore(answers[criterion.key])) keys.push(criterion.key)
     })
-    const remark = sectionRemarks[i].key
-    if (!answers[remark].trim()) keys.push(remark)
+    const remark = sectionRemarks.find((item) => item.part === section.part)!
+    if (!answers[remark.key].trim()) keys.push(remark.key)
   })
   return keys
 }

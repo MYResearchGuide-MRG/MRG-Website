@@ -14,6 +14,8 @@ export type ScoreKey =
 
 export type Criterion = { key: ScoreKey; label: string }
 export type FormSection = {
+  /** Presentation sections are left out for judges who do not attend Demo Day. */
+  part: "research" | "presentation"
   title: string
   /** Short reminder for judges; the full brief is on the Google Form. */
   description: string
@@ -37,6 +39,7 @@ export const scoreLabels: Record<number, string> = {
 
 export const judgingSections: FormSection[] = [
   {
+    part: "research",
     title: "Research Execution & Quality",
     description:
       "The quality and rigour of the team's execution: how well the research was carried out, how well the data was handled, and how well the findings come together.",
@@ -47,6 +50,7 @@ export const judgingSections: FormSection[] = [
     ],
   },
   {
+    part: "presentation",
     title: "Live Presentation & Q&A",
     description:
       "How effectively the team communicates their research. 15 minutes in total: about 12 minutes of presentation and 3 minutes of Q&A. All members present, and questions may go to anyone.",
@@ -62,11 +66,13 @@ export const judgingSections: FormSection[] = [
 
 export const sectionRemarks = [
   {
+    part: "research",
     key: "researchRemarks",
     label: "Review of Research Execution & Quality",
     hint: "What was done well, what could be improved, or anything specific about the team’s research execution. This review stays private until the committee releases it anonymously to the team.",
   },
   {
+    part: "presentation",
     key: "presentationRemarks",
     label: "Review of Live Presentation & Q&A",
     hint: "What was done well, what could be improved, or anything specific about the presentation and Q&A. This review stays private until the committee releases it anonymously to the team.",
@@ -77,6 +83,30 @@ export type SectionRemarksKey = (typeof sectionRemarks)[number]["key"]
 export const scoreKeys: ScoreKey[] = judgingSections.flatMap((section) =>
   section.criteria.map((criterion) => criterion.key)
 )
+
+/** A research-only review comes from a judge who did not attend Demo Day. */
+export function sectionsFor(researchOnly: boolean): FormSection[] {
+  return researchOnly
+    ? judgingSections.filter((section) => section.part === "research")
+    : judgingSections
+}
+export function scoreKeysFor(researchOnly: boolean): ScoreKey[] {
+  return sectionsFor(researchOnly).flatMap((section) =>
+    section.criteria.map((criterion) => criterion.key)
+  )
+}
+export function remarksFor(researchOnly: boolean) {
+  return sectionRemarks.filter(
+    (remark) => !researchOnly || remark.part === "research"
+  )
+}
+/** Highest possible total: 40 for a full review, 15 for research only. */
+export function maxTotalFor(researchOnly: boolean): number {
+  return scoreKeysFor(researchOnly).length * SCORE_MAX
+}
+export const presentationKeys: ScoreKey[] = judgingSections
+  .filter((section) => section.part === "presentation")
+  .flatMap((section) => section.criteria.map((criterion) => criterion.key))
 
 export type Scores = Record<ScoreKey, number | null>
 export type FeedbackAnswers = Scores & Record<SectionRemarksKey, string>
@@ -97,14 +127,26 @@ export function validScore(value: unknown): value is number {
   )
 }
 
+/** Clears presentation answers, which a research-only review never keeps. */
+export function withoutPresentation<T extends FeedbackAnswers>(answers: T): T {
+  return {
+    ...answers,
+    ...Object.fromEntries(presentationKeys.map((key) => [key, null])),
+    presentationRemarks: "",
+  }
+}
+
 /** Labels of everything still needed before the review can be submitted. */
-export function missingAnswers(answers: FeedbackAnswers): string[] {
-  const missing = judgingSections.flatMap((section) =>
+export function missingAnswers(
+  answers: FeedbackAnswers,
+  researchOnly = false
+): string[] {
+  const missing = sectionsFor(researchOnly).flatMap((section) =>
     section.criteria
       .filter((c) => !validScore(answers[c.key]))
       .map((c) => c.label)
   )
-  sectionRemarks.forEach(({ key, label }) => {
+  remarksFor(researchOnly).forEach(({ key, label }) => {
     if (!answers[key].trim()) missing.push(label)
   })
   return missing
@@ -116,10 +158,15 @@ export const judgeKindLabels: Record<JudgeKind, string> = {
   special: "Special award judge",
 }
 
-/** One submitted review as a team sees it: every score and the remark, labelled only by judge type. */
-export type TeamReview = Record<ScoreKey, number> &
+/**
+ * One submitted review as a team sees it: every score and the remark, labelled
+ * only by judge type. A research-only review has null presentation scores.
+ */
+export type TeamReview = Record<ScoreKey, number | null> &
   Record<SectionRemarksKey, string> & {
     kind: JudgeKind
+    /** Missing from feedback released before attendance existed. */
+    researchOnly?: boolean
   }
 
 /** What a team receives after release: each submitted review, anonymous and in random order. */
