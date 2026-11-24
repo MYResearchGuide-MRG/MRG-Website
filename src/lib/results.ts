@@ -194,11 +194,12 @@ export function useRoute(): Route {
     return () => window.removeEventListener("hashchange", onChange)
   }, [])
 
-  // A shared scene link can only resolve once the scene it names has mounted.
+  // Direct section links can only scroll once React has mounted their target.
   React.useEffect(() => {
-    if (route !== "results") return
-    const scene = sceneFromHash(window.location.hash)
-    if (scene) document.getElementById(scene)?.scrollIntoView()
+    const hash = window.location.hash
+    const anchor = route === "results" ? sceneFromHash(hash)
+      : route === "home" && /^#[a-z][\w-]*$/i.test(hash) ? hash.slice(1) : null
+    if (anchor) document.getElementById(anchor)?.scrollIntoView()
   }, [route])
 
   return route

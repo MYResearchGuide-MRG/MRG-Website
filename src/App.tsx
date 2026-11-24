@@ -10,6 +10,7 @@ import { Partners } from "@/components/sections/partners"
 import { Projects, ProjectsCatalogue } from "@/components/sections/projects"
 import { About } from "@/components/sections/about"
 import { ColumnBand } from "@/components/sections/column-band"
+import { DemoDayFeature } from "@/components/sections/demo-day-feature"
 import { Eligibility } from "@/components/sections/eligibility"
 import { Faq } from "@/components/sections/faq"
 import { StayConnected } from "@/components/sections/stay-connected"
@@ -190,6 +191,7 @@ function App() {
               <About />
               <TimelineSection />
               <Projects />
+              <DemoDayFeature />
               <Eligibility />
               <ColumnBand />
               <Faq />
