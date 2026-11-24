@@ -38,8 +38,9 @@ type State = {
   submissionDeadlines: Record<number, string | null>;
   summaries: Record<string, SubmissionSummary>; draftVersions: Record<string, string>;
   covers: Record<string, { version:string; image:string }>; contentErrors: Record<string,string>;
+  publicPages: Record<string, { version: string; content: Draft }>;
 }
-const empty: State = { ready: false, error: "", isAdmin: false, userId: null, accountEmail: "", accountName: "", accountPhoto: "", people: [], projects: [], drafts: {}, revisions: {}, visibility: {}, editing: {}, boards: [], deletedPeople: [], deletedProjects: [], cohorts: [], cohortError: "", researchFields: [], researchFieldError: "", mentors: [], mentorError: "", submissionDeadlines: {}, summaries: {}, draftVersions: {}, covers: {}, contentErrors: {} }
+const empty: State = { ready: false, error: "", isAdmin: false, userId: null, accountEmail: "", accountName: "", accountPhoto: "", people: [], projects: [], drafts: {}, revisions: {}, visibility: {}, editing: {}, boards: [], deletedPeople: [], deletedProjects: [], cohorts: [], cohortError: "", researchFields: [], researchFieldError: "", mentors: [], mentorError: "", submissionDeadlines: {}, summaries: {}, draftVersions: {}, covers: {}, contentErrors: {}, publicPages: {} }
 let state = empty
 const listeners = new Set<() => void>()
 let epoch = 0
@@ -123,6 +124,8 @@ async function readBackend() {
       editing: Object.fromEntries(records.map(p => [p.id,p.editing_enabled])),
       drafts: retain(state.drafts), summaries, draftVersions: retain(state.draftVersions),
       covers: retain(state.covers), contentErrors: retain(state.contentErrors),
+      publicPages: Object.fromEntries(Object.entries(state.publicPages).filter(([id, page]) =>
+        nextProjects[id]?.record.published && summaries[id]?.version === page.version)),
       revisions: Object.fromEntries(snapshot.submissions.map(s => [s.project_id,s.revision])),
       people: allPeople.filter(p => !p.deletedAt),
       deletedPeople: allPeople.filter(p => p.deletedAt),
@@ -141,25 +144,33 @@ async function readBackend() {
 }
 
 const contentFlights = new Map<string, Promise<void>>()
+// Read-only pages use a separate cache. An editor always gets the complete
+// saved document, including the original image and any legacy fields.
+const pageFields = ["version", "projectId", "title", "coverAlt", "teamMembers", "summary",
+  "overviewFormat", "question", "method", "findings", "slides", "paper", "video",
+  "additionalMaterials", "reviewedFingerprint", "savedAt"] as const
+const pageProjection = ["cache_version", ...pageFields.map(field => field + ":content->" + field)].join(",")
 // Only the open project page needs the full submission. Archive tiles request
 // just their visible cover. Both reuse data until the server version changes.
-export function loadLiveProjectContent(projectId: string, coverOnly = false): Promise<void> {
+export function loadLiveProjectContent(projectId: string, part: "full" | "cover" | "page" = "full"): Promise<void> {
   if (!supabase || !useLiveBackend || !state.ready || !state.boards.some(b => b.id === projectId)) return Promise.resolve()
   const summary = state.summaries[projectId]
   if (!summary) return Promise.resolve()
-  if (coverOnly ? !summary.hasCover || state.covers[projectId]?.version === summary.version : state.draftVersions[projectId] === summary.version) return Promise.resolve()
+  if (state.draftVersions[projectId] === summary.version) return Promise.resolve()
+  if (part === "cover" && (!summary.hasCover || state.covers[projectId]?.version === summary.version)) return Promise.resolve()
+  if (part === "page" && (!state.visibility[projectId] || state.publicPages[projectId]?.version === summary.version)) return Promise.resolve()
   const identity = identityEpoch
-  const key = `${identity}:${projectId}:${summary.version}:${coverOnly}`
+  const key = `${identity}:${projectId}:${summary.version}:${part}`
   const pending = contentFlights.get(key)
   if (pending) return pending
   const client = supabase
   const task = (async () => {
     const {data,error} = await client.from("myssp_submissions")
-      .select(coverOnly ? "cache_version,cover:content->>coverImage" : "cache_version,content,revision")
+      .select(part === "cover" ? "cache_version,cover:content->>coverImage" : part === "page" ? pageProjection : "cache_version,content,revision")
       .eq("project_id",projectId).maybeSingle()
     if (identity !== identityEpoch || !state.summaries[projectId] || !state.boards.some(b => b.id === projectId)) return
     if (error) {
-      publish({...state,contentErrors:{...state.contentErrors,[projectId]:"Could not load this project. Please try again."}})
+      if (part !== "cover") publish({...state,contentErrors:{...state.contentErrors,[projectId]:"Could not load this project. Please try again."}})
       return
     }
     // A concurrent save/revocation can race the manifest. Recheck access rather
@@ -167,23 +178,33 @@ export function loadLiveProjectContent(projectId: string, coverOnly = false): Pr
     const row = data as unknown as {cache_version:string;content?:Draft;revision?:number;cover?:string} | null
     if (!row || row.cache_version !== state.summaries[projectId]?.version) {
       await refreshBackend(false)
-      if (identity === identityEpoch && state.summaries[projectId]?.version === summary.version) {
+      if (part !== "cover" && identity === identityEpoch && state.summaries[projectId]?.version === summary.version) {
         publish({...state,contentErrors:{...state.contentErrors,[projectId]:"This project changed while loading. Please try again."}})
       }
       return
     }
     const board = state.boards.find(b => b.id === projectId)!
-    if (!coverOnly && (!row.content || !isDraft(row.content,board))) {
+    if (part === "page" && !state.visibility[projectId]) return
+    if (part === "cover") {
+      publish({...state, covers:{...state.covers,[projectId]:{version:row.cache_version,image:row.cover || ""}}})
+      return
+    }
+    const content = part === "page"
+      ? Object.fromEntries(Object.entries(row).filter(([field, value]) => field !== "cache_version" && (value !== null || field === "savedAt")))
+      : row.content
+    if (!isDraft(content,board)) {
       publish({...state,contentErrors:{...state.contentErrors,[projectId]:"The saved project could not be loaded. Contact the committee."}})
       return
     }
     publish({...state,
       contentErrors:{...state.contentErrors,[projectId]:""},
-      covers:{...state.covers,[projectId]:{version:row.cache_version,image:(coverOnly ? row.cover : row.content?.coverImage) || ""}},
-      ...(!coverOnly ? {drafts:{...state.drafts,[projectId]:row.content!},draftVersions:{...state.draftVersions,[projectId]:row.cache_version}} : {}),
+      ...(part === "page"
+        ? {publicPages:{...state.publicPages,[projectId]:{version:row.cache_version,content}}}
+        : {covers:{...state.covers,[projectId]:{version:row.cache_version,image:content.coverImage || ""}},
+           drafts:{...state.drafts,[projectId]:content},draftVersions:{...state.draftVersions,[projectId]:row.cache_version}}),
     })
   })().catch(() => {
-    if (identity === identityEpoch && state.summaries[projectId]) {
+    if (part !== "cover" && identity === identityEpoch && state.summaries[projectId]) {
       publish({...state,contentErrors:{...state.contentErrors,[projectId]:"Could not load this project. Please try again."}})
     }
   }).finally(() => { contentFlights.delete(key) })
@@ -407,6 +428,8 @@ export async function saveLiveProject(input: ProjectInput, previous?: Board) {
 }
 if (useLiveBackend && supabase) {
   supabase.auth.onAuthStateChange((event, session) => {
+    // The initial read below already waits for the restored session.
+    if (event === "INITIAL_SESSION") return
     if (event === "SIGNED_OUT" || (event === "SIGNED_IN" && state.userId !== session?.user.id)) { epoch++; publish(empty) }
     // Defer database calls until the auth client's lock has been released.
     if (event !== "TOKEN_REFRESHED") window.setTimeout(() => void refreshBackend(), 0)

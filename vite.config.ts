@@ -2,7 +2,7 @@ import path from "path"
 import fs from "fs"
 import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react"
-import { defineConfig, type Plugin } from "vite"
+import { defineConfig, type Plugin, type PreviewServer, type ViteDevServer } from "vite"
 // @ts-expect-error The same plain Node handler also runs on Vercel and in the local preview.
 import { canvaLinkHandler } from "./server/canva-link.mjs"
 
@@ -59,6 +59,15 @@ function legacySite(): Plugin {
   }
 }
 
+function serveProjectCovers(server: ViteDevServer | PreviewServer) {
+  server.middlewares.use(async (req, res, next) => {
+    if (req.url?.split("?")[0] !== "/api/project-cover") return next()
+    // @ts-expect-error Shared JavaScript handler also runs on Vercel.
+    const { projectCoverHandler } = await import("./server/project-cover.mjs")
+    await projectCoverHandler(req, res, server.config.env)
+  })
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -81,6 +90,11 @@ export default defineConfig({
           else next()
         })
       },
+    },
+    {
+      name: "project-cover-previews",
+      configureServer: serveProjectCovers,
+      configurePreviewServer: serveProjectCovers,
     },
   ],
   resolve: {

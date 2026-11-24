@@ -39,7 +39,11 @@ async function fixture(loadContent = true) {
           transport.queries.push({table,select,id})
           const result=response(table)
           const row=result.data?.find(d=>d.project_id===id)
-          const data=row ? {cache_version:`draft-${row.revision}`,content:row.content,cover:row.content.coverImage,revision:row.revision} : null
+          const data=row && select.includes("projectId:content->projectId")
+            ? {cache_version:`draft-${row.revision}`, ...Object.fromEntries(select.split(",").slice(1).map(part=>{
+                const field=part.split(":")[0]; return [field,row.content[field] ?? null]
+              }))}
+            : row ? {cache_version:`draft-${row.revision}`,content:row.content,cover:row.content.coverImage,revision:row.revision} : null
           await transport.contentGate
           return {data,error:result.error}
         },
@@ -239,10 +243,27 @@ test("archive cover requests exclude the rest of the submission", async () => {
   const {api,transport}=await fixture(false)
   transport.tables.myssp_submissions=[{project_id:"one",revision:3,content:{title:"Title",coverImage:"data:image/jpeg;base64,photo"}}]
   await api.refreshBackend()
-  await api.loadLiveProjectContent("one",true)
+  await api.loadLiveProjectContent("one","cover")
   assert.equal(transport.queries[0].select,"cache_version,cover:content->>coverImage")
   assert.equal(api.getBackend().covers.one.image,"data:image/jpeg;base64,photo")
   assert.deepEqual(api.getBackend().drafts,{})
+})
+
+test("published page reads skip the original cover, preserve optional fields and never seed the editor", async () => {
+  const {api,transport}=await fixture(false)
+  const content={title:"Poster",projectId:"one",coverImage:"original-jpeg",savedAt:null,additionalMaterials:[]}
+  transport.tables.myssp_submissions=[{project_id:"one",revision:3,content}]
+  await api.refreshBackend()
+  await Promise.all([api.loadLiveProjectContent("one","page"),api.loadLiveProjectContent("one","page")])
+  assert.equal(transport.queries.length,1)
+  assert.doesNotMatch(transport.queries[0].select,/coverImage|(?:^|,)content(?:,|$)/)
+  assert.deepEqual(api.getBackend().publicPages.one.content,{title:"Poster",projectId:"one",savedAt:null,additionalMaterials:[]})
+  assert.deepEqual(api.getBackend().drafts,{})
+  await api.loadLiveProjectContent("one")
+  assert.deepEqual(api.getBackend().drafts.one,content)
+  transport.tables.myssp_projects=[{id:"one",published:false,payload:{title:"Hidden"}}]
+  await api.refreshBackend()
+  assert.deepEqual(api.getBackend().publicPages,{})
 })
 
 test("concurrent background refreshes share one request but mutations get a trailing read", async () => {

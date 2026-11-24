@@ -1,4 +1,5 @@
 import { DialogTitle } from "@/components/ui/dialog"
+import { mentorPortrait } from "@/lib/mentor-portrait"
 import {
   Accordion,
   AccordionContent,
@@ -63,11 +64,11 @@ export function ProjectBrief({ project }: { project: Project }) {
           three. */}
       <div className="mt-8 flex items-center gap-4 border-t border-border pt-6">
         {project.photo && <img
-          src={project.photo}
+          src={mentorPortrait(project.photo)}
           alt=""
           width={560}
           height={700}
-          loading="lazy"
+          loading="eager"
           decoding="async"
           className="h-auto w-14 shrink-0 border border-border object-cover"
           style={{ aspectRatio: "4 / 5" }}

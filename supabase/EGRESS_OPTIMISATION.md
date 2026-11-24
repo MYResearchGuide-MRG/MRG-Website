@@ -10,14 +10,17 @@ It does not change existing row-level policies, editing deadlines, publication f
 - Opaque versions change on writes to projects, participants, submissions and admin profiles.
 - The browser supplies versions it already has. The server returns the full visible ID list,
   but includes large project/participant/profile records only when changed.
-- Full submissions load only when their project page opens. Archive covers load near the viewport.
+- Published project pages request their text and team separately from the cover. Archive cards
+  and read-only pages use the same 720-pixel WebP preview. Editors load the original submission.
   Profile and mentor lists use text summaries. Reopening an unchanged page reuses its data.
-- Cached data stays in memory. Logout/account changes clear it, and refreshed access lists prune
-  deleted or newly inaccessible records. No persistent private-content browser cache was added.
+- Private submission data stays in memory. Logout/account changes clear it, and refreshed access
+  lists prune deleted or newly inaccessible records. The public cover endpoint checks publication
+  and submission version using the anonymous Supabase role, including on conditional requests.
+  Each warm server instance keeps up to 4 MiB of previews in memory.
 - Visible tabs still check access every 30 seconds and on return to the tab. Authentication refreshes
   no longer trigger extra content reads. Mutations request a fresh snapshot.
-- New portraits are at most 320×320 with a 90,000-character encoded budget. Project images are
-  bounded to 1280×800 with a 400,000-character budget. Existing original images are untouched.
+- New portraits are at most 320×320 with a 36,000-character encoded budget. Project images are
+  bounded to 1280×800 with a 160,000-character budget. Existing original images are untouched.
 
 ## Live measurement
 

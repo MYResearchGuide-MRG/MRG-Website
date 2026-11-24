@@ -18,7 +18,7 @@ async function prepareImage(file: File, kind: "project" | "portrait"): Promise<s
     // Keep JPEG compatibility with existing validation. Bound the saved size,
     // including base64 overhead. Resize detailed images instead of requiring
     // another upload or falling back to very low JPEG quality.
-    const budget = portrait ? 60_000 : 240_000
+    const budget = portrait ? 36_000 : 160_000
     for (let attempt = 0; attempt < 4; attempt++) {
       canvas.width = width
       canvas.height = height

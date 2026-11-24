@@ -19,13 +19,13 @@ test('uploads fit the lower byte budgets, keep proportions and release decoded i
   try {
     const file={type:'image/png',size:1_000_000}
     const cover=await prepareProjectImage(file)
-    assert.ok(cover.length<=240_000)
+    assert.ok(cover.length<=160_000)
     assert.equal(closed,1)
     assert.ok(dimensions.some(([w])=>w<1280))
     assert.ok(dimensions.every(([w,h])=>Math.abs(w/h-16/9)<0.01))
     dimensions=[];draws=[]
     const portrait=await prepareMemberPhoto(file)
-    assert.ok(portrait.length<=60_000)
+    assert.ok(portrait.length<=36_000)
     assert.ok(dimensions.every(([w,h])=>w===h&&w<=320))
     assert.deepEqual(draws[0].slice(0,4),[420,0,1080,1080])
     assert.equal(closed,2)

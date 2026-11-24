@@ -1,4 +1,5 @@
 import * as React from "react"
+import { mentorPortrait } from "@/lib/mentor-portrait"
 import type { LucideIcon } from "lucide-react"
 import { useReducedMotion } from "motion/react"
 
@@ -259,7 +260,7 @@ export function ProjectWheel({
                 </span>
                 <span className={styles.mentor}>
                   <img
-                    src={project.photo}
+                    src={mentorPortrait(project.photo)}
                     alt=""
                     width={28}
                     height={28}

@@ -4,6 +4,8 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { spawnSync } from "node:child_process"
 import { canvaLinkHandler } from "../server/canva-link.mjs"
+import { projectCoverHandler } from "../server/project-cover.mjs"
+import { loadEnv } from "vite"
 
 const workspace = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -55,10 +57,15 @@ const types = {
   ".webm": "video/webm",
 }
 const insideRoot = (file) => file === root || file.startsWith(root + path.sep)
+const publicEnv = loadEnv("production", workspace, "VITE_")
 
 // Local only. Send complete buffers with a known length: the streaming/gzip
 // preview responses stall on this Windows setup before scripts finish loading.
 const server = http.createServer((req, res) => {
+  if (new URL(req.url, "http://127.0.0.1").pathname === "/api/project-cover") {
+    void projectCoverHandler(req, res, publicEnv)
+    return
+  }
   if (new URL(req.url, "http://127.0.0.1").pathname === "/api/canva-link") {
     void canvaLinkHandler(req, res)
     return

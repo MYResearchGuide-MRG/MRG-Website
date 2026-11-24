@@ -1,5 +1,6 @@
-import { useEffect, useId, useRef, useState } from "react"
+import { useEffect, useId, useRef, useState, type ReactNode } from "react"
 import { protectUnsavedNavigation } from "@/lib/unsaved-navigation"
+import { mentorPortrait } from "@/lib/mentor-portrait"
 import { QRCodeSVG } from "qrcode.react"
 import { ArrowLeft, Check, Copy, ImagePlus, Pencil } from "lucide-react"
 import {
@@ -90,6 +91,9 @@ function ProjectShare({ board }: { board: Board }) {
 
 export function ProjectDetail({
   board,
+  coverPreview,
+  loadingTitle,
+  loadFailed = false,
   savedDraft,
   onSave,
   onEditStateChange,
@@ -101,6 +105,9 @@ export function ProjectDetail({
   deadline,
 }: {
   board: Board
+  coverPreview?: ReactNode
+  loadingTitle?: string
+  loadFailed?: boolean
   savedDraft?: Draft
   onSave: (draft: Draft, revision: number) => Promise<boolean>
   onEditStateChange: (state: { dirty: boolean; busy: boolean }) => void
@@ -138,7 +145,7 @@ export function ProjectDetail({
     requestedEditing &&
     JSON.stringify(draft) !== JSON.stringify(savedDraft ?? newDraft(board))
   const content = editing ? draft : savedDraft
-  const title = content?.title ?? board.title
+  const title = loadingTitle ?? content?.title ?? board.title
   const members = content?.teamMembers ?? teamProfiles(board)
   const staleTeam =
     editing &&
@@ -313,7 +320,7 @@ export function ProjectDetail({
       {reviewVisible && (
         <CommitteeReviewNotice board={board} revision={revision} />
       )}
-      {owner && (
+      {owner && !loadingTitle && (
         <div className={`pb-inline-toolbar ${editing ? "is-editing" : ""}`}>
           <div>
             <strong>
@@ -383,7 +390,7 @@ export function ProjectDetail({
           </div>
         </div>
       )}
-      {owner && (
+      {owner && !loadingTitle && (
         <SubmissionChecklist
           board={board}
           draft={content ?? newDraft(board)}
@@ -432,6 +439,7 @@ export function ProjectDetail({
           <p className="pb-detail-field">{board.type}</p>
           <button
             className="pb-team-summary"
+            disabled={Boolean(loadingTitle)}
             onClick={() => {
               setTab("team")
               sections.current?.scrollIntoView({ block: "start" })
@@ -457,8 +465,9 @@ export function ProjectDetail({
               <img
                 src={content.coverImage}
                 alt={content.coverAlt || `Project image for ${title}`}
+                fetchPriority="high"
               />
-            ) : (
+            ) : !editing && coverPreview ? coverPreview : loadingTitle ? null : (
               <div className="pb-project-image-placeholder">
                 <ImagePlus size={32} strokeWidth={1} aria-hidden="true" />
                 <span>Project image</span>
@@ -533,7 +542,7 @@ export function ProjectDetail({
           )}
         </div>
       </header>
-      <div className="pb-detail-layout">
+      {loadingTitle ? (loadFailed ? null : <p role="status">Loading project…</p>) : <div className="pb-detail-layout">
         <div className="pb-detail-primary">
           <div className="pb-board-content pb-detail-sections" ref={sections}>
             <div
@@ -683,7 +692,7 @@ export function ProjectDetail({
                     <div className="pb-member-photo-column">
                       <span className="pb-member-avatar">
                         <img
-                          src={board.photo}
+                          src={mentorPortrait(board.photo)}
                           alt={board.mentor}
                           loading="lazy"
                         />
@@ -713,7 +722,7 @@ export function ProjectDetail({
             viewer={feedbackViewer}
           />
         )}
-      </div>
+      </div>}
     </main>
   )
 }

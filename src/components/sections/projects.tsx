@@ -1,4 +1,5 @@
 import * as React from "react"
+import { mentorPortrait } from "@/lib/mentor-portrait"
 import {
   ArrowLeft,
   ArrowRight,
@@ -490,11 +491,11 @@ function CatalogueContent({
                       {project.photo ? (
                         <img
                           className={styles.portrait}
-                          src={project.photo}
+                          src={mentorPortrait(project.photo)}
                           alt=""
                           width={56}
                           height={56}
-                          loading="lazy"
+                          loading={index < 2 ? "eager" : "lazy"}
                           decoding="async"
                         />
                       ) : (

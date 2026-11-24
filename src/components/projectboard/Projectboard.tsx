@@ -1,7 +1,6 @@
 import {
   useEffect,
   useId,
-  useRef,
   useState,
   useSyncExternalStore,
   type ReactNode,
@@ -40,6 +39,7 @@ import {
   type Draft,
   type Track,
 } from "./data"
+import { PublishedCover } from "./PublishedCover"
 import { ProjectDetail } from "./ProjectDetail"
 import { paginate } from "./pagination"
 import { overviewError } from "./overview"
@@ -57,6 +57,7 @@ import {
   useBackend,
   useLiveBackend,
   saveLiveDraft,
+  refreshBackend,
   loadLiveProjectContent,
 } from "../admin/backend"
 import { useLibraryVisibility } from "../admin/library-visibility"
@@ -108,50 +109,20 @@ function FilterOption({
     </label>
   )
 }
-function Cover({
-  board,
-}: {
-  board: Board & { coverImage?: string; coverAlt?: string }
+function Cover({ board, index }: {
+  board: Board & { coverImage?: string; coverAlt?: string }; index: number
 }) {
-  const backend = useBackend()
-  const element = useRef<HTMLDivElement>(null)
-  const [visible, setVisible] = useState(false)
-  const summary = backend.summaries[board.id]
-  const cached = backend.covers[board.id]
-  const image = useLiveBackend
-    ? cached?.version === summary?.version
-      ? cached?.image
-      : undefined
-    : board.coverImage
-  useEffect(() => {
-    if (!useLiveBackend || !element.current) return
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          setVisible(true)
-          observer.disconnect()
-        }
-      },
-      { rootMargin: "200px" }
-    )
-    observer.observe(element.current)
-    return () => observer.disconnect()
-  }, [])
-  useEffect(() => {
-    if (useLiveBackend && visible) void loadLiveProjectContent(board.id, true)
-  }, [board.id, summary?.version, visible])
+  const { summaries } = useBackend()
+  const summary = summaries[board.id]
+  const hasCover = useLiveBackend ? summary?.hasCover : Boolean(board.coverImage)
   return (
-    <div
-      ref={element}
-      className={`pb-cover ${image ? "pb-cover-uploaded" : ""}`}
-    >
-      {image ? (
-        <img src={image} alt={board.coverAlt || board.title} loading="lazy" />
-      ) : (
-        <span className="pb-cover-code" aria-hidden="true">
-          {board.code}
-        </span>
-      )}
+    <div className={`pb-cover ${hasCover ? "pb-cover-uploaded" : ""}`}>
+      {hasCover && useLiveBackend && summary
+        ? <PublishedCover id={board.id} version={summary.version} alt={board.coverAlt || board.title}
+            priority={index === 0 ? "high" : index === 1 ? "eager" : "lazy"} />
+        : board.coverImage
+          ? <img src={board.coverImage} alt={board.coverAlt || board.title} loading={index < 2 ? "eager" : "lazy"} />
+          : <span className="pb-cover-code" aria-hidden="true">{board.code}</span>}
     </div>
   )
 }
@@ -505,7 +476,7 @@ function ProjectLibrary({
                   }}
                 >
                   <a className="pb-project-card" href={boardUrl(board.id)}>
-                    <Cover board={board} />
+                    <Cover board={board} index={index} />
                     <div className="pb-project-card-copy">
                       <div className="pb-card-meta">
                         <span>{board.code}</span>
@@ -621,10 +592,18 @@ export default function Projectboard({
     ? backend.summaries[board.id]?.version
     : undefined
   const openProjectId = board?.id
+  const published = Boolean(board && visibility[board.id])
+  const readOnlyPage = useLiveBackend && published && board?.id !== assignedProjectId
+  const savedContent = board && (readOnlyPage
+    ? backend.publicPages[board.id]?.content || (backend.draftVersions[board.id] === submissionVersion ? backend.drafts[board.id] : undefined)
+    : backend.drafts[board.id])
+  const coverPreview = board && published && submissionVersion && backend.summaries[board.id]?.hasCover
+    ? <PublishedCover id={board.id} version={submissionVersion} alt={backend.summaries[board.id].coverAlt || board.title} priority="high" canRetry />
+    : undefined
   useEffect(() => {
     if (useLiveBackend && openProjectId)
-      void loadLiveProjectContent(openProjectId)
-  }, [openProjectId, submissionVersion])
+      void loadLiveProjectContent(openProjectId, readOnlyPage ? "page" : "full")
+  }, [openProjectId, readOnlyPage, submissionVersion])
   useEffect(() => {
     if (isWorkspace && assignedBoard)
       window.location.hash = boardUrl(assignedBoard.id)
@@ -658,7 +637,12 @@ export default function Projectboard({
   return (
     <div className="pb-root">
       <div className="pb-page-transition" key={path}>
-        {isWorkspace && !signedIn ? (
+        {useLiveBackend && !backend.ready ? (
+          <main className="pb-main" role="status">
+            {backend.error || "Loading projects…"}
+            {backend.error && <button className="pb-button" onClick={() => void refreshBackend(false)}>Try again</button>}
+          </main>
+        ) : isWorkspace && !signedIn ? (
           <main className="pb-main pb-access-required">
             <LockKeyhole size={32} />
             <h1>Your team’s workspace.</h1>
@@ -678,26 +662,13 @@ export default function Projectboard({
           (canViewProject(visibility, board.id, assignedProjectId, isAdmin) ||
             mentorProjectIds.includes(board.id) ||
             judgeProjectIds.includes(board.id)) ? (
-            useLiveBackend && submissionVersion && !backend.drafts[board.id] ? (
-              <main className="pb-main pb-empty" aria-live="polite">
-                <p>{backend.contentErrors[board.id] || "Loading project…"}</p>
-                {backend.contentErrors[board.id] && (
-                  <button
-                    className="pb-button"
-                    onClick={() => void loadLiveProjectContent(board.id)}
-                  >
-                    Try again
-                  </button>
-                )}
-              </main>
-            ) : (
               <>
                 {useLiveBackend && backend.contentErrors[board.id] && (
                   <div className="pb-main" role="status">
                     <p>{backend.contentErrors[board.id]}</p>
                     <button
                       className="pb-button"
-                      onClick={() => void loadLiveProjectContent(board.id)}
+                      onClick={() => void loadLiveProjectContent(board.id, readOnlyPage ? "page" : "full")}
                     >
                       Try again
                     </button>
@@ -706,6 +677,9 @@ export default function Projectboard({
                 <ProjectDetail
                   key={`${board.id}-${signedIn}`}
                   board={board}
+                  coverPreview={coverPreview}
+                  loadingTitle={useLiveBackend && submissionVersion && !savedContent ? backend.summaries[board.id].title || board.title : undefined}
+                  loadFailed={Boolean(backend.contentErrors[board.id])}
                   editable={
                     board.id === assignedProjectId &&
                     editingPermissions[board.id] === true &&
@@ -733,7 +707,7 @@ export default function Projectboard({
                   revision={backend.revisions[board.id] || 0}
                   savedDraft={
                     useLiveBackend
-                      ? backend.drafts[board.id] ||
+                      ? savedContent ||
                         (board.id === assignedProjectId
                           ? newDraft(board)
                           : undefined)
@@ -748,7 +722,6 @@ export default function Projectboard({
                   onEditStateChange={onEditStateChange}
                 />
               </>
-            )
           ) : (
             <main className="pb-main pb-empty">
               <h1>Project not available.</h1>
