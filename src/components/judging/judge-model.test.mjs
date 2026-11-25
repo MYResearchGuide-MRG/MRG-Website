@@ -19,6 +19,7 @@ const {
   judgeInputError,
   judgesForAward,
   MAX_TOTAL,
+  parseJudgeCsv,
   projectResult,
   rankResults,
   reviewTotal,
@@ -112,16 +113,37 @@ test("ranking puts the highest average first and shares ties", () => {
 
 test("main and special awards stay independent and rankings use unrounded totals", () => {
   const judges = [
-    { id: "main", kind: "main" },
-    { id: "special-a", kind: "special" },
-    { id: "special-b", kind: "special" },
+    { id: "main", kind: "main", specialAward: null },
+    { id: "special-a", kind: "special", specialAward: "utar" },
+    { id: "special-b", kind: "special", specialAward: "mathworks" },
   ]
   assert.deepEqual(
     judgesForAward(judges, "main").map((j) => j.id),
     ["main"]
   )
   assert.deepEqual(
-    judgesForAward(judges, "special-a").map((j) => j.id),
+    judgesForAward(judges, "utar").map((j) => j.id),
+    ["special-a"]
+  )
+  assert.deepEqual(
+    judgesForAward(judges, "mathworks").map((j) => j.id),
+    ["special-b"]
+  )
+  assert.deepEqual(judgesForAward(judges, "mabecs"), [])
+  // A deleted award judge doesn't mix into their replacement's results.
+  assert.deepEqual(
+    judgesForAward(
+      [
+        ...judges,
+        {
+          id: "old-utar",
+          kind: "special",
+          specialAward: "utar",
+          deletedAt: "2026-01-01",
+        },
+      ],
+      "utar"
+    ).map((j) => j.id),
     ["special-a"]
   )
   assert.deepEqual(judgesForAward(judges, "missing"), [])
@@ -167,10 +189,92 @@ test("judge details are validated before saving", () => {
   )
 })
 
+test("each special award takes one judge per cohort", () => {
+  const input = {
+    name: "Dr. B",
+    email: "b@uni.edu",
+    affiliation: "",
+    kind: "special",
+    specialAward: null,
+    revoked: false,
+    cohortYear: 2026,
+  }
+  assert.match(judgeInputError(input, []), /Choose which special award/)
+  const holder = {
+    id: "1",
+    name: "Dr. A",
+    email: "a@uni.edu",
+    kind: "special",
+    specialAward: "utar",
+    cohortYear: 2026,
+    deletedAt: null,
+  }
+  const utar = { ...input, specialAward: "utar" }
+  assert.match(
+    judgeInputError(utar, [holder]),
+    /Dr. A is already the UTAR judge for 2026/
+  )
+  assert.equal(judgeInputError(utar, [holder], "1"), "")
+  assert.equal(judgeInputError({ ...utar, cohortYear: 2027 }, [holder]), "")
+  assert.equal(
+    judgeInputError(utar, [{ ...holder, deletedAt: "2026-01-01" }]),
+    ""
+  )
+  assert.equal(
+    judgeInputError({ ...input, specialAward: "mabecs" }, [holder]),
+    ""
+  )
+})
+
+test("judge CSV reads award types and rejects the old generic special type", () => {
+  const rows = parseJudgeCsv(
+    [
+      "name,email,affiliation,judge_type",
+      "A,a@x.edu,Uni,main",
+      "B,b@x.edu,UTAR,utar",
+      "C,c@x.edu,MABECS,Special award: MABECS",
+      "D,d@x.edu,MathWorks,MathWorks",
+      "E,e@x.edu,Other,special",
+      "F,f@x.edu,MathWorks,mathworks",
+    ].join("\n"),
+    2026,
+    []
+  )
+  assert.deepEqual(
+    rows.map((row) => [row.kind, row.specialAward, row.error]),
+    [
+      ["main", null, ""],
+      ["special", "utar", ""],
+      ["special", "mabecs", ""],
+      ["special", "mathworks", ""],
+      ["main", null, "Judge type must be main, utar, mabecs or mathworks."],
+      ["special", "mathworks", "Only one MathWorks judge can be imported."],
+    ]
+  )
+  // A row with an error doesn't claim its award from a later valid row.
+  const retry = parseJudgeCsv(
+    "name,email,affiliation,judge_type\nA,not-an-email,UTAR,utar\nB,b@x.edu,UTAR,utar",
+    2026,
+    []
+  )
+  assert.deepEqual(
+    retry.map((row) => row.error),
+    ["Enter a valid email address.", ""]
+  )
+})
+
 test("CSV export quotes text and neutralises spreadsheet formulas", () => {
   const csv = feedbackCsv(
     [{ id: "p1", code: "A-1", title: "Trees, graphs" }],
-    [{ id: "a", name: "Prof. A", email: "a@uni.edu", kind: "special" }],
+    [
+      {
+        id: "a",
+        name: "Prof. A",
+        email: "a@uni.edu",
+        kind: "special",
+        specialAward: "mathworks",
+      },
+    ],
     [
       review("a", "p1", 4, {
         researchRemarks: '=HYPERLINK("x") said "great"\nline 2',
@@ -189,7 +293,7 @@ test("CSV export quotes text and neutralises spreadsheet formulas", () => {
   )
   assert.ok(
     row.startsWith(
-      '1,A-1,"Trees, graphs",Prof. A,a@uni.edu,Special award judge,Submitted,4,4,4,4,4,4,4,4,Yes,32,40,'
+      '1,A-1,"Trees, graphs",Prof. A,a@uni.edu,Special award: MathWorks,Submitted,4,4,4,4,4,4,4,4,Yes,32,40,'
     )
   )
   assert.ok(row.includes(`"'=HYPERLINK(""x"") said ""great""\nline 2"`))

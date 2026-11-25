@@ -777,3 +777,330 @@ fieldset[aria-invalid="true"] .judge-score-circle {
 .judge-callout-soft-accent .judge-callout-body {
   color: #c3dcef;
 }
+
+/* Practice box (PracticeNote): the invite on the locked lineup and the
+   banner on every practice page. Icon tile and text align on the first line;
+   actions sit centred on the right and drop below on narrow screens. */
+.judge-practice-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px 24px;
+  margin-top: 24px;
+  padding: 16px 16px 16px 18px;
+  border-radius: 12px;
+  background: #1c1c1c;
+}
+.judge-practice-note-body {
+  display: flex;
+  flex: 1 1 18rem;
+  align-items: flex-start;
+  gap: 14px;
+  min-width: 0;
+}
+.judge-practice-note-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #2a2a2a;
+  color: var(--color-foreground);
+}
+.judge-practice-note-title {
+  color: var(--color-foreground);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.judge-practice-note-text {
+  margin-top: 2px;
+  color: var(--color-muted-foreground);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.judge-practice-note-actions {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+@media (max-width: 639px) {
+  .judge-practice-note-actions {
+    width: 100%;
+  }
+  .judge-practice-note-actions > * {
+    flex: 1 1 0;
+    justify-content: center;
+  }
+}
+
+/* Practice: the team's view of the judge's own practice reviews. */
+.judge-team-view {
+  margin-top: 56px;
+  padding-top: 48px;
+  border-top: 1px solid var(--color-border);
+}
+.judge-team-view-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 20px;
+}
+.judge-team-view-picker button {
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid #454545;
+  border-radius: 8px;
+  background: rgb(12 12 12 / 85%);
+  font-size: 14px;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease;
+}
+.judge-team-view-picker button:hover {
+  border-color: #777;
+}
+.judge-team-view-picker button[aria-pressed="true"] {
+  border-color: #fff;
+  background: #fff;
+  color: #151515;
+}
+.judge-team-view-picker button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+/* Borrows the project page's colours (.pb-root) without its page spacing. */
+.judge-team-view-frame.pb-root {
+  min-height: 0;
+  margin-top: 0;
+  padding: 0;
+  background: none;
+}
+
+/* Entering or leaving practice: the new lineup reveals in a stagger. Each
+   header line, then each section, rises and sharpens from a soft blur; the
+   practice icon tile pops in as it lands. */
+.judge-page-enter > header > *,
+.judge-page-enter > div.content-container > * {
+  animation: judge-reveal 640ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.judge-page-enter > header > :nth-child(2) {
+  animation-delay: 60ms;
+}
+.judge-page-enter > header > :nth-child(3) {
+  animation-delay: 120ms;
+}
+.judge-page-enter > header > :nth-child(4) {
+  animation-delay: 180ms;
+}
+.judge-page-enter > header > :nth-child(n + 5) {
+  animation-delay: 240ms;
+}
+.judge-page-enter > div.content-container > :nth-child(1) {
+  animation-delay: 300ms;
+}
+.judge-page-enter > div.content-container > :nth-child(2) {
+  animation-delay: 380ms;
+}
+.judge-page-enter > div.content-container > :nth-child(n + 3) {
+  animation-delay: 460ms;
+}
+.judge-page-enter .judge-practice-note-icon {
+  animation: judge-icon-pop 560ms cubic-bezier(0.34, 1.56, 0.64, 1) 320ms both;
+}
+@keyframes judge-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+@keyframes judge-icon-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4) rotate(-25deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .judge-page-enter > header > *,
+  .judge-page-enter > div.content-container > *,
+  .judge-page-enter .judge-practice-note-icon {
+    animation: none;
+  }
+}
+
+/* "Not answered yet" on a question a judge left blank in a draft. */
+.judge-unanswered {
+  animation: judge-unanswered-in 240ms ease-out both;
+}
+@keyframes judge-unanswered-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .judge-unanswered {
+    animation: none;
+  }
+}
+
+/* Practice complete: the check pops, "Practice complete" rises word by word
+   beside it, then after a beat what happens on Demo Day, the link down to the
+   team view and the way back, then the team view itself. Same blur-rise as
+   the page switch. */
+.judge-complete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px 24px;
+  width: 100%;
+}
+.judge-complete-main {
+  min-width: 0;
+  flex: 1 1 320px;
+}
+.judge-complete-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.judge-complete-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: #fff;
+  color: #000;
+}
+.judge-complete-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+.judge-complete-title span {
+  display: inline-block;
+}
+.judge-complete-text {
+  max-width: 600px;
+  margin-top: 8px;
+  margin-left: 36px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--color-foreground);
+}
+/* Reads as part of the sentence; the underline says it can be clicked. */
+.judge-complete-text .judge-complete-hint {
+  display: inline;
+  color: inherit;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: #6b6b6b;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  cursor: pointer;
+  transition: text-decoration-color 160ms ease;
+}
+.judge-complete-hint:hover,
+.judge-complete-hint:focus-visible {
+  text-decoration-color: currentColor;
+}
+@media (max-width: 639px) {
+  .judge-complete-text {
+    margin-left: 0;
+  }
+}
+.judge-complete-animate .judge-complete-icon {
+  animation: judge-icon-pop 620ms cubic-bezier(0.34, 1.56, 0.64, 1) 100ms both;
+}
+.judge-complete-animate .judge-complete-title span,
+.judge-complete-animate .judge-complete-text,
+.judge-complete-animate .judge-complete-action,
+.judge-team-view-animate {
+  animation: judge-reveal 760ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.judge-complete-animate .judge-complete-title span:first-child {
+  animation-delay: 240ms;
+}
+.judge-complete-animate .judge-complete-title span:last-child {
+  animation-delay: 340ms;
+}
+/* The pause: Demo Day lands well after the title has settled. */
+.judge-complete-animate .judge-complete-text {
+  animation-delay: 1300ms;
+}
+.judge-complete-animate .judge-complete-action {
+  animation-delay: 1750ms;
+}
+.judge-team-view-animate {
+  animation-delay: 2000ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  .judge-complete-animate *,
+  .judge-team-view-animate {
+    animation: none;
+  }
+}
+
+/* While marking is open: a quiet one-line way into practice. */
+.judge-practice-link {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 16px;
+  color: var(--color-muted-foreground);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.judge-practice-link svg {
+  flex: none;
+  margin-top: 3px;
+}
+.judge-practice-link a {
+  color: var(--color-foreground);
+  text-decoration: underline;
+  text-decoration-color: rgb(255 255 255 / 0.35);
+  text-underline-offset: 3px;
+  transition: text-decoration-color 150ms ease;
+}
+.judge-practice-link a:hover {
+  text-decoration-color: currentColor;
+}
+.judge-practice-link a:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* A link inside a sentence of judge guidance, e.g. "the project page here". */
+.judge-inline-link {
+  color: var(--color-foreground);
+  text-decoration: underline;
+  text-decoration-color: rgb(255 255 255 / 0.4);
+  text-underline-offset: 3px;
+  transition: text-decoration-color 150ms ease;
+}
+.judge-inline-link:hover {
+  text-decoration-color: currentColor;
+}
+.judge-inline-link:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}

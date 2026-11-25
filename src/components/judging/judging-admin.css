@@ -1046,7 +1046,6 @@
   }
 }
 
-
 /* Expanded project: one card per judge. Plain blocks, so nothing inherits
    the results table's cell styles. */
 .jd-detail {
@@ -1212,4 +1211,12 @@
   left: 0;
   box-sizing: border-box;
   width: 100cqw;
+}
+
+/* A special judge saved before awards existed, still without one. */
+.jd-kind.jd-kind-missing,
+.am-table td:nth-child(2) .jd-kind.jd-kind-missing {
+  border-color: #6b2d2d;
+  background: #2a1414;
+  color: #f5a3a3;
 }

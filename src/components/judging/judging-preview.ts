@@ -41,6 +41,7 @@ function seed(): PreviewData {
         email: "judge@preview.local",
         affiliation: "Local preview",
         kind: "main",
+        specialAward: null,
         attendsDemoDay: true,
         revoked: false,
         invitedAt: Date.now(),
@@ -74,6 +75,7 @@ export function readPreview(): PreviewData {
     cache.judges = cache.judges.map((judge) => ({
       ...judge,
       kind: judge.kind ?? "main",
+      specialAward: judge.specialAward ?? null,
       attendsDemoDay: judge.attendsDemoDay ?? true,
     }))
     // Reviews stored before section-specific remarks only have `remarks`;

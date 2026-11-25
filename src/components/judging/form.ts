@@ -158,6 +158,49 @@ export const judgeKindLabels: Record<JudgeKind, string> = {
   special: "Special award judge",
 }
 
+/** Each special award has its own judge and its own results. */
+export const specialAwards = {
+  utar: "UTAR",
+  mabecs: "MABECS",
+  mathworks: "MathWorks",
+} as const
+export type SpecialAward = keyof typeof specialAwards
+export const specialAwardKeys = Object.keys(specialAwards) as SpecialAward[]
+
+/** What the committee picks for a judge: main, or one of the special awards. */
+export type JudgeType = "main" | SpecialAward
+export const judgeTypes: JudgeType[] = ["main", ...specialAwardKeys]
+export const judgeTypeLabels: Record<JudgeType, string> = {
+  main: "Main judge",
+  utar: "Special award: UTAR",
+  mabecs: "Special award: MABECS",
+  mathworks: "Special award: MathWorks",
+}
+
+export function judgeTypeOf(judge: {
+  kind?: JudgeKind
+  specialAward?: SpecialAward | null
+}): JudgeType | "special" {
+  if (judge.kind !== "special") return "main"
+  return judge.specialAward ?? "special"
+}
+
+/** Label for a judge's type; a special judge saved before awards existed has none. */
+export function judgeTypeLabel(judge: {
+  kind?: JudgeKind
+  specialAward?: SpecialAward | null
+}) {
+  const type = judgeTypeOf(judge)
+  return type === "special"
+    ? "Special award: award not set"
+    : judgeTypeLabels[type]
+}
+
+/** Short badge text, e.g. "MathWorks award". */
+export function specialAwardBadge(award: SpecialAward | null | undefined) {
+  return award ? `${specialAwards[award]} award` : "Special award"
+}
+
 /**
  * One submitted review as a team sees it: every score and the remark, labelled
  * only by judge type. A research-only review has null presentation scores.

@@ -47,6 +47,25 @@ can change and resubmit it. It is unavailable once feedback is released.
 Backend migration: `202611240001_judge_demo_day_attendance.sql`. Applied to the live MYSSP
 database on 24 November 2026; do not rerun it.
 
+## Special award judges
+
+Each special award judge marks one award: **UTAR**, **MABECS** or
+**MathWorks**. Each award has one judge per cohort and its own results under
+**Award results**. Teams only see "Special award" on a review, never which
+award. In the CSV import, `judge_type` is `main`, `utar`, `mabecs` or
+`mathworks`.
+
+A special judge without an award shows a red **Choose an award** tag in the
+**Judges** table. Edit them to pick one. Until then they can't be paused or have
+their Demo Day attendance changed.
+
+Backend migration: `202611260001_special_award_types.sql`. Apply it after
+`202611250001_research_marking_window.sql` and **before deploying the matching
+UI**, or the committee's Judging page won't load. It guesses each existing
+special judge's award from their affiliation, name or email, and leaves any
+unclear match for the committee to choose. Not yet applied to the live MYSSP
+database. Run it once only.
+
 There is no Demo Day date gate. Empty lineups do not open marking, and saving an
 invalid lineup changes neither the order nor the marking state. Archive
 publication and student editing are independent controls.

@@ -41,13 +41,19 @@ import { AdminSelect } from "../admin/AdminSelect"
 import { useLiveBackend } from "../admin/backend"
 import { useCohorts } from "../admin/project-registry"
 import {
-  judgeKindLabels,
+  judgeTypeLabel,
+  judgeTypeLabels,
+  judgeTypeOf,
+  judgeTypes,
   maxTotalFor,
   missingAnswers,
   presentationKeys,
   sectionsFor,
   SCORE_MAX,
-  type JudgeKind,
+  specialAwardBadge,
+  specialAwardKeys,
+  specialAwards,
+  type JudgeType,
 } from "./form"
 import {
   feedbackCsv,
@@ -652,6 +658,7 @@ const blankJudge = (year: number): JudgeInput => ({
   email: "",
   affiliation: "",
   kind: "main",
+  specialAward: null,
   attendsDemoDay: true,
   revoked: false,
   cohortYear: year,
@@ -708,6 +715,7 @@ function JudgeManagement({
           email: judge.email,
           affiliation: judge.affiliation,
           kind: judge.kind,
+          specialAward: judge.specialAward,
           revoked: judge.revoked,
           cohortYear: judge.cohortYear,
           attendsDemoDay: attends,
@@ -899,7 +907,17 @@ function JudgeManagement({
                     <div className="jd-judge-name">
                       <strong>{judge.name}</strong>
                       {judge.kind === "special" && (
-                        <span className="jd-kind">Special award</span>
+                        <span className="jd-kind">
+                          {specialAwardBadge(judge.specialAward)}
+                        </span>
+                      )}
+                      {judge.kind === "special" && !judge.specialAward && (
+                        <span
+                          className="jd-kind jd-kind-missing"
+                          title="Edit this judge to choose UTAR, MABECS or MathWorks. Until then they can’t be paused or have Demo Day attendance changed."
+                        >
+                          Choose an award
+                        </span>
                       )}
                       {judge.cohortYear !== year && (
                         <span className="jd-kind jd-kind-cohort">
@@ -1202,9 +1220,9 @@ function JudgeImport({
         </div>
         <p className="am-hint">
           Columns: <code>name,email,affiliation,judge_type</code>. Judge type
-          must be <code>main</code> or <code>special</code>. Optional{" "}
-          <code>attends_demo_day</code>: <code>yes</code> or <code>no</code>{" "}
-          (blank means yes).
+          must be <code>main</code>, <code>utar</code>, <code>mabecs</code> or{" "}
+          <code>mathworks</code>. Optional <code>attends_demo_day</code>:{" "}
+          <code>yes</code> or <code>no</code> (blank means yes).
         </p>
         <textarea
           aria-label="Paste judge CSV rows"
@@ -1237,11 +1255,7 @@ function JudgeImport({
                   </span>
                   <span>
                     {row.error ||
-                      `${
-                        row.kind === "special"
-                          ? "Special award judge"
-                          : "Main judge"
-                      }${row.attendsDemoDay ? "" : " · Not at Demo Day"}`}
+                      `${judgeTypeLabel(row)}${row.attendsDemoDay ? "" : " · Not at Demo Day"}`}
                   </span>
                 </p>
               ))}
@@ -1306,6 +1320,7 @@ function JudgeEditor({
           email: judge.email,
           affiliation: judge.affiliation,
           kind: judge.kind,
+          specialAward: judge.specialAward,
           attendsDemoDay: judge.attendsDemoDay,
           revoked: judge.revoked,
           cohortYear: judge.cohortYear,
@@ -1415,19 +1430,31 @@ function JudgeEditor({
           <label className="jd-kind-field">
             Judge type
             <select
-              value={input.kind}
-              onChange={(event) =>
-                setInput({ ...input, kind: event.target.value as JudgeKind })
-              }
+              value={judgeTypeOf(input)}
+              onChange={(event) => {
+                const type = event.target.value as JudgeType | "special"
+                setInput({
+                  ...input,
+                  kind: type === "main" ? "main" : "special",
+                  specialAward:
+                    type === "main" || type === "special" ? null : type,
+                })
+              }}
             >
-              {(Object.keys(judgeKindLabels) as JudgeKind[]).map((kind) => (
-                <option key={kind} value={kind}>
-                  {judgeKindLabels[kind]}
+              {judgeTypeOf(input) === "special" && (
+                <option value="special" disabled>
+                  Special award: choose an award
+                </option>
+              )}
+              {judgeTypes.map((type) => (
+                <option key={type} value={type}>
+                  {judgeTypeLabels[type]}
                 </option>
               ))}
             </select>
             <small>
-              Teams see this label on each review. Names stay hidden.
+              Each special award has one judge per cohort and its own results.
+              Teams see only “Main” or “Special award” on a review.
             </small>
           </label>
           {judge && judge.cohortYear !== input.cohortYear && (
@@ -1937,7 +1964,25 @@ function Results({
   const [open, setOpen] = useState<string | null>(null)
   const [discarding, setDiscarding] = useState<CommitteeReview | null>(null)
   const [unsubmitting, setUnsubmitting] = useState<CommitteeReview | null>(null)
-  const [award, setAward] = useState("main")
+  const [chosenAward, setAward] = useState("main")
+  // Special awards with a judge in this cohort, in a fixed order.
+  const cohortAwards = specialAwardKeys.filter((award) =>
+    allJudges.some(
+      (judge) =>
+        judge.kind === "special" &&
+        judge.specialAward === award &&
+        judge.cohortYear === year &&
+        !judge.deletedAt
+    )
+  )
+  // Fall back to the main award when the chosen award has no judge here
+  // (its judge was deleted, or this cohort never had one).
+  const award =
+    chosenAward === "all" ||
+    chosenAward === "main" ||
+    cohortAwards.some((key) => key === chosenAward)
+      ? chosenAward
+      : "main"
   // "all" is an overview of every judge's scores, with three rankings.
   const overview = award === "all"
   const pool = overview
@@ -1950,8 +1995,8 @@ function Results({
   )
   const results = lineup.map((board) => projectResult(board.id, reviews))
   const ranks = rankResults(results)
-  // The overview ranks projects three ways: by main judges, by special award
-  // judges together, and by every judge together.
+  // The overview ranks projects by main judges, by each special award's
+  // judge, and by every judge together.
   const rankBy = (include: (judge: CommitteeJudge) => boolean) => {
     const ids = new Set(allJudges.filter(include).map((judge) => judge.id))
     const scoped = allReviews.filter((review) => ids.has(review.judgeId))
@@ -1959,14 +2004,22 @@ function Results({
   }
   const overviewRanks = overview
     ? [
-        { key: "main", label: "Main", ranks: rankBy((j) => j.kind === "main") },
         {
-          key: "special",
-          label: "Special",
-          ranks: rankBy((j) => j.kind === "special"),
+          key: "main",
+          label: "Main",
+          special: false,
+          ranks: rankBy((j) => j.kind === "main"),
         },
+        ...cohortAwards.map((award) => ({
+          key: award,
+          label: specialAwards[award],
+          special: true,
+          ranks: rankBy(
+            (j) => j.kind === "special" && j.specialAward === award
+          ),
+        })),
         // In the overview the pool is every judge, so ranks is the all-judges ranking.
-        { key: "all", label: "All", ranks },
+        { key: "all", label: "All", special: false, ranks },
       ]
     : []
   const activeJudges = judges.filter(
@@ -2027,14 +2080,10 @@ function Results({
           options={[
             { value: "all", label: "All judges (overview)" },
             { value: "main", label: "Main award" },
-            ...allJudges
-              .filter(
-                (judge) => judge.kind === "special" && judge.cohortYear === year
-              )
-              .map((judge) => ({
-                value: judge.id,
-                label: `Special award · ${judge.affiliation || judge.name}`,
-              })),
+            ...cohortAwards.map((award) => ({
+              value: award,
+              label: `Special award · ${specialAwards[award]}`,
+            })),
           ]}
         />
         <div className="jd-results-stats">
@@ -2057,7 +2106,7 @@ function Results({
       </div>
       <p className="jd-intro jd-results-note">
         {overview
-          ? `Every judge's total score out of ${MAX_TOTAL}, for every project. Ranks compare averages from main judges, special award judges and all judges. Pick an award to see its averages.${remoteNote}`
+          ? `Every judge's total score out of ${MAX_TOTAL}, for every project. Ranks compare averages from main judges, each special award's judge and all judges. Pick an award to see its averages.${remoteNote}`
           : `Scores are totals out of ${MAX_TOTAL}, from submitted reviews only. Rankings can change until every review is in. Select a project to read its reviews.${remoteNote}`}
       </p>
       <div className="am-table-wrap jd-results-wrap">
@@ -2092,7 +2141,7 @@ function Results({
                 <th
                   key={judge.id}
                   className="jd-judge-col"
-                  title={`${judge.name}${judge.kind === "special" ? " · Special award" : ""}${judge.attendsDemoDay ? "" : ` · Not at Demo Day, research only out of ${maxTotalFor(true)}`} · ${judge.email}`}
+                  title={`${judge.name}${judge.kind === "special" ? ` · ${specialAwardBadge(judge.specialAward)}` : ""}${judge.attendsDemoDay ? "" : ` · Not at Demo Day, research only out of ${maxTotalFor(true)}`} · ${judge.email}`}
                 >
                   <span
                     className={
@@ -2104,7 +2153,9 @@ function Results({
                     {judge.kind === "special" && (
                       <>
                         <Star size={11} aria-hidden />
-                        <span className="sr-only">Special award judge: </span>
+                        <span className="sr-only">
+                          {specialAwardBadge(judge.specialAward)} judge:{" "}
+                        </span>
                       </>
                     )}
                     {judge.name.replace(
@@ -2130,12 +2181,12 @@ function Results({
                 >
                   <span
                     className={
-                      rank.key === "special"
+                      rank.special
                         ? "jd-judge-head jd-judge-special"
                         : "jd-judge-head"
                     }
                   >
-                    {rank.key === "special" && <Star size={11} aria-hidden />}
+                    {rank.special && <Star size={11} aria-hidden />}
                     {rank.label}
                   </span>
                 </th>
@@ -2512,7 +2563,9 @@ function ProjectReviewDetail({
               <div className="jd-review-card-who">
                 <strong>{judge?.name || "Unknown judge"}</strong>
                 {judge?.kind === "special" && (
-                  <span className="jd-kind">Special award</span>
+                  <span className="jd-kind">
+                    {specialAwardBadge(judge.specialAward)}
+                  </span>
                 )}
                 {review.researchOnly && (
                   <span

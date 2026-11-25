@@ -29,20 +29,19 @@ import {
 } from "./form"
 import { scoreDescriptions } from "./score-descriptions"
 import {
-  getJudgeAccess,
   researchOnlyJudge,
+  reviewComplete,
   reviewStatus,
-  saveReview,
-  useJudgeAccess,
   type JudgeReview,
 } from "./judge-access"
 import {
-  judgingHash,
-  judgingProjectHash,
-  useLineupBoards,
-  useProjectContent,
-} from "./lineup"
+  clearFixingMissing,
+  isFixingMissing,
+  openToFixMissing,
+  useJudgingSource,
+} from "./judging-source"
 import StatusBadge from "./StatusBadge"
+import PracticeNote from "./PracticeNote"
 import "../projectboard/projectboard.css"
 import "./judging.css"
 
@@ -72,13 +71,16 @@ type SaveState =
   | { kind: "error"; message: string }
 
 export default function JudgingProject({ projectId }: { projectId: string }) {
+  const source = useJudgingSource()
+  const { practice, getAccess, lineupHash: judgingHash } = source
+  const judgingProjectHash = source.projectHash
   const { judge, reviews, judgingOpen, researchClosesAt, feedbackReleased } =
-    useJudgeAccess()
+    source.useAccess()
   const deadlinePassed = useResearchDeadlinePassed(researchClosesAt)
-  const boards = useLineupBoards()
+  const boards = source.useBoards()
   const index = boards.findIndex((board) => board.id === projectId)
   const board = boards[index]
-  const content = useProjectContent(board)
+  const content = source.useContent(board)
   const saved = reviews[projectId]
   const submitted = Boolean(saved?.submittedAt)
   // Judges who are not at Demo Day review the research only. A submitted
@@ -97,6 +99,14 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
   const dirty = useRef(false)
   const queue = useRef<Promise<unknown>>(Promise.resolve())
   const timer = useRef<number | undefined>(undefined)
+  // Sent here because they can't submit yet: point out what is still
+  // unanswered and take the judge straight to the first gap.
+  const [fixing] = useState(
+    () =>
+      isFixingMissing() &&
+      Boolean(saved && !saved.submittedAt && judgingOpen) &&
+      missingKeys(answersOf(saved), researchOnly).length > 0
+  )
 
   // Saves run one at a time, in order, each with the newest answers.
   const persist = useCallback(
@@ -105,13 +115,13 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
         const snapshot = answersRef.current
         if (!submit && !dirty.current) return true
         // Submitted reviews are final; there is nothing left to save.
-        if (getJudgeAccess().reviews[projectId]?.submittedAt) {
+        if (getAccess().reviews[projectId]?.submittedAt) {
           dirty.current = false
           return true
         }
         setSaveState({ kind: "saving" })
         try {
-          const review = await saveReview(
+          const review = await source.saveReview(
             projectId,
             snapshot,
             submit,
@@ -133,7 +143,7 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
       queue.current = next
       return next
     },
-    [projectId]
+    [projectId, getAccess, source]
   )
 
   function change(next: FeedbackAnswers) {
@@ -155,11 +165,22 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
       window.clearTimeout(timer.current)
       // Leaving another way (back button, header link) must still save the
       // latest answers; go() already saved them for the in-page links.
-      if (dirty.current && getJudgeAccess().judgingOpen) void persist(false)
+      if (dirty.current && getAccess().judgingOpen) void persist(false)
     }
-  }, [persist])
+  }, [persist, getAccess])
 
-  async function go(hash: string) {
+  useEffect(() => {
+    clearFixingMissing()
+    if (!fixing) return
+    // Wait for the route change to finish resetting the scroll position.
+    const id = window.setTimeout(() => {
+      const key = missingKeys(answersRef.current, researchOnly)[0]
+      if (key) focusField(key)
+    }, 250)
+    return () => window.clearTimeout(id)
+  }, [fixing, researchOnly])
+
+  async function go(hash: string, fixMissing = false) {
     window.clearTimeout(timer.current)
     if (
       dirty.current &&
@@ -171,15 +192,20 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
     )
       return
     dirty.current = false
-    window.location.hash = hash
+    if (fixMissing) openToFixMissing(hash)
+    else window.location.hash = hash
   }
 
   if (!board)
     return (
       <main className="mx-auto min-h-[70svh] max-w-xl px-6 pt-40 text-center">
-        <h1 className="display-md">This project isn’t in your lineup</h1>
+        <h1 className="display-md">
+          {practice
+            ? "This sample project isn’t in the practice lineup"
+            : "This project isn’t in your lineup"}
+        </h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          The committee may have changed the presentation order.
+          The committee may have changed the lineup.
         </p>
         <a href={judgingHash} className="btn-dark mt-7">
           <ArrowLeft size={16} aria-hidden /> Back to lineup
@@ -200,13 +226,20 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
   function jumpToMissing() {
     const key = missing[0]
     if (!key) return
-    const el = document.getElementById(fieldId(key))
-    el?.closest("[data-judge-field]")?.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
-    })
-    el?.focus({ preventScroll: true })
+    focusField(key)
   }
+  // While fixing, "next" is the next team that still has unanswered questions.
+  const nextMissing = fixing
+    ? boards.find(
+        (other) => other.id !== projectId && !reviewComplete(reviews[other.id])
+      )
+    : undefined
+  const unanswered = (key: MissingKey) =>
+    fixing && judgingOpen && !submitted && missing.includes(key) ? (
+      <span className="judge-tag judge-tag-soft-warning judge-unanswered">
+        Not answered yet
+      </span>
+    ) : null
 
   return (
     <main className="judge-page mx-auto w-full max-w-[1040px] px-6 pt-[calc(70px+2.5rem)] pb-16">
@@ -222,7 +255,8 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
           }}
           className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground"
         >
-          <ArrowLeft size={16} aria-hidden /> Lineup
+          <ArrowLeft size={16} aria-hidden />{" "}
+          {practice ? "Practice lineup" : "Lineup"}
         </a>
         <span className="text-muted-foreground tabular-nums">
           Project {index + 1} of {boards.length}
@@ -233,11 +267,21 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
         </span>
       </nav>
 
+      {practice && (
+        <PracticeNote
+          note
+          className="mt-6"
+          title="Practice project"
+          description="These are just sample projects to try out. Your answers won’t be sent to the committee."
+        />
+      )}
+
       <ProjectSummary
         board={board}
         content={content}
         status={status}
         closed={!judgingOpen && feedbackReleased}
+        practice={practice}
       />
 
       <section
@@ -273,10 +317,8 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
           />
           <span>
             <span className="font-medium text-foreground">
-              Your feedback is anonymous to teams.
-            </span>{" "}
-            Your name is hidden. Teams see feedback when the committee releases
-            it.
+              Your feedback is anonymous, your name will be hidden to teams.
+            </span>
           </span>
         </p>
         {researchOnly && (
@@ -284,11 +326,32 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
             className="judge-research-only mt-4 rounded-lg border border-border px-4 py-3 text-sm text-muted-foreground"
             role="note"
           >
-            <span className="font-medium text-foreground">
+            <span className="block font-medium text-foreground">
               You’re reviewing the research only.
-            </span>{" "}
-            As you won’t be at Demo Day, there is no presentation section. Score
-            the project from its page and submission above.
+            </span>
+            As you won’t be at Demo Day, there is no presentation section.{" "}
+            {practice ? (
+              // Sample projects have no public page to link to.
+              "Score the project based on the project details above."
+            ) : (
+              <>
+                Score the project based on the project page{" "}
+                <a
+                  href={projectShareUrl(
+                    board.id,
+                    window.location.origin,
+                    window.location.pathname
+                  )}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="judge-inline-link"
+                >
+                  here
+                  <span className="sr-only"> (opens in a new tab)</span>
+                </a>
+                .
+              </>
+            )}
           </p>
         )}
         {submitted && judgingOpen && (
@@ -374,10 +437,11 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
                         data-judge-field
                       >
                         <legend className="contents">
-                          <span className="judge-criterion-label">
+                          <span className="judge-criterion-label flex flex-wrap items-center gap-x-3 gap-y-1.5">
                             <span className="block text-[15px] font-medium">
                               {criterion.label}
                             </span>
+                            {unanswered(criterion.key)}
                           </span>
                         </legend>
                         <div className="judge-rating">
@@ -478,12 +542,15 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
                 </div>
 
                 <div className="judge-remarks" data-judge-field>
-                  <label
-                    htmlFor={fieldId(review.key)}
-                    className="block text-[15px] font-medium"
-                  >
-                    {review.label}
-                  </label>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                    <label
+                      htmlFor={fieldId(review.key)}
+                      className="block text-[15px] font-medium"
+                    >
+                      {review.label}
+                    </label>
+                    {unanswered(review.key)}
+                  </div>
                   <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
                     {review.hint}
                   </p>
@@ -550,7 +617,17 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
               Next unanswered
             </button>
           )}
-          {next ? (
+          {nextMissing ? (
+            <button
+              type="button"
+              onClick={() => void go(judgingProjectHash(nextMissing.id), true)}
+              className={`judge-primary-button ${action.light}`}
+            >
+              <span className="hidden sm:inline">Next to finish:</span>{" "}
+              {nextMissing.code}
+              <ArrowRight size={16} aria-hidden />
+            </button>
+          ) : next && !fixing ? (
             <button
               type="button"
               onClick={() => void go(judgingProjectHash(next.id))}
@@ -565,7 +642,7 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
               onClick={() => void go(judgingHash)}
               className={`judge-primary-button ${action.light}`}
             >
-              Back to lineup
+              {practice ? "Back to practice lineup" : "Back to lineup"}
             </button>
           )}
         </div>
@@ -574,8 +651,21 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
   )
 }
 
+type MissingKey = ScoreKey | (typeof sectionRemarks)[number]["key"]
+
+/** Scrolls a question into the middle of the screen and focuses its input. */
+function focusField(key: MissingKey) {
+  const el = document.getElementById(fieldId(key))
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  el?.closest("[data-judge-field]")?.scrollIntoView({
+    behavior: reduce ? "auto" : "smooth",
+    block: "center",
+  })
+  el?.focus({ preventScroll: true })
+}
+
 function missingKeys(answers: FeedbackAnswers, researchOnly: boolean) {
-  const keys: (ScoreKey | (typeof sectionRemarks)[number]["key"])[] = []
+  const keys: MissingKey[] = []
   sectionsFor(researchOnly).forEach((section) => {
     section.criteria.forEach((criterion) => {
       if (!validScore(answers[criterion.key])) keys.push(criterion.key)
@@ -598,6 +688,7 @@ function NavButton({
   forward?: boolean
 }) {
   const Icon = forward ? ArrowRight : ArrowLeft
+  const { projectHash: judgingProjectHash } = useJudgingSource()
   return (
     <button
       disabled={!board}
@@ -645,11 +736,14 @@ function ProjectSummary({
   content,
   status,
   closed,
+  practice,
 }: {
   board: Board
   content?: Draft
   status: ReturnType<typeof reviewStatus>
   closed: boolean
+  /** Sample projects have no public page to link to. */
+  practice: boolean
 }) {
   const projectUrl = projectShareUrl(
     board.id,
@@ -712,14 +806,16 @@ function ProjectSummary({
           <h2 className="label-micro mb-3 text-muted-foreground">Abstract</h2>
           <OverviewContent text={content?.summary || board.description} />
         </section>
-        <a
-          href={projectUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`btn-dark mt-8 ${action.dark}`}
-        >
-          View full project <ArrowUpRight size={16} aria-hidden />
-        </a>
+        {!practice && (
+          <a
+            href={projectUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`btn-dark mt-8 ${action.dark}`}
+          >
+            View full project <ArrowUpRight size={16} aria-hidden />
+          </a>
+        )}
       </div>
     </article>
   )

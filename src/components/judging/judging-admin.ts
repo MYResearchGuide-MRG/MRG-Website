@@ -9,6 +9,7 @@ import {
   scoreKeys,
   withoutPresentation,
   type JudgeKind,
+  type SpecialAward,
   type ScoreKey,
 } from "./form"
 import {
@@ -109,6 +110,7 @@ type JudgeRow = {
   email: string
   affiliation: string
   kind: JudgeKind
+  special_award: SpecialAward | null
   attends_demo_day: boolean
   revoked: boolean
   invited_at: string | null
@@ -170,7 +172,7 @@ async function readCommitteeJudging() {
     supabase
       .from("myssp_judges")
       .select(
-        "id,user_id,cohort_year,name,email,affiliation,kind,attends_demo_day,revoked,invited_at,deleted_at"
+        "id,user_id,cohort_year,name,email,affiliation,kind,special_award,attends_demo_day,revoked,invited_at,deleted_at"
       )
       .order("name"),
     supabase
@@ -239,6 +241,7 @@ async function readCommitteeJudging() {
       email: row.email,
       affiliation: row.affiliation,
       kind: row.kind,
+      specialAward: row.kind === "special" ? (row.special_award ?? null) : null,
       attendsDemoDay: row.attends_demo_day !== false,
       revoked: row.revoked,
       deletedAt: row.deleted_at,
@@ -375,6 +378,7 @@ export async function saveJudge(input: JudgeInput, id?: string) {
     access_revoked: clean.revoked,
     judge_kind: clean.kind,
     judge_attends: clean.attendsDemoDay,
+    judge_award: clean.kind === "special" ? clean.specialAward : null,
   })
   if (error)
     throw error.message.includes("can no longer change")
@@ -408,13 +412,14 @@ export async function importJudges(inputs: JudgeInput[]) {
       affiliation: input.affiliation.trim(),
       cohort_year: input.cohortYear,
       kind: input.kind,
+      special_award: input.kind === "special" ? input.specialAward : null,
       attends_demo_day: input.attendsDemoDay,
     })),
   })
   if (error)
     throw failure(
       error,
-      "Could not import judges. Check for duplicate emails and judge types."
+      "Could not import judges. Check for duplicate emails, judge types and awards that already have a judge."
     )
   await refreshCommitteeJudging()
 }

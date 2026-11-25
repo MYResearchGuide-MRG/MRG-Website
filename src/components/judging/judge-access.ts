@@ -14,6 +14,7 @@ import {
   scoreKeys,
   withoutPresentation,
   type FeedbackAnswers,
+  type JudgeKind,
   type ScoreKey,
 } from "./form"
 
@@ -27,6 +28,8 @@ export type Judge = {
   affiliation: string
   /** False for a judge who reviews the research only. */
   attendsDemoDay: boolean
+  /** Teams see "Main award" or "Special award" on this judge's reviews. */
+  kind: JudgeKind
 }
 export type JudgeReview = FeedbackAnswers & {
   /** Has no presentation answers; saved by a judge not attending Demo Day. */
@@ -37,6 +40,7 @@ export type JudgeReview = FeedbackAnswers & {
 }
 export type ReviewStatus = "not-started" | "draft" | "submitted"
 
+export type JudgeAccessState = State
 type State = {
   ready: boolean
   judge: Judge | null
@@ -146,6 +150,7 @@ function loadPreview() {
       email: found.email,
       affiliation: found.affiliation,
       attendsDemoDay: found.attendsDemoDay,
+      kind: found.kind ?? "main",
     },
     lineup: found
       ? (data.lineups[found.cohortYear] || []).filter((id) => active.has(id))
@@ -207,7 +212,7 @@ export async function refreshJudging() {
     }
     const judges = await supabase
       .from("myssp_judges")
-      .select("id,cohort_year,name,email,affiliation,attends_demo_day")
+      .select("id,cohort_year,name,email,affiliation,attends_demo_day,kind")
       .eq("user_id", userId)
       .eq("revoked", false)
       .is("deleted_at", null)
@@ -225,6 +230,7 @@ export async function refreshJudging() {
       email: judges.data.email,
       affiliation: judges.data.affiliation,
       attendsDemoDay: judges.data.attends_demo_day !== false,
+      kind: judges.data.kind === "special" ? "special" : "main",
     }
     const [lineup, feedback, judging] = await Promise.all([
       supabase
