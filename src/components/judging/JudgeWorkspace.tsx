@@ -1,3 +1,5 @@
+import { researchDeadlineLabel } from "./judge-model"
+import { useResearchDeadlinePassed } from "./use-research-deadline"
 import { useState, useSyncExternalStore } from "react"
 import {
   ArrowRight,
@@ -89,8 +91,14 @@ export default function JudgeWorkspace({ onSignIn }: { onSignIn: () => void }) {
 }
 
 function Lineup() {
-  const { judge, reviews, judgingOpen, feedbackReleased, error } =
-    useJudgeAccess()
+  const {
+    judge,
+    reviews,
+    judgingOpen,
+    researchClosesAt,
+    feedbackReleased,
+    error,
+  } = useJudgeAccess()
   const boards = useLineupBoards()
   const backend = useBackend()
   const ready = boards.filter((board) =>
@@ -107,20 +115,33 @@ function Lineup() {
   const next = boards.find((board) => !reviewComplete(reviews[board.id]))
   const nextIndex = next ? boards.indexOf(next) : -1
   const nextContent = useProjectContent(next ?? boards[0])
+  const deadlinePassed = useResearchDeadlinePassed(researchClosesAt)
   const statusLabel = judgingOpen
     ? "Judging is open"
     : feedbackReleased
       ? "Judging is closed"
-      : boards.length
-        ? "Marking is paused"
-        : "Waiting for the lineup"
+      : deadlinePassed
+        ? "Research marking deadline passed"
+        : boards.length
+          ? "Marking is paused"
+          : "Waiting for the lineup"
   return (
     <main className="min-h-[72svh] pb-20">
       <header className="content-container pt-[calc(70px+3rem)] pb-2 sm:pt-[calc(70px+4.5rem)]">
         <p className="mb-3 text-sm text-muted-foreground">
           MYSSP {judge?.cohortYear} Demo Day
         </p>
-        <h1 className="judge-heading">Presentation Scores</h1>
+        <h1 className="judge-heading">
+          {judge?.attendsDemoDay === false
+            ? "Research scores"
+            : "Presentation Scores"}
+        </h1>
+        {researchClosesAt && (
+          <p className="mt-3 text-sm text-muted-foreground">
+            Research marking deadline ·{" "}
+            {researchDeadlineLabel(researchClosesAt)}
+          </p>
+        )}
         <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
           <span
             className={`judge-tag ${judgingOpen ? "judge-tag-secondary-success" : "judge-tag-soft-default"}`}
@@ -255,8 +276,10 @@ function Lineup() {
 
             {!judgingOpen && !feedbackReleased && (
               <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-                Marking is paused by the committee. You can still view the
-                projects and your saved feedback.
+                {deadlinePassed
+                  ? "The research marking deadline has passed."
+                  : "Marking is paused by the committee."}{" "}
+                You can still view the projects and your saved feedback.
               </p>
             )}
           </section>

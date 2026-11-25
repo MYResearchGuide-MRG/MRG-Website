@@ -13,6 +13,7 @@ import {
 } from "./form"
 import {
   closedSwitches,
+  researchMarkingOpen,
   judgeInputError,
   type CommitteeJudge,
   type CommitteeReview,
@@ -179,7 +180,7 @@ async function readCommitteeJudging() {
     supabase
       .from("myssp_judge_feedback")
       .select("judge_id,project_id,updated_at"),
-    supabase.rpc("myssp_judging_state"),
+    supabase.rpc("myssp_judging_windows"),
   ])
   if (
     ticket !== epoch ||
@@ -248,12 +249,16 @@ async function readCommitteeJudging() {
       (
         switches.data as {
           year: number
+          research_marking: boolean | null
+          research_closes_at: string | null
           judging_open: boolean
           feedback_released: boolean
         }[]
       ).map((row) => [
         row.year,
         {
+          researchMarking: row.research_marking,
+          researchClosesAt: row.research_closes_at,
           judgingOpen: row.judging_open,
           feedbackReleased: row.feedback_released,
         },
@@ -469,10 +474,71 @@ export function previewJudgeCode(id: string) {
     : null
 }
 
-export async function setLineup(year: number, projectIds: string[]) {
+export async function setResearchWindow(
+  year: number,
+  enabled: boolean | null,
+  deadline: string,
+  expected: JudgingSwitches
+) {
   if (judgingPreviewMode) {
     const data = readPreview()
-    if (data.switches[year]?.judgingOpen)
+    const current = data.switches[year] ?? closedSwitches
+    if (current.feedbackReleased)
+      throw new Error(
+        "Hide released feedback before changing the research window."
+      )
+    if (
+      current.researchMarking !== expected.researchMarking ||
+      current.researchClosesAt !== expected.researchClosesAt
+    )
+      throw new Error("The window changed. Refresh before saving.")
+    if (
+      !Number.isFinite(Date.parse(deadline)) ||
+      (enabled !== false && Date.parse(deadline) <= Date.now())
+    )
+      throw new Error("Choose a future closing time.")
+    if (enabled && !data.lineups[year]?.length)
+      throw new Error(
+        "Save the project lineup before starting research-only marking."
+      )
+    writePreview({
+      ...data,
+      switches: {
+        ...data.switches,
+        [year]: {
+          ...current,
+          researchMarking: enabled,
+          researchClosesAt: deadline,
+        },
+      },
+    })
+    return
+  }
+  const { error } = await requireAdmin().rpc(
+    "myssp_set_research_judging_window",
+    {
+      cohort: year,
+      enabled,
+      closes_at: deadline,
+      expected_enabled: expected.researchMarking ?? null,
+      expected_closes_at: expected.researchClosesAt ?? null,
+    }
+  )
+  if (error) throw failure(error, "Could not update research-only marking.")
+  await refreshCommitteeJudging()
+}
+
+export async function setLineup(
+  year: number,
+  projectIds: string[],
+  startMarking = true
+) {
+  if (judgingPreviewMode) {
+    const data = readPreview()
+    if (
+      data.switches[year]?.judgingOpen ||
+      (data.switches[year] && researchMarkingOpen(data.switches[year]))
+    )
       throw new Error("Close judging before changing the lineup")
     if (data.switches[year]?.feedbackReleased)
       throw new Error("Hide released feedback before changing the lineup")
@@ -481,14 +547,19 @@ export async function setLineup(year: number, projectIds: string[]) {
       lineups: { ...data.lineups, [year]: projectIds },
       switches: {
         ...data.switches,
-        [year]: { judgingOpen: projectIds.length > 0, feedbackReleased: false },
+        [year]: {
+          ...data.switches[year],
+          judgingOpen: startMarking && projectIds.length > 0,
+          feedbackReleased: false,
+        },
       },
     })
     return
   }
-  const { error } = await requireAdmin().rpc("myssp_set_judging_lineup", {
+  const { error } = await requireAdmin().rpc("myssp_save_judging_lineup", {
     cohort: year,
     project_ids: projectIds,
+    start_marking: startMarking,
   })
   if (error) throw failure(error, "Could not save the lineup.")
   await refreshCommitteeJudging()
@@ -505,13 +576,20 @@ export async function setSwitches(year: number, next: JudgingSwitches) {
     // Closing judging submits every complete draft from the cohort's active
     // judges, matching the database.
     let reviews = data.reviews
-    if (wasOpen && !next.judgingOpen) {
+    if ((wasOpen && !next.judgingOpen) || next.feedbackReleased) {
       const lineup = new Set(data.lineups[year] || [])
       const active = new Set(
         data.judges
           .filter(
             (judge) =>
-              judge.cohortYear === year && !judge.revoked && !judge.deletedAt
+              judge.cohortYear === year &&
+              !judge.revoked &&
+              !judge.deletedAt &&
+              ((wasOpen &&
+                !next.judgingOpen &&
+                (judge.attendsDemoDay ||
+                  data.switches[year]?.researchMarking == null)) ||
+                (next.feedbackReleased && !judge.attendsDemoDay))
           )
           .map((judge) => judge.id)
       )
@@ -536,7 +614,19 @@ export async function setSwitches(year: number, next: JudgingSwitches) {
     writePreview({
       ...data,
       reviews,
-      switches: { ...data.switches, [year]: next },
+      switches: {
+        ...data.switches,
+        [year]: {
+          ...data.switches[year],
+          judgingOpen: next.judgingOpen,
+          feedbackReleased: next.feedbackReleased,
+          researchMarking:
+            next.feedbackReleased &&
+            data.switches[year]?.researchMarking === true
+              ? false
+              : data.switches[year]?.researchMarking,
+        },
+      },
     })
     return
   }

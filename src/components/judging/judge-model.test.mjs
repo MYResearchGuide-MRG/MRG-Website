@@ -22,9 +22,32 @@ const {
   projectResult,
   rankResults,
   reviewTotal,
+  researchMarkingOpen,
 } = await import(
   `data:text/javascript,${encodeURIComponent(stripTypeScriptTypes(model))}`
 )
+
+test("research marking stops exactly at the Malaysia deadline", () => {
+  const researchClosesAt = "2026-11-28T16:00:00+08:00"
+  const end = Date.parse("2026-11-28T08:00:00Z")
+  const settings = {
+    judgingOpen: false,
+    feedbackReleased: false,
+    researchMarking: true,
+    researchClosesAt,
+  }
+  assert.equal(researchMarkingOpen(settings, end - 1), true)
+  assert.equal(researchMarkingOpen(settings, end), false)
+  assert.equal(researchMarkingOpen(settings, end + 1), false)
+  assert.equal(
+    researchMarkingOpen({ ...settings, feedbackReleased: true }, end - 1),
+    false
+  )
+  assert.equal(
+    researchMarkingOpen({ ...settings, researchMarking: null }, end - 1),
+    false
+  )
+})
 
 const keys = [
   "data_collection",

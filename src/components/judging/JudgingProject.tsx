@@ -1,3 +1,5 @@
+import { researchDeadlineLabel } from "./judge-model"
+import { useResearchDeadlinePassed } from "./use-research-deadline"
 import { useCallback, useEffect, useRef, useState } from "react"
 import {
   ArrowLeft,
@@ -70,7 +72,9 @@ type SaveState =
   | { kind: "error"; message: string }
 
 export default function JudgingProject({ projectId }: { projectId: string }) {
-  const { judge, reviews, judgingOpen, feedbackReleased } = useJudgeAccess()
+  const { judge, reviews, judgingOpen, researchClosesAt, feedbackReleased } =
+    useJudgeAccess()
+  const deadlinePassed = useResearchDeadlinePassed(researchClosesAt)
   const boards = useLineupBoards()
   const index = boards.findIndex((board) => board.id === projectId)
   const board = boards[index]
@@ -247,10 +251,20 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
           {!judgingOpen && (
             <span className="judge-tag judge-tag-soft-default" role="status">
               <span className="judge-tag-dot" aria-hidden />
-              {feedbackReleased ? "Judging is closed" : "Marking is paused"}
+              {deadlinePassed
+                ? "Research marking deadline passed"
+                : feedbackReleased
+                  ? "Judging is closed"
+                  : "Marking is paused"}
             </span>
           )}
         </div>
+        {researchClosesAt && (
+          <p className="mt-3 text-sm text-muted-foreground">
+            Research marking deadline ·{" "}
+            {researchDeadlineLabel(researchClosesAt)}
+          </p>
+        )}
         <p className="mt-4 flex items-start gap-2 text-sm text-muted-foreground">
           <ShieldCheck
             size={16}

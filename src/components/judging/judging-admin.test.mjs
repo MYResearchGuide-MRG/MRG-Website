@@ -83,7 +83,10 @@ function fixture(preview = false) {
               }
             : name === "./form"
               ? { scoreKeys: [] }
-              : {},
+              : name === "./judge-model" ? {
+                  closedSwitches: { judgingOpen:false, feedbackReleased:false },
+                  researchMarkingOpen: (s) => !s.feedbackReleased && (s.researchMarking ?? s.judgingOpen) && (!s.researchClosesAt || Date.parse(s.researchClosesAt) > Date.now())
+                } : {},
     console,
     Date,
     Promise,

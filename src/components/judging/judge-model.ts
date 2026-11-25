@@ -118,9 +118,37 @@ export function parseJudgeCsv(
   })
 }
 export type JudgingSwitches = {
+  /** null follows general judging until a committee member overrides it. */
+  researchMarking?: boolean | null
+  researchClosesAt?: string | null
   judgingOpen: boolean
   feedbackReleased: boolean
 }
+export function researchMarkingOpen(
+  settings: JudgingSwitches,
+  now = Date.now()
+) {
+  return (
+    !settings.feedbackReleased &&
+    (settings.researchMarking ?? settings.judgingOpen) &&
+    (!settings.researchClosesAt || now < Date.parse(settings.researchClosesAt))
+  )
+}
+
+export function researchDeadlineLabel(value: string) {
+  return (
+    new Intl.DateTimeFormat("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+      timeZone: "Asia/Kuala_Lumpur",
+    }).format(new Date(value)) + " MYT"
+  )
+}
+
 export const closedSwitches: JudgingSwitches = {
   judgingOpen: false,
   feedbackReleased: false,

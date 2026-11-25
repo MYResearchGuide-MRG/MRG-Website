@@ -49,7 +49,9 @@ function seed(): PreviewData {
       },
     ],
     lineups: { [year]: lineup },
-    switches: { [year]: { judgingOpen: lineup.length > 0, feedbackReleased: false } },
+    switches: {
+      [year]: { judgingOpen: lineup.length > 0, feedbackReleased: false },
+    },
     reviews: {},
   }
 }
@@ -60,6 +62,13 @@ export function readPreview(): PreviewData {
   try {
     const stored = localStorage.getItem(storageKey)
     cache = stored ? (JSON.parse(stored) as PreviewData) : seed()
+    if (
+      cache.switches[2026] &&
+      cache.switches[2026].researchClosesAt === undefined
+    ) {
+      cache.switches[2026].researchMarking = cache.switches[2026].judgingOpen
+      cache.switches[2026].researchClosesAt = "2026-11-28T08:00:00.000Z"
+    }
     // Judges stored before judge types or attendance existed are main
     // judges who attend Demo Day.
     cache.judges = cache.judges.map((judge) => ({

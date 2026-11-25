@@ -18,6 +18,10 @@ Updated 23 November 2026.
 
 ## Judges who cannot attend Demo Day
 
+In **Judging → Project lineup**, choose **Save lineup only** to prepare projects without opening general marking. Under **Research-only marking**, the committee can set the closing time in Malaysia time, start marking immediately, or pause it. This applies to both main and special award judges marked as unable to attend Demo Day. Attending judges use the general judging switch.
+
+For 2026 the cutoff is **28 November at 4:00 pm MYT (08:00 UTC)**. The database checks the cutoff on draft saves, individual submissions and bulk submissions. Saved answers remain available to review. Feedback is shared only when the committee releases it. To reopen an expired window, save a future deadline and select **Start research marking**.
+
 In the **Judges** table, untick **Demo Day** for a judge who will
 review from the project pages only. They see only Research Execution & Quality
 (3 scores and one review, out of 15) and no presentation section. Attendance

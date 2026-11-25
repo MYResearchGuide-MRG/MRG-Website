@@ -1,3 +1,5 @@
+import { ResearchWindow } from "./ResearchWindow"
+import { useResearchDeadlinePassed } from "./use-research-deadline"
 import {
   Fragment,
   useEffect,
@@ -103,8 +105,13 @@ export function JudgingAdmin({
   const cohortReviews = data.reviews.filter((review) =>
     lineupIds.has(review.projectId)
   )
-  const { judgingOpen, feedbackReleased } = switchesFor(data, year)
-  const lineupLocked = judgingOpen || feedbackReleased
+  const { judgingOpen, feedbackReleased, researchMarking, researchClosesAt } =
+    switchesFor(data, year)
+  const deadlinePassed = useResearchDeadlinePassed(researchClosesAt)
+  const lineupLocked =
+    judgingOpen ||
+    feedbackReleased ||
+    (!deadlinePassed && (researchMarking ?? judgingOpen))
 
   return (
     <section className="am-root jd-root" aria-label="Judging">
@@ -259,7 +266,7 @@ function OpenJudgingDetails({
       <DialogDescription>
         {lineupSize === 0
           ? "There are no projects to judge yet."
-          : `Your ${judgeCount === 1 ? "judge" : `${judgeCount} judges`} can start scoring the ${lineupSize} project${lineupSize === 1 ? "" : "s"} in the lineup.`}
+          : `Your ${judgeCount === 1 ? "judge" : `${judgeCount} judges`} can use general marking for the ${lineupSize} project${lineupSize === 1 ? "" : "s"} in the lineup. Separate research-only windows keep their own settings.`}
       </DialogDescription>
       <ul className="jd-checklist">
         {lineupSize === 0 && (
@@ -319,6 +326,18 @@ function JudgingSwitches({
         !activeJudges.has(review.judgeId))
   ).length
   const completeDrafts = drafts - incompleteDrafts
+  const completeResearch = reviews.filter(
+    (r) =>
+      r.researchOnly &&
+      !r.submittedAt &&
+      activeJudges.has(r.judgeId) &&
+      !missingAnswers(r, true).length
+  ).length
+  const closingDrafts =
+    completeDrafts - (current.researchMarking != null ? completeResearch : 0)
+  const releasingDrafts = current.judgingOpen
+    ? completeDrafts
+    : completeResearch
   // Every active judge scores every lineup project. Reviews from paused or
   // removed judges don't count, and while judging is open, complete drafts
   // count because releasing submits them.
@@ -327,17 +346,17 @@ function JudgingSwitches({
     (review) =>
       activeJudges.has(review.judgeId) &&
       (review.submittedAt ||
-        (current.judgingOpen &&
+        ((current.judgingOpen || review.researchOnly) &&
           !missingAnswers(review, review.researchOnly).length))
   ).length
   const judgingCopy = current.judgingOpen
     ? {
-        title: "Judging is open",
-        text: "Judges can score projects and submit reviews. The project lineup is locked until you close judging.",
+        title: "General judging is open",
+        text: "Attending judges can score projects and submit reviews.",
       }
     : {
-        title: "Judging is closed",
-        text: "Judges can't score projects yet. Open judging to let judges start judging.",
+        title: "General judging is closed",
+        text: "Open this window when attending judges can start marking.",
       }
   const feedbackCopy = current.feedbackReleased
     ? {
@@ -404,6 +423,13 @@ function JudgingSwitches({
           }
         />
       </div>
+      <ResearchWindow
+        key={year}
+        year={year}
+        current={current}
+        lineupSize={lineupSize}
+        onNotice={onNotice}
+      />
       {error && (
         <p className="ad-error" role="alert">
           {error}
@@ -419,18 +445,18 @@ function JudgingSwitches({
           <DialogContent className="ad-modal am-dialog">
             <DialogTitle>Close judging?</DialogTitle>
             <DialogDescription>
-              Judges won't be able to score projects or change their reviews
-              until you open judging again.
+              Attending judges will stop marking. Judges with a separate
+              research-only window keep their own settings.
             </DialogDescription>
-            {(completeDrafts > 0 || incompleteDrafts > 0) && (
+            {(closingDrafts > 0 || incompleteDrafts > 0) && (
               <ul className="jd-checklist">
-                {completeDrafts > 0 && (
+                {closingDrafts > 0 && (
                   <li>
-                    {completeDrafts === 1
+                    {closingDrafts === 1
                       ? "1 finished draft"
-                      : `${completeDrafts} finished drafts`}{" "}
+                      : `${closingDrafts} finished drafts`}{" "}
                     will be submitted for the judges, so{" "}
-                    {completeDrafts === 1 ? "it counts" : "they count"} towards
+                    {closingDrafts === 1 ? "it counts" : "they count"} towards
                     results.
                   </li>
                 )}
@@ -458,7 +484,7 @@ function JudgingSwitches({
                 onClick={() =>
                   void change(
                     { ...current, judgingOpen: false },
-                    "Judging is closed. Judges can no longer change their reviews."
+                    "General judging is closed."
                   )
                 }
               >
@@ -565,9 +591,7 @@ function JudgingSwitches({
               <button
                 className="ad-button ad-primary"
                 disabled={
-                  busy ||
-                  !releaseChecked ||
-                  submitted + (current.judgingOpen ? completeDrafts : 0) === 0
+                  busy || !releaseChecked || submitted + releasingDrafts === 0
                 }
                 onClick={() =>
                   void change(
@@ -1604,15 +1628,17 @@ function LineupEditor({
       next.splice(index + by, 0, item)
       return next
     })
-  async function save() {
+  async function save(startMarking = true) {
     setSaving(true)
     setError("")
     try {
-      await setLineup(year, order)
+      await setLineup(year, order, startMarking)
       setConfirming(false)
       onNotice(
         order.length
-          ? "Lineup saved and judging is open. Judges can now score projects."
+          ? startMarking
+            ? "Lineup saved. General judging is open."
+            : "Lineup saved. You can now start research-only marking."
           : "Lineup cleared. Judging is closed."
       )
     } catch (cause) {
@@ -1628,7 +1654,7 @@ function LineupEditor({
           <Lock size={14} aria-hidden />
           {feedbackReleased
             ? "Feedback has been released. Hide it before changing the lineup."
-            : "The lineup is locked while judging is open. Close judging to add, remove or reorder projects."}
+            : "The lineup is locked while judging is open. Close any open marking windows to edit the lineup."}
         </p>
         <ol className="jd-lineup" data-guide="lineup">
           {saved.map((id, index) => {
@@ -1655,7 +1681,7 @@ function LineupEditor({
         <p className="jd-intro">
           {order.length
             ? "Judges will see projects in this order. You can't change the lineup while judging is open."
-            : "Add projects, then save to open judging."}
+            : "Add projects and save the lineup before starting a marking round."}
         </p>
         <div className="jd-lineup-save">
           {!dirty && saved.length > 0 && (
@@ -1668,6 +1694,15 @@ function LineupEditor({
           >
             Undo changes
           </button>
+          {order.length > 0 && (
+            <button
+              className="ad-button"
+              disabled={!dirty || saving}
+              onClick={() => void save(false)}
+            >
+              Save lineup only
+            </button>
+          )}
           <button
             className="ad-button ad-primary"
             disabled={(!dirty && !order.length) || saving}

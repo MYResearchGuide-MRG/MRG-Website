@@ -15,6 +15,7 @@ const migrations = [
   "202611140001_judging.sql",
   "202611230001_lineup_starts_judging.sql",
   "202611240001_judge_demo_day_attendance.sql",
+  "202611250001_research_marking_window.sql",
 ]
 
 const admin = "00000000-0000-0000-0000-000000000001"
@@ -408,6 +409,7 @@ test("judges who skip Demo Day submit research-only reviews, and attendance lock
   const { db, as, a, b, userA, userB } = await openJudging()
   const research = { data_collection: 4, analysis: 3, findings_validity: 5, research_remarks: "Solid data" }
   await as("authenticated", admin)
+  await db.query("select myssp_set_research_judging_window(2026,true,now()+interval '1 day',false,'2026-11-28 16:00+08')")
   assert.equal((await db.query("select attends_demo_day from myssp_judges where id=$1", [a])).rows[0].attends_demo_day, true)
   // An earlier draft with presentation answers loses them when the judge is marked absent.
   await as("authenticated", userA)
@@ -487,4 +489,52 @@ test("the committee can return a submitted review to draft until feedback is rel
   await as("authenticated", admin)
   await db.query("select myssp_set_judging_state(2026,false,true)")
   await assert.rejects(() => db.query("select myssp_unsubmit_judge_feedback($1,'one')", [a]), /Hide feedback/)
+})
+
+test("research window uses its own lineup, committee controls and exclusive deadline for every judge save", async () => {
+  const {db,as,a,userA,userB}=await openJudging()
+  const future = new Date(Date.now()+86400000).toISOString()
+  const original="2026-11-28T08:00:00Z"
+  const change=(enabled,deadline,prev,previousDate)=>db.query(
+    "select myssp_set_research_judging_window(2026,$1,$2,$3,$4)",[enabled,deadline,prev,previousDate])
+  await as("authenticated",admin)
+  await db.query("select myssp_set_judging_state(2026,false,false)")
+  await db.query("select myssp_save_judge($1,2026,'A','a3@judge.test','',false,'main',false)",[a])
+  await db.query("select myssp_save_judging_lineup(2026,'{}',false)")
+  await assert.rejects(()=>change(true,future,false,original),/lineup/)
+  await db.query("select myssp_save_judging_lineup(2026,array['one','two'],false)")
+  await as("authenticated",userA)
+  await assert.rejects(()=>change(true,future,false,original),/Admin required/)
+  await as("authenticated",admin)
+  await change(true,future,false,original)
+  await assert.rejects(()=>change(false,future,false,original),/Refresh/)
+  await assert.rejects(()=>db.query("select myssp_set_judging_lineup(2026,array['one'])"),/Close judging/)
+  await db.exec("reset role")
+  await db.exec(readFileSync(new URL("../migrations/202611210005_judging_save_versions.sql",import.meta.url),"utf8"))
+  const save=(project,submit=false)=>db.query("select myssp_save_judge_review_v2($1,$2,$3,null)",[project,full(4,"Research"),submit])
+  await as("authenticated",userB)
+  await assert.rejects(()=>save("two"),/Judging is closed/)
+  await as("authenticated",userA)
+  await save("one")
+  await assert.rejects(()=>save("extra"),/Judge access required/)
+  await as("authenticated",admin)
+  await db.query("select myssp_set_judging_state(2026,true,false)")
+  await db.query("select myssp_set_judging_state(2026,false,false)")
+  assert.equal(await submittedAt(db,a,"one"),null)
+  await db.query("select myssp_set_judging_state(2026,true,false)")
+  // An already open tab tries every write path at or after the cutoff.
+  await db.exec("reset role; update myssp_cohorts set research_closes_at=clock_timestamp() where year=2026")
+  await as("authenticated",userA)
+  await assert.rejects(()=>save("two"),/Judging is closed/)
+  await assert.rejects(()=>save("two",true),/Judging is closed/)
+  await assert.rejects(()=>db.query("select myssp_submit_judge_reviews()"),/Judging is closed/)
+  await as("authenticated",userB)
+  await save("two")
+  await as("authenticated",admin)
+  await db.query("select myssp_set_judging_state(2026,false,true)")
+  assert.ok(await submittedAt(db,a,"one"))
+  const {rows:[settings]}=await db.query("select * from myssp_judging_windows() where year=2026")
+  assert.equal(settings.research_marking,false)
+  assert.equal(settings.feedback_released,true)
+  await assert.rejects(()=>change(true,future,false,settings.research_closes_at),/released|Refresh/)
 })

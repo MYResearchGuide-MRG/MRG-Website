@@ -17,6 +17,8 @@ import {
   type ScoreKey,
 } from "./form"
 
+import { closedSwitches, researchMarkingOpen } from "./judge-model"
+
 export type Judge = {
   id: string
   cohortYear: number
@@ -41,6 +43,7 @@ type State = {
   /** Project ids in presentation order. */
   lineup: string[]
   reviews: Record<string, JudgeReview>
+  researchClosesAt: string | null
   judgingOpen: boolean
   /** Teams can see averaged scores and anonymous remarks. */
   feedbackReleased: boolean
@@ -51,6 +54,7 @@ const empty: State = {
   judge: null,
   lineup: [],
   reviews: {},
+  researchClosesAt: null,
   judgingOpen: false,
   feedbackReleased: false,
   error: "",
@@ -63,7 +67,18 @@ const subscribe = (fn: () => void) => {
     listeners.delete(fn)
   }
 }
+let expiryTimer: ReturnType<typeof setTimeout> | undefined
 function publish(next: State) {
+  clearTimeout(expiryTimer)
+  if (next.judgingOpen && next.researchClosesAt) {
+    const remaining = Date.parse(next.researchClosesAt) - Date.now()
+    if (remaining <= 0) next = { ...next, judgingOpen: false }
+    else
+      expiryTimer = setTimeout(
+        () => publish({ ...state }),
+        Math.min(remaining, 2_147_483_647)
+      )
+  }
   state = next
   listeners.forEach((fn) => fn())
 }
@@ -95,7 +110,7 @@ export function reviewComplete(
 ) {
   return Boolean(
     review &&
-      missingAnswers(answersFromReview(review), researchOnly).length === 0
+    missingAnswers(answersFromReview(review), researchOnly).length === 0
   )
 }
 
@@ -119,6 +134,7 @@ function loadPreview() {
   if (!previewMode) return
   const data = readPreview()
   const found = previewSessionJudge()
+  const settings = (found && data.switches[found.cohortYear]) || closedSwitches
   const active = new Set(getProjectBoards().map((board) => board.id))
   publish({
     ready: true,
@@ -135,7 +151,16 @@ function loadPreview() {
       ? (data.lineups[found.cohortYear] || []).filter((id) => active.has(id))
       : [],
     reviews: found ? data.reviews[found.id] || {} : {},
-    judgingOpen: Boolean(found && data.switches[found.cohortYear]?.judgingOpen),
+    judgingOpen: Boolean(
+      found &&
+      (found.attendsDemoDay
+        ? settings.judgingOpen
+        : researchMarkingOpen(settings))
+    ),
+    researchClosesAt:
+      found && !found.attendsDemoDay
+        ? (settings.researchClosesAt ?? null)
+        : null,
     feedbackReleased: Boolean(
       found && data.switches[found.cohortYear]?.feedbackReleased
     ),
@@ -211,7 +236,7 @@ export async function refreshJudging() {
         .from("myssp_judge_feedback")
         .select("*")
         .eq("judge_id", judge.id),
-      supabase.rpc("myssp_judging_state"),
+      supabase.rpc("myssp_judging_windows"),
     ])
     if (lineup.error || feedback.error || judging.error)
       throw new Error("Could not load your judging lineup.")
@@ -219,6 +244,8 @@ export async function refreshJudging() {
     const cohort = (
       judging.data as {
         year: number
+        research_closes_at: string | null
+        research_marking: boolean | null
         judging_open: boolean
         feedback_released: boolean
       }[]
@@ -234,7 +261,20 @@ export async function refreshJudging() {
           fromRow(row),
         ])
       ),
-      judgingOpen: Boolean(cohort?.judging_open),
+      researchClosesAt: judge.attendsDemoDay
+        ? null
+        : (cohort?.research_closes_at ?? null),
+      judgingOpen: Boolean(
+        cohort &&
+        (judge.attendsDemoDay
+          ? cohort.judging_open
+          : researchMarkingOpen({
+              judgingOpen: cohort.judging_open,
+              feedbackReleased: cohort.feedback_released,
+              researchMarking: cohort.research_marking,
+              researchClosesAt: cohort.research_closes_at,
+            }))
+      ),
       feedbackReleased: Boolean(cohort?.feedback_released),
     })
   } catch (error) {
