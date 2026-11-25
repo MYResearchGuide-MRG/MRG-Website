@@ -1,13 +1,16 @@
 // Pure judging helpers shared by the committee panel and its tests.
 import {
   judgingSections,
-  judgeKindLabels,
+  judgeTypeLabel,
   maxTotalFor,
   scoreKeys,
   scoreKeysFor,
   SCORE_MAX,
+  specialAwardKeys,
+  specialAwards,
   type JudgeKind,
   type ScoreKey,
+  type SpecialAward,
 } from "./form"
 import { importRecords } from "../admin/access-model"
 
@@ -19,6 +22,8 @@ export type CommitteeJudge = {
   email: string
   affiliation: string
   kind: JudgeKind
+  /** Which special award a special judge marks; null for main judges. */
+  specialAward: SpecialAward | null
   /** Judges who miss Demo Day review the research only. */
   attendsDemoDay: boolean
   revoked: boolean
@@ -31,6 +36,7 @@ export type JudgeInput = Pick<
   | "email"
   | "affiliation"
   | "kind"
+  | "specialAward"
   | "attendsDemoDay"
   | "revoked"
   | "cohortYear"
@@ -38,7 +44,7 @@ export type JudgeInput = Pick<
 export type JudgeImportRow = JudgeInput & { line: number; error: string }
 
 export const judgeCsvTemplate =
-  "name,email,affiliation,judge_type,attends_demo_day\r\nDr. Example,judge@example.com,Example University,main,yes\r\n"
+  "name,email,affiliation,judge_type,attends_demo_day\r\nDr. Example,judge@example.com,Example University,main,yes\r\nDr. Sponsor,sponsor@example.com,MathWorks,mathworks,yes\r\n"
 
 export function parseJudgeCsv(
   text: string,
@@ -60,6 +66,7 @@ export function parseJudgeCsv(
             email: "",
             affiliation: "",
             kind: "main",
+            specialAward: null,
             attendsDemoDay: true,
             revoked: false,
             cohortYear,
@@ -72,6 +79,7 @@ export function parseJudgeCsv(
   const seen = new Set(existing.map((judge) => judge.email.toLowerCase()))
   // Optional column, so older CSVs without it still import.
   const hasAttendance = headers.includes("attendsdemoday")
+  const awardsInFile = new Set<SpecialAward>()
   return records.slice(1).map((record) => {
     const value = (key: string) =>
       record.cells[headers.indexOf(key)]?.trim() || ""
@@ -80,16 +88,16 @@ export function parseJudgeCsv(
       : ""
     const kindValue = value("judgetype")
       .toLowerCase()
-      .replace(/[\s_-]+/g, "")
+      .replace(/[^a-z]+/g, "")
+      .replace(/^specialaward(judge)?/, "")
+    const award = specialAwardKeys.find((key) => key === kindValue) ?? null
     const row: JudgeImportRow = {
       line: record.line,
       name: value("name"),
       email: value("email").toLowerCase(),
       affiliation: value("affiliation"),
-      kind:
-        kindValue === "special" || kindValue === "specialawardjudge"
-          ? "special"
-          : "main",
+      kind: award ? "special" : "main",
+      specialAward: award,
       attendsDemoDay: !["no", "n", "false", "0"].includes(attendance),
       revoked: false,
       cohortYear,
@@ -97,13 +105,8 @@ export function parseJudgeCsv(
     }
     if (record.malformed || record.cells.length !== headers.length)
       row.error = "Check this CSV row and its quotation marks."
-    else if (
-      !value("judgetype") ||
-      !["main", "special", "special award judge"].includes(
-        value("judgetype").toLowerCase()
-      )
-    )
-      row.error = "Judge type must be main or special."
+    else if (!award && !["main", "mainjudge"].includes(kindValue))
+      row.error = "Judge type must be main, utar, mabecs or mathworks."
     else if (
       attendance &&
       !["yes", "y", "true", "1", "no", "n", "false", "0"].includes(attendance)
@@ -113,7 +116,14 @@ export function parseJudgeCsv(
     if (!row.error && seen.has(row.email))
       row.error =
         "This email appears more than once or is already in the judge list."
+    else if (
+      row.specialAward &&
+      !row.error &&
+      awardsInFile.has(row.specialAward)
+    )
+      row.error = `Only one ${specialAwards[row.specialAward]} judge can be imported.`
     seen.add(row.email)
+    if (row.specialAward && !row.error) awardsInFile.add(row.specialAward)
     return row
   })
 }
@@ -154,7 +164,11 @@ export const closedSwitches: JudgingSwitches = {
   feedbackReleased: false,
 }
 
-/** Special awards have independent judges and must not alter the main ranking. */
+/**
+ * Special awards have independent judges and must not alter the main ranking.
+ * An award's results come from its current judge only: a deleted judge who
+ * held it before doesn't mix into their replacement's averages.
+ */
 export function judgesForAward(
   judges: readonly CommitteeJudge[],
   award: string
@@ -162,7 +176,9 @@ export function judgesForAward(
   return judges.filter((judge) =>
     award === "main"
       ? judge.kind === "main"
-      : judge.kind === "special" && judge.id === award
+      : judge.kind === "special" &&
+        judge.specialAward === award &&
+        !judge.deletedAt
   )
 }
 
@@ -204,6 +220,20 @@ export function judgeInputError(
     return duplicate.deletedAt
       ? "This judge is in Deleted judges. Restore their account instead."
       : "This email is already in the judge list."
+  if (input.kind === "special") {
+    if (!input.specialAward)
+      return "Choose which special award this judge marks."
+    const taken = existing.find(
+      (judge) =>
+        judge.id !== editingId &&
+        !judge.deletedAt &&
+        judge.cohortYear === input.cohortYear &&
+        judge.kind === "special" &&
+        judge.specialAward === input.specialAward
+    )
+    if (taken)
+      return `${taken.name} is already the ${specialAwards[input.specialAward]} judge for ${input.cohortYear}.`
+  }
   return ""
 }
 
@@ -360,7 +390,7 @@ export function feedbackCsv(
         project.title,
         judge?.name || "Unknown judge",
         judge?.email || "",
-        judge ? judgeKindLabels[judge.kind ?? "main"] : "",
+        judge ? judgeTypeLabel(judge) : "",
         review.submittedAt ? "Submitted" : "Draft",
         ...scoreKeys.map((key) => review[key]),
         review.researchOnly ? "No" : "Yes",

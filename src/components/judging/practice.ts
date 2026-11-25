@@ -152,16 +152,23 @@ export function getPracticeAccess(): JudgeAccessState {
   // Same judge with updated details (e.g. Demo Day attendance): keep their
   // practice answers. A different judge starts from their own saved answers.
   const sameJudge = Boolean(state && state.judge?.id === real.judge?.id)
+  const reviews =
+    sameJudge && state
+      ? state.reviews
+      : real.judge
+        ? storedReviews(real.judge.id)
+        : {}
+  // Practice answers in the other format (attendance changed since) start over.
+  const researchOnly = real.judge ? !real.judge.attendsDemoDay : false
   state = {
     ready: real.ready,
     judge: real.judge,
     lineup: ids,
-    reviews:
-      sameJudge && state
-        ? state.reviews
-        : real.judge
-          ? storedReviews(real.judge.id)
-          : {},
+    reviews: Object.fromEntries(
+      Object.entries(reviews).filter(
+        ([, review]) => review.researchOnly === researchOnly
+      )
+    ),
     researchClosesAt: null,
     judgingOpen: true,
     feedbackReleased: false,

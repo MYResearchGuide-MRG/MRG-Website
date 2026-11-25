@@ -205,7 +205,7 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
             : "This project isn’t in your lineup"}
         </h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          The committee may have changed the presentation order.
+          The committee may have changed the lineup.
         </p>
         <a href={judgingHash} className="btn-dark mt-7">
           <ArrowLeft size={16} aria-hidden /> Back to lineup
@@ -317,10 +317,8 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
           />
           <span>
             <span className="font-medium text-foreground">
-              Your feedback is anonymous to teams.
-            </span>{" "}
-            Your name is hidden. Teams see feedback when the committee releases
-            it.
+              Your feedback is anonymous, your name will be hidden to teams.
+            </span>
           </span>
         </p>
         {researchOnly && (
@@ -328,11 +326,32 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
             className="judge-research-only mt-4 rounded-lg border border-border px-4 py-3 text-sm text-muted-foreground"
             role="note"
           >
-            <span className="font-medium text-foreground">
+            <span className="block font-medium text-foreground">
               You’re reviewing the research only.
-            </span>{" "}
-            As you won’t be at Demo Day, there is no presentation section. Score
-            the project from its page and submission above.
+            </span>
+            As you won’t be at Demo Day, there is no presentation section.{" "}
+            {practice ? (
+              // Sample projects have no public page to link to.
+              "Score the project based on the project details above."
+            ) : (
+              <>
+                Score the project based on the project page{" "}
+                <a
+                  href={projectShareUrl(
+                    board.id,
+                    window.location.origin,
+                    window.location.pathname
+                  )}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="judge-inline-link"
+                >
+                  here
+                  <span className="sr-only"> (opens in a new tab)</span>
+                </a>
+                .
+              </>
+            )}
           </p>
         )}
         {submitted && judgingOpen && (

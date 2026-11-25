@@ -15,8 +15,8 @@ export default function FeedbackLiveNotice({
       <div>
         <p className="font-medium">Feedback is live to teams</p>
         <p className="judge-callout-body mt-1">
-          Teams can now see each submitted score and both section reviews
-          on their project page, without your name.
+          Teams can now see each submitted score and both section reviews on
+          their project page, without your name.
           {judgingOpen &&
             " Judging is still open, so any change you submit now shows to the team straight away."}
         </p>

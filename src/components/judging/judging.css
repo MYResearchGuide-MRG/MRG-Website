@@ -1057,3 +1057,50 @@ fieldset[aria-invalid="true"] .judge-score-circle {
     animation: none;
   }
 }
+
+/* While marking is open: a quiet one-line way into practice. */
+.judge-practice-link {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 16px;
+  color: var(--color-muted-foreground);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.judge-practice-link svg {
+  flex: none;
+  margin-top: 3px;
+}
+.judge-practice-link a {
+  color: var(--color-foreground);
+  text-decoration: underline;
+  text-decoration-color: rgb(255 255 255 / 0.35);
+  text-underline-offset: 3px;
+  transition: text-decoration-color 150ms ease;
+}
+.judge-practice-link a:hover {
+  text-decoration-color: currentColor;
+}
+.judge-practice-link a:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* A link inside a sentence of judge guidance, e.g. "the project page here". */
+.judge-inline-link {
+  color: var(--color-foreground);
+  text-decoration: underline;
+  text-decoration-color: rgb(255 255 255 / 0.4);
+  text-underline-offset: 3px;
+  transition: text-decoration-color 150ms ease;
+}
+.judge-inline-link:hover {
+  text-decoration-color: currentColor;
+}
+.judge-inline-link:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}

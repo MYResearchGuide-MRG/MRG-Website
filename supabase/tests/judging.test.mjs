@@ -16,6 +16,7 @@ const migrations = [
   "202611230001_lineup_starts_judging.sql",
   "202611240001_judge_demo_day_attendance.sql",
   "202611250001_research_marking_window.sql",
+  "202611260001_special_award_types.sql",
 ]
 
 const admin = "00000000-0000-0000-0000-000000000001"
@@ -50,7 +51,7 @@ test('versioned judge saves reject stale writes and a burst cannot overwrite the
   } finally {databases.splice(databases.indexOf(db),1);await db.close()}
 })
 
-async function setup({ automaticMarking = true } = {}) {
+async function setup({ automaticMarking = true, through } = {}) {
   const db = new PGlite()
   databases.push(db)
   await db.exec(`create role anon; create role authenticated; create role service_role bypassrls;
@@ -58,7 +59,9 @@ async function setup({ automaticMarking = true } = {}) {
     create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
     grant usage on schema public,auth to anon,authenticated,service_role;
     grant execute on function auth.uid() to anon,authenticated,service_role;`)
-  for (const name of automaticMarking ? migrations : migrations.slice(0, migrations.indexOf("202611230001_lineup_starts_judging.sql")))
+  const applied = through ? migrations.slice(0, migrations.indexOf(through) + 1)
+    : automaticMarking ? migrations : migrations.slice(0, migrations.indexOf("202611230001_lineup_starts_judging.sql"))
+  for (const name of applied)
     await db.exec(readFileSync(new URL(`../migrations/${name}`, import.meta.url), "utf8"))
   await db.exec(`insert into auth.users values('${admin}','admin@example.test'),
       ('${student}','s@example.test'),('${otherStudent}','o@example.test');
@@ -232,7 +235,7 @@ test("teams see every submitted review in full, labelled by judge type, only aft
   const { db, as } = await setup()
   await as("authenticated", admin)
   const a = (await db.query("select myssp_save_judge($1,2026,'A','a2@judge.test','',false) as id", [null])).rows[0].id
-  const b = (await db.query("select myssp_save_judge($1,2026,'B','b2@judge.test','',false,'special') as id", [null])).rows[0].id
+  const b = (await db.query("select myssp_save_judge($1,2026,'B','b2@judge.test','',false,'special',null,'utar') as id", [null])).rows[0].id
   await assert.rejects(() => db.query("select myssp_save_judge($1,2026,'D','d2@judge.test','',false,'guest')", [null]), /Invalid judge details/)
   const c = (await db.query("select myssp_save_judge($1,2026,'C','c2@judge.test','',false) as id", [null])).rows[0].id
   await db.exec(`reset role;
@@ -302,7 +305,7 @@ async function openJudging() {
   const userA = "00000000-0000-0000-0000-0000000000d1", userB = "00000000-0000-0000-0000-0000000000d2"
   await as("authenticated", admin)
   const a = (await db.query("select myssp_save_judge($1,2026,'A','a3@judge.test','',false) as id", [null])).rows[0].id
-  const b = (await db.query("select myssp_save_judge($1,2026,'B','b3@judge.test','',false,'special') as id", [null])).rows[0].id
+  const b = (await db.query("select myssp_save_judge($1,2026,'B','b3@judge.test','',false,'special',null,'mabecs') as id", [null])).rows[0].id
   await db.exec(`reset role;
     insert into auth.users values('${userA}','a3@judge.test'),('${userB}','b3@judge.test');
     update myssp_judges set user_id='${userA}' where id='${a}';
@@ -324,7 +327,7 @@ test("closing judging submits complete drafts from active judges only", async ()
   await db.query("select myssp_save_judge_feedback('one',$1,false)", [full(5, "Paused judge draft")])
 
   await as("authenticated", admin)
-  await db.query("select myssp_save_judge($1,2026,'B','b3@judge.test','',true,'special')", [b])
+  await db.query("select myssp_save_judge($1,2026,'B','b3@judge.test','',true,'special',null,'mabecs')", [b])
   await db.query("select myssp_set_judging_state(2026,false,false)")
   await db.exec("reset role")
   assert.ok(await submittedAt(db, a, "one"))
@@ -373,7 +376,7 @@ test("committee imports judges in bulk, all rows or none", async () => {
   const { db, as } = await setup()
   const rows = [
     { name: "One", email: "one@judge.test", affiliation: "Uni", cohort_year: 2026, kind: "main" },
-    { name: "Two", email: "two@judge.test", affiliation: "", cohort_year: 2026, kind: "special" },
+    { name: "Two", email: "two@judge.test", affiliation: "", cohort_year: 2026, kind: "special", special_award: "mathworks" },
   ]
   await as("authenticated", student)
   await assert.rejects(() => db.query("select myssp_import_judges($1)", [rows]), /Admin required/)
@@ -383,8 +386,76 @@ test("committee imports judges in bulk, all rows or none", async () => {
   await assert.rejects(() => db.query("select myssp_import_judges($1)", [[...rows, { ...rows[0], email: "s@example.test" }]]), /participant/)
   assert.equal((await db.query("select count(*)::int as n from myssp_judges")).rows[0].n, 0)
   assert.equal((await db.query("select myssp_import_judges($1) as n", [rows])).rows[0].n, 2)
-  assert.deepEqual((await db.query("select email, kind from myssp_judges order by email")).rows,
-    [{ email: "one@judge.test", kind: "main" }, { email: "two@judge.test", kind: "special" }])
+  assert.deepEqual((await db.query("select email, kind, special_award from myssp_judges order by email")).rows,
+    [{ email: "one@judge.test", kind: "main", special_award: null }, { email: "two@judge.test", kind: "special", special_award: "mathworks" }])
+})
+
+test("each special award has one judge per cohort and main judges have none", async () => {
+  const { db, as } = await setup()
+  await as("authenticated", admin)
+  const save = (email, kind, award, id = null) =>
+    db.query("select myssp_save_judge($1,2026,'Judge',$2,'',false,$3,null,$4) as id", [id, email, kind, award])
+  await assert.rejects(() => save("x1@judge.test", "special", null), /Choose which special award/)
+  await assert.rejects(() => save("x1@judge.test", "special", "nasa"), /Choose which special award/)
+  await assert.rejects(() => save("x1@judge.test", "main", "utar"), /Main judges do not have/)
+  const utar = (await save("u1@judge.test", "special", "utar")).rows[0].id
+  await assert.rejects(() => save("u2@judge.test", "special", "utar"), /Judge is already the UTAR judge for 2026/)
+  // Re-saving the same judge keeps their award; moving them frees it.
+  await save("u1@judge.test", "special", "utar", utar)
+  await save("u1@judge.test", "special", "mabecs", utar)
+  await save("u2@judge.test", "special", "utar")
+  // A deleted judge no longer holds the award.
+  await db.query("select myssp_set_judge_deleted($1,true)", [utar])
+  await save("m2@judge.test", "special", "mabecs")
+  assert.deepEqual((await db.query("select email, special_award from myssp_judges where deleted_at is null order by email")).rows,
+    [{ email: "m2@judge.test", special_award: "mabecs" }, { email: "u2@judge.test", special_award: "utar" }])
+  // The table itself refuses an award on a main judge.
+  await db.exec("reset role")
+  await assert.rejects(() => db.query("update myssp_judges set kind='main' where email='u2@judge.test'"), /special_award_only_for_special/)
+})
+
+test("existing special judges get the award their details name", async () => {
+  const { db } = await setup({ through: "202611250001_research_marking_window.sql" })
+  await db.exec(`reset role;
+    insert into myssp_cohorts(year,name) values(2028,'MYSSP 2028');
+    insert into myssp_judges (cohort_year,name,email,affiliation,kind,deleted_at) values
+      (2026,'Emma','emma@example.test','MABECS','special',null),
+      (2026,'Krishna','krishna@example.test','Math-Works','special',null),
+      (2026,'Sutarman Ali','sutarman@example.test','Independent','special',null),
+      (2026,'Both','both@example.test','UTAR and MathWorks','special',null),
+      (2026,'Old','old@example.test','MABECS','special',now()),
+      (2026,'Main','main@example.test','UTAR','main',null),
+      (2027,'Dr Chua','chua@utar.edu.my','','special',null),
+      (2028,'Tunku','t@example.test','Universiti Tunku Abdul Rahman','special',null),
+      (2028,'Second','s2@example.test','UTAR','special',null);`)
+  await db.exec(readFileSync(new URL("../migrations/202611260001_special_award_types.sql", import.meta.url), "utf8"))
+  assert.deepEqual(Object.fromEntries((await db.query("select name, special_award from myssp_judges")).rows.map(r => [r.name, r.special_award])), {
+    Emma: "mabecs",
+    Krishna: "mathworks",
+    "Sutarman Ali": null, // "utar" inside a word is not UTAR
+    Both: null, // two sponsors: the committee decides
+    Old: null, // deleted judges are left for the committee
+    Main: null,
+    "Dr Chua": "utar", // matched from the email domain
+    Tunku: null, // two UTAR judges in one cohort
+    Second: null,
+  })
+})
+
+test("restoring a judge whose award is now taken brings them back without one", async () => {
+  const { db, as } = await setup()
+  await as("authenticated", admin)
+  const save = (email, award, id = null) =>
+    db.query("select myssp_save_judge($1,2026,'Judge',$2,'',false,'special',null,$3) as id", [id, email, award])
+  const first = (await save("r1@judge.test", "utar")).rows[0].id
+  await db.query("select myssp_set_judge_deleted($1,true)", [first])
+  await db.query("select myssp_set_judge_deleted($1,false)", [first])
+  assert.equal((await db.query("select special_award from myssp_judges where id=$1", [first])).rows[0].special_award, "utar")
+  await db.query("select myssp_set_judge_deleted($1,true)", [first])
+  await save("r2@judge.test", "utar")
+  await db.query("select myssp_set_judge_deleted($1,false)", [first])
+  assert.deepEqual((await db.query("select email, special_award from myssp_judges order by email")).rows,
+    [{ email: "r1@judge.test", special_award: null }, { email: "r2@judge.test", special_award: "utar" }])
 })
 
 test("mentors read released feedback for their own projects only", async () => {

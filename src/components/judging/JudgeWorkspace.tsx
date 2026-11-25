@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Clock,
   FileText,
+  FlaskConical,
   LockKeyhole,
   RotateCcw,
   ShieldCheck,
@@ -23,7 +24,12 @@ import { RUBRIC_URL } from "./form"
 import FeedbackLiveNotice from "./FeedbackLiveNotice"
 import { useBackend } from "../admin/backend"
 import { teamProfiles, type Board } from "../projectboard/data"
-import { reviewComplete, reviewStatus, useJudgeAccess } from "./judge-access"
+import {
+  reviewComplete,
+  reviewStatus,
+  useJudgeAccess,
+  type JudgeAccessState,
+} from "./judge-access"
 import { judgingHash } from "./lineup"
 import { practiceHash, resetPractice } from "./practice"
 import {
@@ -38,7 +44,7 @@ import StatusBadge from "./StatusBadge"
 import JudgingProject from "./JudgingProject"
 import PracticeNote from "./PracticeNote"
 import { IndividualReview } from "../projectboard/FeedbackResults"
-import { scoreKeys, type TeamReview } from "./form"
+import { scoreKeys, type JudgeKind, type TeamReview } from "./form"
 import type { JudgeReview } from "./judge-access"
 import "./judging.css"
 
@@ -56,16 +62,36 @@ function useJudgingRoute() {
   }
 }
 
+/**
+ * A judge attending Demo Day before general judging has opened, with nothing
+ * saved yet. Research-only marking may already be open for remote judges, but
+ * these judges don't see the projects until Demo Day.
+ */
+function awaitingDemoDay(
+  access: Pick<
+    JudgeAccessState,
+    "judge" | "judgingOpen" | "feedbackReleased" | "reviews"
+  >
+) {
+  return Boolean(
+    access.judge &&
+    access.judge.attendsDemoDay &&
+    !access.judgingOpen &&
+    !access.feedbackReleased &&
+    !Object.values(access.reviews).some(Boolean)
+  )
+}
+
 export default function JudgeWorkspace({ onSignIn }: { onSignIn: () => void }) {
   const access = useJudgeAccess()
   const { practice, projectId } = useJudgingRoute()
-  // Practice is for before marking opens; while real judging is open, old
-  // practice links and history entries go to the real lineup instead.
-  const practiceBlocked = practice && access.ready && access.judgingOpen
+  // Project links stay closed until Demo Day; send them to the lineup page.
+  const projectHidden =
+    !practice && Boolean(projectId) && access.ready && awaitingDemoDay(access)
   useEffect(() => {
-    if (practiceBlocked) window.location.replace(judgingHash)
-  }, [practiceBlocked])
-  if (practiceBlocked) return null
+    if (projectHidden) window.location.replace(judgingHash)
+  }, [projectHidden])
+  if (projectHidden) return null
   if (!access.ready)
     return (
       <main className="container min-h-[70svh] pt-32" role="status">
@@ -194,20 +220,25 @@ function Lineup() {
   const nextIndex = next ? boards.indexOf(next) : -1
   const nextContent = source.useContent(next ?? boards[0])
   const deadlinePassed = useResearchDeadlinePassed(researchClosesAt)
-  // Before Demo Day marking is locked; judges can try the flow on samples.
-  const canPractise =
-    !practice && !judgingOpen && !feedbackReleased && !deadlinePassed
+  // Judges can try the flow on samples at any time, even while marking is open.
+  const canPractise = !practice
+  const beforeDemoDay =
+    !practice &&
+    boards.length > 0 &&
+    awaitingDemoDay({ judge, judgingOpen, feedbackReleased, reviews })
   const statusLabel = practice
     ? "Practice judging"
-    : judgingOpen
-      ? "Judging is open"
-      : feedbackReleased
-        ? "Judging is closed"
-        : deadlinePassed
-          ? "Research marking deadline passed"
-          : boards.length
-            ? "Marking is paused"
-            : "Waiting for the lineup"
+    : beforeDemoDay
+      ? "Not open yet"
+      : judgingOpen
+        ? "Judging is open"
+        : feedbackReleased
+          ? "Judging is closed"
+          : deadlinePassed
+            ? "Research marking deadline passed"
+            : boards.length
+              ? "Marking is paused"
+              : "Waiting for the lineup"
   return (
     <main
       className={
@@ -241,7 +272,7 @@ function Lineup() {
             {statusLabel}
           </span>
         </div>
-        {canPractise && <PractiseInvite />}
+        {canPractise && <PractiseInvite markingOpen={judgingOpen} />}
         {feedbackReleased && <FeedbackLiveNotice judgingOpen={judgingOpen} />}
         {!practice && (error || backend.error) && (
           <p className="mt-3 text-sm text-red-300" role="alert">
@@ -261,7 +292,7 @@ function Lineup() {
           </div>
         )}
 
-        {boards.length > 0 && (
+        {boards.length > 0 && !beforeDemoDay && (
           <section
             id={practice ? "practice-progress" : undefined}
             className="section-y pb-0 md:pb-0"
@@ -419,11 +450,25 @@ function Lineup() {
           </section>
         )}
 
-        {boards.length ? (
+        {beforeDemoDay ? (
+          <div className="section-y">
+            <div className="panel px-6 py-16 text-center">
+              <h2 className="display-md">Judging isn’t open yet</h2>
+              <p className="mt-3 text-sm text-muted-foreground">
+                You’ll see the projects to score here once the committee opens
+                judging.
+              </p>
+            </div>
+          </div>
+        ) : boards.length ? (
           <div className="section-y pt-0 md:pt-0">
             {/* Continues the progress section: the lineup sits right under it. */}
             <ol
-              aria-label="Presentation order"
+              aria-label={
+                judge?.attendsDemoDay === false
+                  ? "Projects by code"
+                  : "Presentation order"
+              }
               className="panel mt-8 divide-y divide-border overflow-hidden"
             >
               {boards.map((board, index) => (
@@ -439,6 +484,7 @@ function Lineup() {
               <PracticeTeamView
                 boards={boards}
                 reviews={reviews}
+                kind={judge?.kind ?? "main"}
                 animate={justFinished}
               />
             )}
@@ -610,10 +656,8 @@ function JudgeNotes() {
             />
             <span>
               <strong className="block font-medium text-foreground">
-                Your feedback is anonymous to teams.
+                Your feedback is anonymous, your name will be hidden to teams.
               </strong>
-              Your name is hidden. Teams see feedback when the committee
-              releases it.
             </span>
           </p>
         </div>
@@ -635,6 +679,10 @@ function LineupRow({
   const { reviews, judgingOpen, feedbackReleased } = source.useAccess()
   const content = source.useContent(board)
   const team = content?.teamMembers || teamProfiles(board)
+  const review = reviews[board.id]
+  // A started draft with gaps says so, rather than "Next up".
+  const unanswered =
+    judgingOpen && review && !review.submittedAt && !reviewComplete(review)
   return (
     <li>
       <a
@@ -651,8 +699,14 @@ function LineupRow({
               {board.code}
             </span>
             <span>{board.track}</span>
-            {isNext && (
-              <span className="judge-tag judge-tag-soft-accent">Next up</span>
+            {unanswered ? (
+              <span className="judge-tag judge-tag-soft-warning">
+                Unanswered questions
+              </span>
+            ) : (
+              isNext && (
+                <span className="judge-tag judge-tag-soft-accent">Next up</span>
+              )
             )}
           </span>
           <span className="block font-display text-lg leading-snug">
@@ -683,10 +737,13 @@ function LineupRow({
 function PracticeTeamView({
   boards,
   reviews,
+  kind,
   animate,
 }: {
   boards: Board[]
   reviews: Record<string, JudgeReview>
+  /** Main or special, as teams will see it. */
+  kind: JudgeKind
   /** Arrives after the practice-complete reveal. */
   animate: boolean
 }) {
@@ -699,7 +756,7 @@ function PracticeTeamView({
     researchRemarks: review.researchRemarks,
     presentationRemarks: review.presentationRemarks,
     researchOnly: review.researchOnly,
-    kind: "main",
+    kind,
   } as TeamReview
   return (
     <section
@@ -742,7 +799,21 @@ function PracticeTeamView({
   )
 }
 
-function PractiseInvite() {
+function PractiseInvite({ markingOpen }: { markingOpen: boolean }) {
+  // While marking is open the real lineup comes first, so practice is one line.
+  if (markingOpen)
+    return (
+      <p className="judge-practice-link">
+        <FlaskConical size={15} aria-hidden />
+        <span>
+          Want to try it first?{" "}
+          <a href={practiceHash} onClick={markPageSwitch}>
+            Mark two practice projects
+          </a>
+          . Nothing you submit is sent to the committee.
+        </span>
+      </p>
+    )
   return (
     <PracticeNote
       title="Want to try judging?"
