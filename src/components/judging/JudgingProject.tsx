@@ -6,6 +6,7 @@ import {
   ArrowRight,
   ArrowUpRight,
   Check,
+  ChevronDown,
   FileText,
   LoaderCircle,
   ShieldCheck,
@@ -22,12 +23,11 @@ import {
   sectionsFor,
   scoreKeys,
   scoreLabels,
-  SCORE_MAX,
-  SCORE_MIN,
   validScore,
   type FeedbackAnswers,
   type ScoreKey,
 } from "./form"
+import { scoreDescriptions } from "./score-descriptions"
 import {
   getJudgeAccess,
   researchOnlyJudge,
@@ -47,12 +47,12 @@ import "../projectboard/projectboard.css"
 import "./judging.css"
 
 const AUTOSAVE_MS = 1200
-const scores = Array.from(
-  { length: SCORE_MAX - SCORE_MIN + 1 },
-  (_, i) => SCORE_MIN + i
-)
+const scores = [1, 2, 3, 4, 5] as const
 const fieldId = (key: ScoreKey | "researchRemarks" | "presentationRemarks") =>
   `judge-field-${key}`
+
+const scoreId = (key: ScoreKey, score: number) =>
+  score === 1 ? fieldId(key) : `${fieldId(key)}-${score}`
 
 function answersOf(review: JudgeReview | undefined): FeedbackAnswers {
   if (!review) return emptyAnswers()
@@ -363,8 +363,10 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
                     <span className="judge-rating-low">Poor</span>
                     <span className="judge-rating-high">Excellent</span>
                   </div>
-                  {section.criteria.map((criterion) => {
+                  {section.criteria.map((criterion, criterionIndex) => {
                     const value = answers[criterion.key]
+                    const selected = scores.find((score) => score === value)
+                    const descriptions = scoreDescriptions[criterion.key]
                     return (
                       <fieldset
                         key={criterion.key}
@@ -391,7 +393,7 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
                               <label
                                 key={score}
                                 className="judge-score"
-                                title={scoreLabels[score]}
+                                title={descriptions[score]}
                               >
                                 <input
                                   type="radio"
@@ -399,11 +401,8 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
                                   value={score}
                                   checked={value === score}
                                   aria-label={`${score}: ${scoreLabels[score]}`}
-                                  id={
-                                    score === SCORE_MIN
-                                      ? fieldId(criterion.key)
-                                      : undefined
-                                  }
+                                  aria-describedby={`description-${criterion.key}-${score}`}
+                                  id={scoreId(criterion.key, score)}
                                   onChange={() =>
                                     change({
                                       ...answersRef.current,
@@ -420,6 +419,58 @@ export default function JudgingProject({ projectId }: { projectId: string }) {
                           <span className="judge-rating-end judge-rating-high">
                             Excellent
                           </span>
+                        </div>
+                        <div className="judge-score-guide">
+                          <details
+                            open={sectionIndex === 0 && criterionIndex === 0}
+                          >
+                            <summary>
+                              Score guide
+                              <span className="sr-only">
+                                {" "}
+                                for {criterion.label}
+                              </span>
+                              <ChevronDown size={14} aria-hidden />
+                            </summary>
+                            <ol className="judge-guide-levels">
+                              {scores.map((score) => (
+                                <li
+                                  key={score}
+                                  data-selected={value === score || undefined}
+                                >
+                                  <label
+                                    htmlFor={scoreId(criterion.key, score)}
+                                  >
+                                    <span
+                                      className="judge-guide-number"
+                                      aria-hidden
+                                    >
+                                      {score}
+                                    </span>
+                                    <span className="sr-only">
+                                      Score {score}.{" "}
+                                    </span>
+                                    <span
+                                      id={`description-${criterion.key}-${score}`}
+                                    >
+                                      {descriptions[score]}
+                                    </span>
+                                    {value === score && (
+                                      <Check size={15} aria-label="Selected" />
+                                    )}
+                                  </label>
+                                </li>
+                              ))}
+                            </ol>
+                          </details>
+                          {selected !== undefined && (
+                            <div className="judge-guide-selection">
+                              <p>
+                                <strong>{selected}/5</strong>{" "}
+                                {descriptions[selected]}
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </fieldset>
                     )

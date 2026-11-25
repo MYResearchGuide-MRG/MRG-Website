@@ -53,7 +53,7 @@ export const judgingSections: FormSection[] = [
     part: "presentation",
     title: "Live Presentation & Q&A",
     description:
-      "How effectively the team communicates their research. 15 minutes in total: about 12 minutes of presentation and 3 minutes of Q&A. All members present, and questions may go to anyone.",
+      "How effectively the team communicates their research. All team members are expected to present, and judges may direct questions to any member.",
     criteria: [
       { key: "structure", label: "Structure and Content Coverage" },
       { key: "clarity", label: "Clarity of Explanation" },
