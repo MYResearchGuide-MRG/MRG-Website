@@ -119,7 +119,7 @@ export type Route =
   | "judging"
   | "feedback-demo"
 
-const judgingRoute = /^#\/judging(?:\/[a-z0-9-]{1,100})?$/
+const judgingRoute = /^#\/judging(?:\/practice)?(?:\/[a-z0-9-]{1,100})?$/
 
 export function useRoute(): Route {
   const [route, setRoute] = React.useState<Route>(() =>

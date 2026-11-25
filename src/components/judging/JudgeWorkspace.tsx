@@ -1,13 +1,15 @@
 import { researchDeadlineLabel } from "./judge-model"
 import { useResearchDeadlinePassed } from "./use-research-deadline"
-import { useState, useSyncExternalStore } from "react"
+import { useEffect, useState, useSyncExternalStore } from "react"
 import {
   ArrowRight,
   ArrowUpRight,
+  Check,
   ChevronRight,
   Clock,
   FileText,
   LockKeyhole,
+  RotateCcw,
   ShieldCheck,
 } from "lucide-react"
 import {
@@ -21,36 +23,49 @@ import { RUBRIC_URL } from "./form"
 import FeedbackLiveNotice from "./FeedbackLiveNotice"
 import { useBackend } from "../admin/backend"
 import { teamProfiles, type Board } from "../projectboard/data"
+import { reviewComplete, reviewStatus, useJudgeAccess } from "./judge-access"
+import { judgingHash } from "./lineup"
+import { practiceHash, resetPractice } from "./practice"
 import {
-  reviewComplete,
-  reviewStatus,
-  submitAllReviews,
-  useJudgeAccess,
-} from "./judge-access"
-import {
-  judgingProjectHash,
-  useLineupBoards,
-  useProjectContent,
-} from "./lineup"
+  JudgingSourceContext,
+  clearFixingMissing,
+  liveSource,
+  openToFixMissing,
+  practiceSource,
+  useJudgingSource,
+} from "./judging-source"
 import StatusBadge from "./StatusBadge"
 import JudgingProject from "./JudgingProject"
+import PracticeNote from "./PracticeNote"
+import { IndividualReview } from "../projectboard/FeedbackResults"
+import { scoreKeys, type TeamReview } from "./form"
+import type { JudgeReview } from "./judge-access"
 import "./judging.css"
 
 function subscribe(fn: () => void) {
   window.addEventListener("hashchange", fn)
   return () => window.removeEventListener("hashchange", fn)
 }
-function useJudgingProjectId() {
-  return useSyncExternalStore(
-    subscribe,
-    () =>
-      /^#\/judging\/([a-z0-9-]{1,100})$/.exec(window.location.hash)?.[1] ?? null
-  )
+// "#/judging[/practice][/<project id>]"
+function useJudgingRoute() {
+  const hash = useSyncExternalStore(subscribe, () => window.location.hash)
+  const match = /^#\/judging(\/practice)?(?:\/([a-z0-9-]{1,100}))?$/.exec(hash)
+  return {
+    practice: Boolean(match?.[1]),
+    projectId: match?.[2] ?? null,
+  }
 }
 
 export default function JudgeWorkspace({ onSignIn }: { onSignIn: () => void }) {
   const access = useJudgeAccess()
-  const projectId = useJudgingProjectId()
+  const { practice, projectId } = useJudgingRoute()
+  // Practice is for before marking opens; while real judging is open, old
+  // practice links and history entries go to the real lineup instead.
+  const practiceBlocked = practice && access.ready && access.judgingOpen
+  useEffect(() => {
+    if (practiceBlocked) window.location.replace(judgingHash)
+  }, [practiceBlocked])
+  if (practiceBlocked) return null
   if (!access.ready)
     return (
       <main className="container min-h-[70svh] pt-32" role="status">
@@ -80,17 +95,78 @@ export default function JudgeWorkspace({ onSignIn }: { onSignIn: () => void }) {
         </button>
       </main>
     )
-  if (projectId)
-    return (
-      <JudgingProject
-        key={`${access.judge.id}:${projectId}`}
-        projectId={projectId}
-      />
-    )
-  return <Lineup />
+  // Practice and the real lineup are separate trees, so their hooks and
+  // answers never mix.
+  return (
+    <JudgingSourceContext.Provider
+      value={practice ? practiceSource : liveSource}
+    >
+      {projectId ? (
+        <JudgingProject
+          key={`${practice ? "practice" : "live"}:${access.judge.id}:${projectId}`}
+          projectId={projectId}
+        />
+      ) : (
+        <Lineup key={practice ? "practice" : "live"} />
+      )}
+    </JudgingSourceContext.Provider>
+  )
+}
+
+// Set by the links that move between practice and the real lineup, so the
+// next lineup that mounts plays its entrance animation.
+let pendingPageSwitch = false
+const markPageSwitch = () => {
+  pendingPageSwitch = true
 }
 
 function Lineup() {
+  const [entering] = useState(() => pendingPageSwitch)
+  const source = useJudgingSource()
+  const { practice } = source
+  // Back on a lineup, any pending "finish unanswered" trip is over.
+  useEffect(clearFixingMissing, [])
+  // Entering practice scrolls past the judge notes to the practice banner and
+  // sample projects; leaving it returns to the top of the real lineup.
+  useEffect(() => {
+    if (!pendingPageSwitch) {
+      // Back from a sample project: land on the progress, not the judge notes.
+      if (!practice) return
+      const id = window.requestAnimationFrame(() => {
+        const progress = document.querySelector("#practice-progress h2")
+        if (progress)
+          window.scrollTo(
+            0,
+            Math.max(0, progress.getBoundingClientRect().top + scrollY - 96)
+          )
+      })
+      return () => window.cancelAnimationFrame(id)
+    }
+    pendingPageSwitch = false
+    const target = practice && document.getElementById("practice-start")
+    if (!target) {
+      window.scrollTo(0, 0)
+      return
+    }
+    // Layout offsets ignore the entrance animation's transforms.
+    let top = 0
+    for (
+      let el: HTMLElement | null = target;
+      el;
+      el = el.offsetParent as HTMLElement | null
+    )
+      top += el.offsetTop
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    window.scrollTo(0, 0)
+    window.setTimeout(
+      () =>
+        window.scrollTo({
+          top: Math.max(0, top - 96),
+          behavior: reduce ? "auto" : "smooth",
+        }),
+      reduce ? 0 : 280
+    )
+  }, [practice])
   const {
     judge,
     reviews,
@@ -98,8 +174,8 @@ function Lineup() {
     researchClosesAt,
     feedbackReleased,
     error,
-  } = useJudgeAccess()
-  const boards = useLineupBoards()
+  } = source.useAccess()
+  const boards = source.useBoards()
   const backend = useBackend()
   const ready = boards.filter((board) =>
     reviewComplete(reviews[board.id])
@@ -111,30 +187,45 @@ function Lineup() {
   const [acknowledged, setAcknowledged] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState("")
+  // Plays the practice-complete reveal once, right after submitting.
+  const [justFinished, setJustFinished] = useState(false)
   // Reviews are submitted together, so "next" is the first team still missing answers.
   const next = boards.find((board) => !reviewComplete(reviews[board.id]))
   const nextIndex = next ? boards.indexOf(next) : -1
-  const nextContent = useProjectContent(next ?? boards[0])
+  const nextContent = source.useContent(next ?? boards[0])
   const deadlinePassed = useResearchDeadlinePassed(researchClosesAt)
-  const statusLabel = judgingOpen
-    ? "Judging is open"
-    : feedbackReleased
-      ? "Judging is closed"
-      : deadlinePassed
-        ? "Research marking deadline passed"
-        : boards.length
-          ? "Marking is paused"
-          : "Waiting for the lineup"
+  // Before Demo Day marking is locked; judges can try the flow on samples.
+  const canPractise =
+    !practice && !judgingOpen && !feedbackReleased && !deadlinePassed
+  const statusLabel = practice
+    ? "Practice judging"
+    : judgingOpen
+      ? "Judging is open"
+      : feedbackReleased
+        ? "Judging is closed"
+        : deadlinePassed
+          ? "Research marking deadline passed"
+          : boards.length
+            ? "Marking is paused"
+            : "Waiting for the lineup"
   return (
-    <main className="min-h-[72svh] pb-20">
+    <main
+      className={
+        entering
+          ? "judge-page-enter min-h-[72svh] pb-20"
+          : "min-h-[72svh] pb-20"
+      }
+    >
       <header className="content-container pt-[calc(70px+3rem)] pb-2 sm:pt-[calc(70px+4.5rem)]">
         <p className="mb-3 text-sm text-muted-foreground">
-          MYSSP {judge?.cohortYear} Demo Day
+          MYSSP {judge?.cohortYear} Demo Day{practice && " · Practice"}
         </p>
         <h1 className="judge-heading">
-          {judge?.attendsDemoDay === false
-            ? "Research scores"
-            : "Presentation Scores"}
+          {practice
+            ? "Practice judging"
+            : judge?.attendsDemoDay === false
+              ? "Research scores"
+              : "Presentation Scores"}
         </h1>
         {researchClosesAt && (
           <p className="mt-3 text-sm text-muted-foreground">
@@ -150,8 +241,9 @@ function Lineup() {
             {statusLabel}
           </span>
         </div>
+        {canPractise && <PractiseInvite />}
         {feedbackReleased && <FeedbackLiveNotice judgingOpen={judgingOpen} />}
-        {(error || backend.error) && (
+        {!practice && (error || backend.error) && (
           <p className="mt-3 text-sm text-red-300" role="alert">
             {error || backend.error} Showing the last loaded lineup.
           </p>
@@ -163,8 +255,15 @@ function Lineup() {
           <JudgeNotes />
         </div>
 
+        {practice && (
+          <div id="practice-start">
+            <PracticeBanner />
+          </div>
+        )}
+
         {boards.length > 0 && (
           <section
+            id={practice ? "practice-progress" : undefined}
             className="section-y pb-0 md:pb-0"
             aria-labelledby="progress-heading"
           >
@@ -186,7 +285,7 @@ function Lineup() {
                   </span>
                 </p>
               </div>
-              {judgingOpen && (
+              {judgingOpen && !practice && (
                 <p className="text-sm text-muted-foreground">
                   <Clock
                     size={14}
@@ -227,11 +326,46 @@ function Lineup() {
 
             {(allSubmitted || judgingOpen || !next) && (
               <div className="judge-progress-next">
-                {allSubmitted ? (
-                  <p className="flex items-center gap-2 text-sm text-emerald-300">
-                    <LockKeyhole size={16} aria-hidden /> All reviews submitted
-                    and locked. Thank you!
+                {allSubmitted && practice ? (
+                  <PracticeComplete animate={justFinished} />
+                ) : allSubmitted ? (
+                  <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <LockKeyhole
+                      size={16}
+                      className="text-foreground"
+                      aria-hidden
+                    />
+                    <span>
+                      <span className="font-medium text-foreground">
+                        All reviews submitted and locked.
+                      </span>{" "}
+                      Thank you!
+                    </span>
                   </p>
+                ) : next &&
+                  judgingOpen &&
+                  boards.every((board) => reviews[board.id]) ? (
+                  <>
+                    <p className="min-w-0 flex-1 basis-64 text-sm text-muted-foreground">
+                      <span className="font-medium text-foreground">
+                        You can’t submit yet.
+                      </span>{" "}
+                      {boards.length - ready === 1
+                        ? "1 review still has"
+                        : `${boards.length - ready} reviews still have`}{" "}
+                      unanswered questions.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openToFixMissing(source.projectHash(next.id))
+                      }
+                      className={`judge-primary-button ${action.light}`}
+                    >
+                      Finish unanswered questions
+                      <ArrowRight size={16} aria-hidden />
+                    </button>
+                  </>
                 ) : next ? (
                   <>
                     <div className="min-w-0 flex-1 basis-64">
@@ -242,7 +376,7 @@ function Lineup() {
                       </p>
                     </div>
                     <a
-                      href={judgingProjectHash(next.id)}
+                      href={source.projectHash(next.id)}
                       className={`judge-primary-button ${action.light}`}
                     >
                       {reviews[next.id] ? "Continue review" : "Start review"}
@@ -274,7 +408,7 @@ function Lineup() {
               </div>
             )}
 
-            {!judgingOpen && !feedbackReleased && (
+            {!practice && !judgingOpen && !feedbackReleased && (
               <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
                 {deadlinePassed
                   ? "The research marking deadline has passed."
@@ -301,6 +435,13 @@ function Lineup() {
                 />
               ))}
             </ol>
+            {practice && allSubmitted && (
+              <PracticeTeamView
+                boards={boards}
+                reviews={reviews}
+                animate={justFinished}
+              />
+            )}
           </div>
         ) : (
           <div className="section-y">
@@ -327,7 +468,9 @@ function Lineup() {
               Submit all {boards.length} reviews? This can’t be undone.
             </DialogTitle>
             <DialogDescription className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              Submitting sends your final reviews to the committee.
+              {practice
+                ? "This is practice, so nothing is sent. On Demo Day, this step sends your final reviews to the committee."
+                : "Submitting sends your final reviews to the committee."}
             </DialogDescription>
             <ul className="judge-final-list">
               <li>You can’t take back any review once it is submitted.</li>
@@ -371,8 +514,9 @@ function Lineup() {
                     setSubmitting(true)
                     setSubmitError("")
                     try {
-                      await submitAllReviews()
+                      await source.submitAllReviews()
                       setConfirmSubmit(false)
+                      if (practice) setJustFinished(true)
                     } catch (error) {
                       setSubmitError(
                         error instanceof Error
@@ -487,13 +631,14 @@ function LineupRow({
   index: number
   isNext: boolean
 }) {
-  const { reviews, judgingOpen, feedbackReleased } = useJudgeAccess()
-  const content = useProjectContent(board)
+  const source = useJudgingSource()
+  const { reviews, judgingOpen, feedbackReleased } = source.useAccess()
+  const content = source.useContent(board)
   const team = content?.teamMembers || teamProfiles(board)
   return (
     <li>
       <a
-        href={judgingProjectHash(board.id)}
+        href={source.projectHash(board.id)}
         aria-current={isNext ? "step" : undefined}
         className="judge-lineup-row group grid grid-cols-[2.5rem_minmax(0,1fr)] items-start gap-x-4 gap-y-3 px-5 py-5 transition-colors hover:bg-white/[0.03] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-white sm:grid-cols-[2.5rem_minmax(0,1fr)_auto_1rem] sm:items-center sm:px-6"
       >
@@ -531,5 +676,175 @@ function LineupRow({
         />
       </a>
     </li>
+  )
+}
+
+/** After practice, shows the judge's own reviews the way a team reads them. */
+function PracticeTeamView({
+  boards,
+  reviews,
+  animate,
+}: {
+  boards: Board[]
+  reviews: Record<string, JudgeReview>
+  /** Arrives after the practice-complete reveal. */
+  animate: boolean
+}) {
+  const [projectId, setProjectId] = useState(boards[0]?.id)
+  const board = boards.find((item) => item.id === projectId) ?? boards[0]
+  const review = board && reviews[board.id]
+  if (!board || !review) return null
+  const teamReview = {
+    ...Object.fromEntries(scoreKeys.map((key) => [key, review[key]])),
+    researchRemarks: review.researchRemarks,
+    presentationRemarks: review.presentationRemarks,
+    researchOnly: review.researchOnly,
+    kind: "main",
+  } as TeamReview
+  return (
+    <section
+      className={
+        animate ? "judge-team-view judge-team-view-animate" : "judge-team-view"
+      }
+      id="practice-team-view"
+      aria-labelledby="practice-team-view-heading"
+    >
+      <h2 id="practice-team-view-heading" className="judge-heading">
+        What teams will see
+      </h2>
+      <p className="mt-3 max-w-[640px] text-sm leading-relaxed text-muted-foreground">
+        This is how a team sees your review once the committee releases
+        feedback.
+      </p>
+      <div
+        className="judge-team-view-picker"
+        role="group"
+        aria-label="Sample team"
+      >
+        {boards.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            aria-pressed={item.id === board.id}
+            onClick={() => setProjectId(item.id)}
+          >
+            Team {item.code}
+          </button>
+        ))}
+      </div>
+      <div className="pb-root judge-team-view-frame">
+        <IndividualReview key={board.id} review={teamReview} number={1} />
+      </div>
+      <p className="mt-3 text-sm text-muted-foreground">
+        Your name is never shown. Teams see you as “Anonymous judge”.
+      </p>
+    </section>
+  )
+}
+
+function PractiseInvite() {
+  return (
+    <PracticeNote
+      title="Want to try judging?"
+      description="Mark two dummy projects to see how judging works. Nothing you enter will be saved."
+      actions={
+        <a
+          href={practiceHash}
+          onClick={markPageSwitch}
+          className={`judge-primary-button ${action.light}`}
+        >
+          Try practice judging
+          <ArrowRight size={16} aria-hidden />
+        </a>
+      }
+    />
+  )
+}
+
+function PracticeBanner() {
+  return (
+    <PracticeNote
+      note
+      title="You’re in practice mode"
+      description="These are just sample projects to try out. Your answers won’t be sent to the committee."
+      actions={
+        <>
+          <button
+            type="button"
+            onClick={resetPractice}
+            className="judge-secondary-button inline-flex"
+          >
+            <RotateCcw size={15} aria-hidden /> Start over
+          </button>
+          <a
+            href={judgingHash}
+            onClick={markPageSwitch}
+            className="judge-secondary-button inline-flex"
+          >
+            Exit practice
+          </a>
+        </>
+      }
+    />
+  )
+}
+
+/**
+ * The end of practice: "Practice complete" lands first, then, after a beat,
+ * what happens on Demo Day, then the way back. Animates only right after the
+ * judge submits; revisits show it still.
+ */
+function PracticeComplete({ animate }: { animate: boolean }) {
+  function showTeamView() {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    document.getElementById("practice-team-view")?.scrollIntoView({
+      behavior: reduce ? "auto" : "smooth",
+      block: "start",
+    })
+  }
+  return (
+    <div
+      className={
+        animate ? "judge-complete judge-complete-animate" : "judge-complete"
+      }
+      role="status"
+    >
+      <div className="judge-complete-main">
+        <div className="judge-complete-head">
+          <span className="judge-complete-icon" aria-hidden>
+            <Check size={14} strokeWidth={3} />
+          </span>
+          <h3 className="judge-complete-title">
+            <span>Practice</span> <span>complete</span>
+          </h3>
+        </div>
+        <p className="judge-complete-text">
+          On Demo Day, this is where your reviews are locked and sent to the
+          committee.{" "}
+          {/* A span, not a <button>, so the link wraps with the sentence. */}
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={showTeamView}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault()
+                showTeamView()
+              }
+            }}
+            className="judge-complete-hint"
+          >
+            Below, see how a team reads your review.
+          </span>
+        </p>
+      </div>
+      <a
+        href={judgingHash}
+        onClick={markPageSwitch}
+        className={`judge-primary-button judge-complete-action ${action.light}`}
+      >
+        Back to Demo Day lineup
+      </a>
+    </div>
   )
 }

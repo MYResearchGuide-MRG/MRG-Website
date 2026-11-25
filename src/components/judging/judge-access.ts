@@ -37,6 +37,7 @@ export type JudgeReview = FeedbackAnswers & {
 }
 export type ReviewStatus = "not-started" | "draft" | "submitted"
 
+export type JudgeAccessState = State
 type State = {
   ready: boolean
   judge: Judge | null
