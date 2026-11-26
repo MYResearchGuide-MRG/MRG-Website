@@ -17,6 +17,7 @@ const migrations = [
   "202611240001_judge_demo_day_attendance.sql",
   "202611250001_research_marking_window.sql",
   "202611260001_special_award_types.sql",
+  "202611260002_purge_judges.sql",
 ]
 
 const admin = "00000000-0000-0000-0000-000000000001"
@@ -456,6 +457,25 @@ test("restoring a judge whose award is now taken brings them back without one", 
   await db.query("select myssp_set_judge_deleted($1,false)", [first])
   assert.deepEqual((await db.query("select email, special_award from myssp_judges order by email")).rows,
     [{ email: "r1@judge.test", special_award: null }, { email: "r2@judge.test", special_award: "utar" }])
+})
+
+test("only the committee can permanently delete a judge in Trash, with their reviews", async () => {
+  const { db, as, a, b, userA, userB } = await openJudging()
+  await as("authenticated", userA)
+  await db.query("select myssp_save_judge_feedback('one',$1,true)", [full(4, "Submitted")])
+  await db.query("select myssp_save_judge_feedback('two',$1,false)", [{ clarity: 3 }])
+  await as("authenticated", userB)
+  await db.query("select myssp_save_judge_feedback('one',$1,true)", [full(5, "Kept")])
+  await as("authenticated", admin)
+  await assert.rejects(() => db.query("select myssp_purge_deleted('judge',$1)", [a]), /Move this judge to Trash first/)
+  await db.query("select myssp_set_judge_deleted($1,true)", [a])
+  await as("authenticated", userA)
+  await assert.rejects(() => db.query("select myssp_purge_deleted('judge',$1)", [a]), /Admin required/)
+  await as("authenticated", admin)
+  await db.query("select myssp_purge_deleted('judge',$1)", [a])
+  await db.exec("reset role")
+  assert.equal((await db.query("select count(*)::int as n from myssp_judges where id=$1", [a])).rows[0].n, 0)
+  assert.deepEqual((await db.query("select judge_id from myssp_judge_feedback")).rows, [{ judge_id: b }])
 })
 
 test("mentors read released feedback for their own projects only", async () => {

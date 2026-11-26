@@ -8,9 +8,14 @@ import {
 } from "@/components/ui/dialog"
 import { purgeDeletedLive, setDeletedLive, useBackend } from "./backend"
 import { AdminSelect } from "./AdminSelect"
+import {
+  purgeJudge,
+  setJudgeDeleted,
+  useCommitteeJudging,
+} from "../judging/judging-admin"
 
 export type RecordAction = {
-  kind: "participant" | "project"
+  kind: "participant" | "project" | "judge"
   id: string
   label: string
   remove: boolean
@@ -25,7 +30,10 @@ export function Trash({
   onAction: (action: RecordAction) => void
 }) {
   const { deletedPeople, deletedProjects } = useBackend()
-  if (!deletedPeople.length && !deletedProjects.length)
+  const deletedJudges = useCommitteeJudging().judges.filter(
+    (judge) => judge.deletedAt
+  )
+  if (!deletedPeople.length && !deletedProjects.length && !deletedJudges.length)
     return (
       <div className="ad-empty">
         <Trash2 size={28} />
@@ -126,6 +134,53 @@ export function Trash({
           ))}
         </section>
       )}
+      {deletedJudges.length > 0 && (
+        <section aria-label="Deleted judges">
+          <h2>Judges</h2>
+          {deletedJudges.map((judge) => (
+            <article className="ad-trash-row" key={judge.id}>
+              <div>
+                <strong>
+                  {judge.cohortYear} · {judge.name}
+                </strong>
+                <p>{judge.email}</p>
+                <small>Submitted reviews are kept.</small>
+              </div>
+              <div className="ad-trash-actions">
+                <button
+                  className="ad-button"
+                  aria-label={`Restore ${judge.name}`}
+                  onClick={() =>
+                    onAction({
+                      kind: "judge",
+                      id: judge.id,
+                      label: judge.name,
+                      remove: false,
+                    })
+                  }
+                >
+                  <RotateCcw size={15} /> Restore
+                </button>
+                <button
+                  className="ad-button ad-danger"
+                  aria-label={`Delete ${judge.name} forever`}
+                  onClick={() =>
+                    onAction({
+                      kind: "judge",
+                      id: judge.id,
+                      label: judge.name,
+                      remove: true,
+                      purge: true,
+                    })
+                  }
+                >
+                  <X size={15} /> Delete forever
+                </button>
+              </div>
+            </article>
+          ))}
+        </section>
+      )}
     </div>
   )
 }
@@ -140,6 +195,10 @@ export function RecordActionDialog({
   onComplete: () => void
 }) {
   const { boards, people, deletedProjects } = useBackend()
+  const judgeReviews = useCommitteeJudging().reviews.filter(
+    (review) => review.judgeId === action.id
+  )
+  const judgeSubmitted = judgeReviews.filter((review) => review.submittedAt).length
   const [destination, setDestination] = useState(
     boards.some((b) => b.id === action.projectId) ? action.projectId! : ""
   )
@@ -161,7 +220,11 @@ export function RecordActionDialog({
     setBusy(true)
     setError("")
     try {
-      if (purging) await purgeDeletedLive(action.kind, action.id)
+      if (action.kind === "judge")
+        await (purging
+          ? purgeJudge(action.id)
+          : setJudgeDeleted(action.id, action.remove))
+      else if (purging) await purgeDeletedLive(action.kind, action.id)
       else
         await setDeletedLive(
           action.kind,
@@ -198,13 +261,19 @@ export function RecordActionDialog({
         </DialogTitle>
         <DialogDescription>
           {purging
-            ? action.kind === "participant"
+            ? action.kind === "judge"
+              ? judgeReviews.length
+                ? `This erases this judge and their ${judgeReviews.length} review${judgeReviews.length === 1 ? "" : "s"}${judgeSubmitted ? ` (${judgeSubmitted} submitted)` : ""} for good. Their scores leave the project results and team feedback. It cannot be undone.`
+                : "This erases their name and email for good. They have no reviews. It cannot be undone."
+            : action.kind === "participant"
               ? "This erases their name, email and profile photo for good. It cannot be undone."
               : `This erases the project page, its submission and images, review notes, judge feedback${assignedCount ? ` and its ${assignedCount} assigned participant${assignedCount === 1 ? "" : "s"}` : ""} for good. It cannot be undone.`
             : action.remove
             ? action.kind === "participant"
               ? "This removes them from the student list and stops their project access. Their team's work is kept. You can restore them from Trash."
               : `This hides the project and stops access for its ${assignedCount} assigned participant${assignedCount === 1 ? "" : "s"}. Materials and assignments are kept in Trash.`
+            : action.kind === "judge"
+              ? "They return to the judge list with their submitted reviews and can sign in again. A special award judge whose award has since gone to someone else comes back without an award, so choose one for them."
             : restoringPerson
               ? "Their name and profile will return to the chosen project. Their previous access status is kept."
               : "The project and its team will be restored. It stays hidden and editing stays locked until you change those settings."}
