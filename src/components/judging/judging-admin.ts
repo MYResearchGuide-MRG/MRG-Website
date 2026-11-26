@@ -445,6 +445,31 @@ export async function setJudgeDeleted(id: string, deleted: boolean) {
   await refreshCommitteeJudging()
 }
 
+/** Permanently delete a judge in Trash, with every review they wrote. */
+export async function purgeJudge(id: string) {
+  if (judgingPreviewMode) {
+    const data = readPreview()
+    const reviews = { ...data.reviews }
+    delete reviews[id]
+    writePreview({
+      ...data,
+      judges: data.judges.filter((judge) => judge.id !== id),
+      reviews,
+    })
+    return
+  }
+  const { error } = await requireAdmin().rpc("myssp_purge_deleted", {
+    kind: "judge",
+    record_id: id,
+  })
+  if (error)
+    throw failure(
+      error,
+      "Could not permanently delete this judge. Refresh and try again."
+    )
+  await refreshCommitteeJudging()
+}
+
 export async function inviteJudges(
   ids: string[]
 ): Promise<{ sent: number; failed: number }> {

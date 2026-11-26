@@ -985,6 +985,15 @@ function JudgeManagement({
                       >
                         <Pencil size={15} aria-hidden /> Edit
                       </button>
+                      <button
+                        className="am-delete"
+                        disabled={busy}
+                        aria-label={`Delete ${judge.name}`}
+                        title="Delete judge"
+                        onClick={() => setDeleting(judge)}
+                      >
+                        <Trash2 size={15} aria-hidden />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -1055,7 +1064,7 @@ function JudgeManagement({
           onClose={() => setDeleting(null)}
           onSaved={() => {
             onNotice(
-              "Judge deleted. Their sign-in no longer works; submitted reviews are kept."
+              "Judge moved to Trash. Their sign-in no longer works; submitted reviews are kept."
             )
             setSelected((ids) => ids.filter((id) => id !== deleting.id))
             setDeleting(null)
@@ -1577,8 +1586,8 @@ function JudgeDeleteDialog({
       <DialogContent className="ad-modal am-dialog">
         <DialogTitle>Delete judge?</DialogTitle>
         <DialogDescription>
-          Removes this judge from the list and blocks their sign-in. Reviews
-          they submitted stay with the teams.
+          Moves this judge to Trash and blocks their sign-in. Reviews they
+          submitted stay with the teams. You can restore them from Trash.
         </DialogDescription>
         <div className="am-confirm-list">
           <div>
