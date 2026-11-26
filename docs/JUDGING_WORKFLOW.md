@@ -65,13 +65,14 @@ Backend migration: `202611260001_special_award_types.sql`. Apply it after
 `202611250001_research_marking_window.sql` and **before deploying the matching
 UI**, or the committee's Judging page won't load. It guesses each existing
 special judge's award from their affiliation, name or email, and leaves any
-unclear match for the committee to choose. Not yet applied to the live MYSSP
-database. Run it once only.
+unclear match for the committee to choose. The live MYSSP database has the award
+column. Run this migration once only.
 
 Backend migration: `202611260003_several_judges_per_award.sql`. Apply it after
 `202611260002_purge_judges.sql` and before deploying the matching UI. It drops
 the one-judge-per-award index and check, and a restored judge now keeps their
-award.
+award. On 26 November 2026, the live MYSSP save and restore functions matched
+this migration and the one-judge-per-award index was absent.
 
 There is no Demo Day date gate. Empty lineups do not open marking, and saving an
 invalid lineup changes neither the order nor the marking state. Archive

@@ -419,7 +419,7 @@ export async function importJudges(inputs: JudgeInput[]) {
   if (error)
     throw failure(
       error,
-      "Could not import judges. Check for duplicate emails, judge types and awards that already have a judge."
+      "Could not import judges. Check for duplicate email addresses and choose a valid judge type for each row."
     )
   await refreshCommitteeJudging()
 }

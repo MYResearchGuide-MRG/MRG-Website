@@ -39,6 +39,10 @@ The source notes below record the original research checked on 5 November 2026 a
 - [UTAR research project](https://research.utar.edu.my/GRA_25012.php): training-free neural networks for data-limited imaging.
 - Portrait: [UTAR staff image](https://www2.utar.edu.my/getPicV2.jsp?fkey=17117).
 
+## Ts. Dr. Lee Poh Foong
+
+The committee supplied her biography, portrait and [LinkedIn profile](https://www.linkedin.com/in/poh-foong-lee-b8a68880/) on 26 November 2026 for the UTAR special award.
+
 ## Emma Davidson
 
 - [Akal Budi speaker biography](https://akalbudi.ai/speakers/emma-davidson), announced 8 October 2026: MABECS UK University Admissions Specialist, Oxford PPE, former Director of Sixth Form at Kolej Tuanku Ja'afar.

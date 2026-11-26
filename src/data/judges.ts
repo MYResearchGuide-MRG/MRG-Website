@@ -60,6 +60,14 @@ export const specialAwardJudges: Judge[] = [
     profile: { label: "LinkedIn", href: "https://my.linkedin.com/in/sing-yee-chua-947342152" },
   },
   {
+    name: "Ts. Dr. Lee Poh Foong",
+    role: "Associate Professor",
+    organisation: "UTAR",
+    bio: "Dr. Lee is an Associate Professor at UTAR’s Lee Kong Chian Faculty of Engineering and Science. Her research focuses on neurotechnology, brain dynamics and artificial intelligence, including EEG signal analysis, physiological sensing and machine learning applications in cognitive assessment, mental wellbeing and human performance. She is a Chartered Engineer (CEng, UK) and currently serves as an Editorial Board Member of Scientific Reports (Nature Portfolio).",
+    portrait: "/judges/lee-poh-foong.webp",
+    profile: { label: "LinkedIn", href: "https://www.linkedin.com/in/poh-foong-lee-b8a68880/" },
+  },
+  {
     name: "Emma Davidson",
     role: "UK University Admissions Specialist",
     organisation: "MABECS",
