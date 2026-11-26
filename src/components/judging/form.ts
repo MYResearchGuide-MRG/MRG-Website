@@ -158,7 +158,7 @@ export const judgeKindLabels: Record<JudgeKind, string> = {
   special: "Special award judge",
 }
 
-/** Each special award has its own judge and its own results. */
+/** Each special award has its own judges and its own results. */
 export const specialAwards = {
   utar: "UTAR",
   mabecs: "MABECS",

@@ -50,8 +50,10 @@ database on 24 November 2026; do not rerun it.
 ## Special award judges
 
 Each special award judge marks one award: **UTAR**, **MABECS** or
-**MathWorks**. Each award has one judge per cohort and its own results under
-**Award results**. Teams only see "Special award" on a review, never which
+**MathWorks**. An award can have several judges in a cohort, for example two
+UTAR judges. Each award has its own results under **Award results**, averaged
+over every active judge of that award; other awards and the main ranking are
+unaffected. Teams only see "Special award" on a review, never which
 award. In the CSV import, `judge_type` is `main`, `utar`, `mabecs` or
 `mathworks`.
 
@@ -65,6 +67,11 @@ UI**, or the committee's Judging page won't load. It guesses each existing
 special judge's award from their affiliation, name or email, and leaves any
 unclear match for the committee to choose. Not yet applied to the live MYSSP
 database. Run it once only.
+
+Backend migration: `202611260003_several_judges_per_award.sql`. Apply it after
+`202611260002_purge_judges.sql` and before deploying the matching UI. It drops
+the one-judge-per-award index and check, and a restored judge now keeps their
+award.
 
 There is no Demo Day date gate. Empty lineups do not open marking, and saving an
 invalid lineup changes neither the order nor the marking state. Archive

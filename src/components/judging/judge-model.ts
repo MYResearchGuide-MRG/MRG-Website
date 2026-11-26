@@ -7,7 +7,6 @@ import {
   scoreKeysFor,
   SCORE_MAX,
   specialAwardKeys,
-  specialAwards,
   type JudgeKind,
   type ScoreKey,
   type SpecialAward,
@@ -79,7 +78,6 @@ export function parseJudgeCsv(
   const seen = new Set(existing.map((judge) => judge.email.toLowerCase()))
   // Optional column, so older CSVs without it still import.
   const hasAttendance = headers.includes("attendsdemoday")
-  const awardsInFile = new Set<SpecialAward>()
   return records.slice(1).map((record) => {
     const value = (key: string) =>
       record.cells[headers.indexOf(key)]?.trim() || ""
@@ -116,14 +114,7 @@ export function parseJudgeCsv(
     if (!row.error && seen.has(row.email))
       row.error =
         "This email appears more than once or is already in the judge list."
-    else if (
-      row.specialAward &&
-      !row.error &&
-      awardsInFile.has(row.specialAward)
-    )
-      row.error = `Only one ${specialAwards[row.specialAward]} judge can be imported.`
     seen.add(row.email)
-    if (row.specialAward && !row.error) awardsInFile.add(row.specialAward)
     return row
   })
 }
@@ -166,8 +157,8 @@ export const closedSwitches: JudgingSwitches = {
 
 /**
  * Special awards have independent judges and must not alter the main ranking.
- * An award's results come from its current judge only: a deleted judge who
- * held it before doesn't mix into their replacement's averages.
+ * An award's results average every active judge of that award; a deleted
+ * judge who held it before doesn't mix into the averages.
  */
 export function judgesForAward(
   judges: readonly CommitteeJudge[],
@@ -220,20 +211,8 @@ export function judgeInputError(
     return duplicate.deletedAt
       ? "This judge is in Deleted judges. Restore their account instead."
       : "This email is already in the judge list."
-  if (input.kind === "special") {
-    if (!input.specialAward)
-      return "Choose which special award this judge marks."
-    const taken = existing.find(
-      (judge) =>
-        judge.id !== editingId &&
-        !judge.deletedAt &&
-        judge.cohortYear === input.cohortYear &&
-        judge.kind === "special" &&
-        judge.specialAward === input.specialAward
-    )
-    if (taken)
-      return `${taken.name} is already the ${specialAwards[input.specialAward]} judge for ${input.cohortYear}.`
-  }
+  if (input.kind === "special" && !input.specialAward)
+    return "Choose which special award this judge marks."
   return ""
 }
 

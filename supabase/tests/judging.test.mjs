@@ -18,6 +18,7 @@ const migrations = [
   "202611250001_research_marking_window.sql",
   "202611260001_special_award_types.sql",
   "202611260002_purge_judges.sql",
+  "202611260003_several_judges_per_award.sql",
 ]
 
 const admin = "00000000-0000-0000-0000-000000000001"
@@ -391,7 +392,7 @@ test("committee imports judges in bulk, all rows or none", async () => {
     [{ email: "one@judge.test", kind: "main", special_award: null }, { email: "two@judge.test", kind: "special", special_award: "mathworks" }])
 })
 
-test("each special award has one judge per cohort and main judges have none", async () => {
+test("a special award can have several judges and main judges have none", async () => {
   const { db, as } = await setup()
   await as("authenticated", admin)
   const save = (email, kind, award, id = null) =>
@@ -400,16 +401,19 @@ test("each special award has one judge per cohort and main judges have none", as
   await assert.rejects(() => save("x1@judge.test", "special", "nasa"), /Choose which special award/)
   await assert.rejects(() => save("x1@judge.test", "main", "utar"), /Main judges do not have/)
   const utar = (await save("u1@judge.test", "special", "utar")).rows[0].id
-  await assert.rejects(() => save("u2@judge.test", "special", "utar"), /Judge is already the UTAR judge for 2026/)
-  // Re-saving the same judge keeps their award; moving them frees it.
+  // A second UTAR judge in the same cohort is allowed.
+  await save("u2@judge.test", "special", "utar")
   await save("u1@judge.test", "special", "utar", utar)
   await save("u1@judge.test", "special", "mabecs", utar)
-  await save("u2@judge.test", "special", "utar")
-  // A deleted judge no longer holds the award.
-  await db.query("select myssp_set_judge_deleted($1,true)", [utar])
-  await save("m2@judge.test", "special", "mabecs")
+  await save("u3@judge.test", "special", "utar")
   assert.deepEqual((await db.query("select email, special_award from myssp_judges where deleted_at is null order by email")).rows,
-    [{ email: "m2@judge.test", special_award: "mabecs" }, { email: "u2@judge.test", special_award: "utar" }])
+    [{ email: "u1@judge.test", special_award: "mabecs" }, { email: "u2@judge.test", special_award: "utar" }, { email: "u3@judge.test", special_award: "utar" }])
+  // The CSV import accepts several judges of one award too.
+  await db.query("select myssp_import_judges($1)", [[
+    { name: "W1", email: "w1@judge.test", affiliation: "", cohort_year: 2026, kind: "special", special_award: "mathworks" },
+    { name: "W2", email: "w2@judge.test", affiliation: "", cohort_year: 2026, kind: "special", special_award: "mathworks" },
+  ]])
+  assert.equal((await db.query("select count(*)::int as n from myssp_judges where special_award='mathworks'")).rows[0].n, 2)
   // The table itself refuses an award on a main judge.
   await db.exec("reset role")
   await assert.rejects(() => db.query("update myssp_judges set kind='main' where email='u2@judge.test'"), /special_award_only_for_special/)
@@ -443,7 +447,7 @@ test("existing special judges get the award their details name", async () => {
   })
 })
 
-test("restoring a judge whose award is now taken brings them back without one", async () => {
+test("a restored judge keeps their award even when another judge has it", async () => {
   const { db, as } = await setup()
   await as("authenticated", admin)
   const save = (email, award, id = null) =>
@@ -456,7 +460,7 @@ test("restoring a judge whose award is now taken brings them back without one", 
   await save("r2@judge.test", "utar")
   await db.query("select myssp_set_judge_deleted($1,false)", [first])
   assert.deepEqual((await db.query("select email, special_award from myssp_judges order by email")).rows,
-    [{ email: "r1@judge.test", special_award: null }, { email: "r2@judge.test", special_award: "utar" }])
+    [{ email: "r1@judge.test", special_award: "utar" }, { email: "r2@judge.test", special_award: "utar" }])
 })
 
 test("only the committee can permanently delete a judge in Trash, with their reviews", async () => {

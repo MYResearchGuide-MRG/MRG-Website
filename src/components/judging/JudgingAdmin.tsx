@@ -930,7 +930,7 @@ function JudgeManagement({
                   </td>
                   <td>
                     <label
-                      className={`jd-attend${attendanceLocked(judge) ? "is-locked" : ""}`}
+                      className={`jd-attend${attendanceLocked(judge) ? " is-locked" : ""}`}
                       title={
                         attendanceLocked(judge)
                           ? "Locked because this judge has already submitted reviews"
@@ -1462,7 +1462,7 @@ function JudgeEditor({
               ))}
             </select>
             <small>
-              Each special award has one judge per cohort and its own results.
+              A special award can have several judges, averaged in its own results.
               Teams see only “Main” or “Special award” on a review.
             </small>
           </label>
@@ -2005,7 +2005,7 @@ function Results({
   const results = lineup.map((board) => projectResult(board.id, reviews))
   const ranks = rankResults(results)
   // The overview ranks projects by main judges, by each special award's
-  // judge, and by every judge together.
+  // judges, and by every judge together.
   const rankBy = (include: (judge: CommitteeJudge) => boolean) => {
     const ids = new Set(allJudges.filter(include).map((judge) => judge.id))
     const scoped = allReviews.filter((review) => ids.has(review.judgeId))
@@ -2023,8 +2023,8 @@ function Results({
           key: award,
           label: specialAwards[award],
           special: true,
-          ranks: rankBy(
-            (j) => j.kind === "special" && j.specialAward === award
+          ranks: rankBy((j) =>
+            judgesForAward(allJudges, award).includes(j)
           ),
         })),
         // In the overview the pool is every judge, so ranks is the all-judges ranking.
@@ -2115,7 +2115,7 @@ function Results({
       </div>
       <p className="jd-intro jd-results-note">
         {overview
-          ? `Every judge's total score out of ${MAX_TOTAL}, for every project. Ranks compare averages from main judges, each special award's judge and all judges. Pick an award to see its averages.${remoteNote}`
+          ? `Every judge's total score out of ${MAX_TOTAL}, for every project. Ranks compare averages from main judges, each special award's judges and all judges. Pick an award to see its averages.${remoteNote}`
           : `Scores are totals out of ${MAX_TOTAL}, from submitted reviews only. Rankings can change until every review is in. Select a project to read its reviews.${remoteNote}`}
       </p>
       <div className="am-table-wrap jd-results-wrap">

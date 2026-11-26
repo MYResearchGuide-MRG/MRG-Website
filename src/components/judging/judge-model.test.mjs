@@ -147,6 +147,25 @@ test("main and special awards stay independent and rankings use unrounded totals
     ["special-a"]
   )
   assert.deepEqual(judgesForAward(judges, "missing"), [])
+  // Two UTAR judges are averaged together, apart from the other awards.
+  const twoUtar = [
+    ...judges,
+    { id: "special-c", kind: "special", specialAward: "utar" },
+  ]
+  const utarIds = judgesForAward(twoUtar, "utar").map((j) => j.id)
+  assert.deepEqual(utarIds, ["special-a", "special-c"])
+  const awardReviews = [
+    review("main", "one", 1),
+    review("special-a", "one", 2),
+    review("special-b", "one", 5),
+    review("special-c", "one", 4),
+  ]
+  const utarResult = projectResult(
+    "one",
+    awardReviews.filter((r) => utarIds.includes(r.judgeId))
+  )
+  assert.equal(utarResult.submitted, 2)
+  assert.equal(utarResult.averages.clarity, 3)
   const rows = Array.from({ length: 21 }, (_, i) =>
     review(String(i), "one", 4, { clarity: i === 0 ? 5 : 4 })
   )
@@ -189,7 +208,7 @@ test("judge details are validated before saving", () => {
   )
 })
 
-test("each special award takes one judge per cohort", () => {
+test("a special award can have several judges per cohort", () => {
   const input = {
     name: "Dr. B",
     email: "b@uni.edu",
@@ -210,16 +229,8 @@ test("each special award takes one judge per cohort", () => {
     deletedAt: null,
   }
   const utar = { ...input, specialAward: "utar" }
-  assert.match(
-    judgeInputError(utar, [holder]),
-    /Dr. A is already the UTAR judge for 2026/
-  )
+  assert.equal(judgeInputError(utar, [holder]), "")
   assert.equal(judgeInputError(utar, [holder], "1"), "")
-  assert.equal(judgeInputError({ ...utar, cohortYear: 2027 }, [holder]), "")
-  assert.equal(
-    judgeInputError(utar, [{ ...holder, deletedAt: "2026-01-01" }]),
-    ""
-  )
   assert.equal(
     judgeInputError({ ...input, specialAward: "mabecs" }, [holder]),
     ""
@@ -248,18 +259,8 @@ test("judge CSV reads award types and rejects the old generic special type", () 
       ["special", "mabecs", ""],
       ["special", "mathworks", ""],
       ["main", null, "Judge type must be main, utar, mabecs or mathworks."],
-      ["special", "mathworks", "Only one MathWorks judge can be imported."],
+      ["special", "mathworks", ""],
     ]
-  )
-  // A row with an error doesn't claim its award from a later valid row.
-  const retry = parseJudgeCsv(
-    "name,email,affiliation,judge_type\nA,not-an-email,UTAR,utar\nB,b@x.edu,UTAR,utar",
-    2026,
-    []
-  )
-  assert.deepEqual(
-    retry.map((row) => row.error),
-    ["Enter a valid email address.", ""]
   )
 })
 
