@@ -47,6 +47,15 @@ can change and resubmit it. It is unavailable once feedback is released.
 Backend migration: `202611240001_judge_demo_day_attendance.sql`. Applied to the live MYSSP
 database on 24 November 2026; do not rerun it.
 
+## Tiebreaker for all awards
+
+The main award, every special award, Best Presentation and the all-judges
+ranking use the same rule. If the primary scores tie, the team with the higher
+average **Research Execution & Quality** score ranks first. That score is
+out of 15 and comes from the same submitted reviews used for that award.
+Both comparisons use unrounded scores. Teams still tied share a rank,
+for example 1, 1, 3. The results view and CSV show the research average.
+
 ## Best Presentation
 
 Open **Committee → Judging → Progress & results**. The overview shows each
@@ -58,8 +67,8 @@ Each attending main or special award judge contributes one submitted
 presentation total out of 25. The five equally weighted criteria cover
 structure, clarity, Q&A, visual aids and time management. Drafts and
 research-only reviews contribute no score. A team receives its first rank
-when one eligible review is submitted. Equal unrounded averages share a
-rank. Check the submitted counts before announcing the winner.
+when one eligible review is submitted. The attending judges' research scores
+break ties. Check the submitted counts before announcing the winner.
 
 **Export CSV** in this view includes each team's counted reviews, average
 and rank. The committee controls feedback release separately.

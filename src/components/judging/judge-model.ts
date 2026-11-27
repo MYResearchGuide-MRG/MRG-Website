@@ -191,11 +191,12 @@ export type CommitteeReview = Record<ScoreKey, number | null> & {
 
 export const MAX_TOTAL = scoreKeys.length * SCORE_MAX
 export const PRESENTATION_MAX = presentationKeys.length * SCORE_MAX
+const researchKeys = scoreKeysFor(true)
+export const RESEARCH_MAX = researchKeys.length * SCORE_MAX
 
-export function presentationTotal(review: CommitteeReview): number | null {
-  if (review.researchOnly) return null
+function sectionTotal(review: CommitteeReview, keys: readonly ScoreKey[]) {
   let total = 0
-  for (const key of presentationKeys) {
+  for (const key of keys) {
     const score = review[key]
     if (!validScore(score)) return null
     total += score
@@ -203,24 +204,41 @@ export function presentationTotal(review: CommitteeReview): number | null {
   return total
 }
 
+export function presentationTotal(review: CommitteeReview): number | null {
+  return review.researchOnly ? null : sectionTotal(review, presentationKeys)
+}
+
+function averageResearch(submitted: readonly CommitteeReview[]) {
+  let sum = 0
+  let count = 0
+  for (const review of submitted) {
+    const score = sectionTotal(review, researchKeys)
+    if (score === null) continue
+    sum += score
+    count++
+  }
+  return count ? sum / count : null
+}
+
 /** Each submitted, complete presentation subtotal has equal weight. */
 export function presentationResult(
   projectId: string,
   reviews: readonly CommitteeReview[]
 ) {
-  let submitted = 0
+  const counted: CommitteeReview[] = []
   let sum = 0
   for (const review of reviews) {
     if (review.projectId !== projectId || !review.submittedAt) continue
     const total = presentationTotal(review)
     if (total === null) continue
-    submitted++
+    counted.push(review)
     sum += total
   }
   return {
     projectId,
-    submitted,
-    averageTotal: submitted ? sum / submitted : null,
+    submitted: counted.length,
+    averageTotal: counted.length ? sum / counted.length : null,
+    researchAverage: averageResearch(counted),
     maxTotal: PRESENTATION_MAX,
   }
 }
@@ -279,6 +297,8 @@ export type ProjectResult = {
    * the mean of the judges' totals.
    */
   averageTotal: number | null
+  /** Unrounded Research Execution & Quality average for this award's judges. */
+  researchAverage: number | null
   /** 40, or 15 while only research-only reviews are in. */
   maxTotal: number
 }
@@ -297,6 +317,7 @@ export function projectResult(
       drafts: mine.length,
       averages: null,
       averageTotal: null,
+      researchAverage: null,
       maxTotal: MAX_TOTAL,
     }
   const exact = new Map<ScoreKey, number>()
@@ -318,6 +339,7 @@ export function projectResult(
     projectId,
     submitted: submitted.length,
     drafts: mine.length - submitted.length,
+    researchAverage: averageResearch(submitted),
     averages,
     averageTotal: exact.size
       ? [...exact.values()].reduce((a, b) => a + b, 0)
@@ -327,28 +349,32 @@ export function projectResult(
 }
 
 /**
- * Ranks by average total as a share of its maximum, highest first; ties share
- * a rank. Unscored projects have none. Once every review is in, all maxima are
- * equal and this is a plain ranking by total.
+ * Compare the award score as a share of its maximum, then the research component.
+ * Shared ranks use competition numbering (1, 1, 3). Unscored teams have no rank.
  */
 export function rankResults(
   results: readonly Pick<
     ProjectResult,
-    "projectId" | "averageTotal" | "maxTotal"
+    "projectId" | "averageTotal" | "maxTotal" | "researchAverage"
   >[]
 ): Map<string, number> {
   const share = (result: (typeof results)[number]) =>
     result.averageTotal! / (result.maxTotal || MAX_TOTAL)
+  // Summing criterion means can introduce floating-point noise in a true tie.
+  const compare = (a: (typeof results)[number], b: (typeof results)[number]) => {
+    const primary = share(b) - share(a)
+    if (Math.abs(primary) >= 1e-9) return primary
+    return (b.researchAverage ?? -1) - (a.researchAverage ?? -1)
+  }
   const scored = results
     .filter((result) => result.averageTotal !== null)
-    .sort((a, b) => share(b) - share(a))
+    .sort(compare)
   const ranks = new Map<string, number>()
   scored.forEach((result, index) => {
     const previous = scored[index - 1]
     ranks.set(
       result.projectId,
-      // Sums of averages can differ in the last bits when the scores tie.
-      previous && Math.abs(share(previous) - share(result)) < 1e-9
+      previous && compare(previous, result) === 0
         ? ranks.get(previous.projectId)!
         : index + 1
     )
@@ -385,6 +411,7 @@ export function presentationCsv(
       result?.averageTotal ?? null,
       PRESENTATION_MAX,
       ranks.get(project.id) ?? null,
+      result?.researchAverage ?? null,
     ]
   })
   const header = [
@@ -395,6 +422,7 @@ export function presentationCsv(
     "Presentation average",
     "Out of",
     "Rank",
+    `Research tiebreaker (out of ${RESEARCH_MAX})`,
   ]
   return (
     [header, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n") +
@@ -406,8 +434,11 @@ export function presentationCsv(
 export function feedbackCsv(
   lineup: readonly { id: string; code: string; title: string }[],
   judges: readonly CommitteeJudge[],
-  reviews: readonly CommitteeReview[]
+  reviews: readonly CommitteeReview[],
+  results: readonly Pick<ProjectResult, "projectId" | "researchAverage">[],
+  ranks: ReadonlyMap<string, number>
 ): string {
+  const byProject = new Map(results.map((result) => [result.projectId, result]))
   const header = [
     "Position",
     "Project code",
@@ -423,6 +454,8 @@ export function feedbackCsv(
     "Research review",
     "Presentation review",
     "Submitted at",
+    "Project rank",
+    `Research tiebreaker (out of ${RESEARCH_MAX})`,
   ]
   const rows: (string | number | null)[][] = []
   lineup.forEach((project, index) => {
@@ -449,6 +482,8 @@ export function feedbackCsv(
         review.researchRemarks,
         review.presentationRemarks,
         review.submittedAt,
+        ranks.get(project.id) ?? null,
+        byProject.get(project.id)?.researchAverage ?? null,
       ])
   })
   return (

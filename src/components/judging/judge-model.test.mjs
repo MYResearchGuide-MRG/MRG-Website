@@ -92,26 +92,30 @@ test("project results average submitted reviews only", () => {
     drafts: 0,
     averages: null,
     averageTotal: null,
+    researchAverage: null,
     maxTotal: 40,
   })
   assert.equal(reviewTotal(review("a", "p1", null)), null)
 })
 
-test("ranking puts the highest average first and shares ties", () => {
-  const ranks = rankResults([
-    { projectId: "x", averageTotal: 30 },
-    { projectId: "y", averageTotal: 35 },
-    { projectId: "z", averageTotal: 30 },
-    { projectId: "w", averageTotal: null },
-  ])
-  assert.deepEqual(
-    [...ranks.entries()],
-    [
-      ["y", 1],
-      ["x", 2],
-      ["z", 2],
-    ]
-  )
+test("rank compares the primary score first, then research, and preserves double ties", () => {
+  const row = (projectId, averageTotal, researchAverage, maxTotal = 40) =>
+    ({ projectId, averageTotal, researchAverage, maxTotal })
+  const results = [
+    row("low-research", 32, 11),
+    row("research-only", 12, 12, 15),
+    row("second", 32 + Number.EPSILON * 32, 12),
+    row("winner", 32.001, 3),
+    row("unscored", null, null),
+  ]
+  for (const order of [results, [...results].reverse()]) {
+    const ranks = rankResults(order)
+    assert.equal(ranks.get("winner"), 1)
+    assert.equal(ranks.get("research-only"), 2)
+    assert.equal(ranks.get("second"), 2)
+    assert.equal(ranks.get("low-research"), 4)
+    assert.equal(ranks.has("unscored"), false)
+  }
 })
 
 test("Best Presentation averages submitted presentation subtotals from attending main and special judges", () => {
@@ -150,20 +154,20 @@ test("Best Presentation averages submitted presentation subtotals from attending
   }))
   const results = lineup.map(({ id }) => presentationResult(id, marks))
   assert.deepEqual(
-    results.map((r) => [r.averageTotal, r.submitted, r.maxTotal]),
+    results.map((r) => [r.averageTotal, r.submitted, r.maxTotal, r.researchAverage]),
     [
-      [20, 2, 25],
-      [20, 1, 25],
-      [null, 0, 25],
-      [15, 1, 25],
+      [20, 2, 25, 7],
+      [20, 1, 25, 12],
+      [null, 0, 25, null],
+      [15, 1, 25, 9],
     ]
   )
   const ranks = rankResults(results)
   assert.deepEqual(
     [...ranks],
     [
-      ["a", 1],
       ["b", 1],
+      ["a", 2],
       ["d", 3],
     ]
   )
@@ -174,9 +178,9 @@ test("Best Presentation averages submitted presentation subtotals from attending
   assert.equal(presentationTotal(review("s", "c", 5, { clarity: 6 })), null)
   assert.match(
     presentationCsv(lineup, results, ranks),
-    /1,a,Team a,2,20,25,1\r\n/
+    /1,a,Team a,2,20,25,2,7\r\n/
   )
-  assert.match(presentationCsv(lineup, results, ranks), /3,c,Team c,0,,25,\r\n/)
+  assert.match(presentationCsv(lineup, results, ranks), /3,c,Team c,0,,25,,\r\n/)
   marks[0].submittedAt = null
   assert.equal(presentationResult("a", marks).averageTotal, 15)
 })
@@ -186,6 +190,7 @@ test("presentation ranking stays exact across 100 projects and 50 judges with mi
   const reference = []
   for (let p = 0; p < 100; p++) {
     const scores = []
+    const research = []
     for (let j = 0; j < 50; j++) {
       const score = ((j + p) % 5) + 1
       const researchOnly = j % 7 === 0
@@ -198,22 +203,56 @@ test("presentation ranking stays exact across 100 projects and 50 judges with mi
           submittedAt: draft ? null : "2026-11-28",
         })
       )
-      if (!researchOnly && !draft) scores.push(4 * score + clarity)
+      if (!researchOnly && !draft) {
+        scores.push(4 * score + clarity)
+        research.push(3 * score)
+      }
     }
-    reference.push(scores.reduce((a, b) => a + b, 0) / scores.length)
+    reference.push({
+      primary: scores.reduce((a, b) => a + b, 0) / scores.length,
+      research: research.reduce((a, b) => a + b, 0) / research.length,
+    })
   }
   const results = reference.map((expected, i) => {
     const result = presentationResult(String(i), reviews)
-    assert.equal(result.averageTotal, expected)
+    assert.equal(result.averageTotal, expected.primary)
+    assert.equal(result.researchAverage, expected.research)
     return result
   })
   const ranks = rankResults(results)
   reference.forEach((score, i) =>
     assert.equal(
       ranks.get(String(i)),
-      1 + reference.filter((other) => other > score).length
+      1 + reference.filter((other) => other.primary > score.primary ||
+        (other.primary === score.primary && other.research > score.research)).length
     )
   )
+})
+
+test("each main and special award breaks tied totals using its own submitted research marks", () => {
+  const judges = [
+    { id: "main", kind: "main" },
+    ...["utar", "mathworks", "mabecs"].map((award) => ({
+      id: award, kind: "special", specialAward: award,
+    })),
+  ]
+  const strongerResearch = { data_collection: 5, analysis: 4, structure: 1, clarity: 2 }
+  const reviews = judges.flatMap(({ id }, index) => [
+    review(id, "a", 3, index % 2 === 0 ? strongerResearch : {}),
+    review(id, "b", 3, index % 2 === 1 ? strongerResearch : {}),
+  ])
+  for (const [index, judge] of judges.entries()) {
+    const pool = judgesForAward(judges, judge.id).map((entry) => entry.id)
+    const counted = reviews.filter((r) => pool.includes(r.judgeId))
+    const results = ["a", "b"].map((id) => projectResult(id, counted))
+    assert.deepEqual(results.map((r) => r.averageTotal), [24, 24])
+    const ranks = rankResults(results)
+    assert.equal(ranks.get(index % 2 === 0 ? "a" : "b"), 1)
+    assert.equal(ranks.get(index % 2 === 0 ? "b" : "a"), 2)
+  }
+  const combined = ["a", "b"].map((id) => projectResult(id, reviews))
+  assert.deepEqual(combined.map((r) => r.researchAverage), [10.5, 10.5])
+  assert.deepEqual([...rankResults(combined).values()], [1, 1])
 })
 
 test("main and special awards stay independent and rankings use unrounded totals", () => {
@@ -370,6 +409,7 @@ test("judge CSV reads award types and rejects the old generic special type", () 
 })
 
 test("CSV export quotes text and neutralises spreadsheet formulas", () => {
+  const results = [projectResult("p1", [review("a", "p1", 4)])]
   const csv = feedbackCsv(
     [{ id: "p1", code: "A-1", title: "Trees, graphs" }],
     [
@@ -386,7 +426,9 @@ test("CSV export quotes text and neutralises spreadsheet formulas", () => {
         researchRemarks: '=HYPERLINK("x") said "great"\nline 2',
         presentationRemarks: "Clear and well paced.",
       }),
-    ]
+    ],
+    results,
+    rankResults(results)
   )
   const [header, row] = csv.trim().split("\r\n")
   assert.match(
@@ -395,7 +437,7 @@ test("CSV export quotes text and neutralises spreadsheet formulas", () => {
   )
   assert.match(
     header,
-    /Attended Demo Day,Total,Out of,Research review,Presentation review,Submitted at$/
+    /Attended Demo Day,Total,Out of,Research review,Presentation review,Submitted at,Project rank,Research tiebreaker \(out of 15\)$/
   )
   assert.ok(
     row.startsWith(

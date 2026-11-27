@@ -62,6 +62,7 @@ import {
   judgesForAward,
   MAX_TOTAL,
   PRESENTATION_MAX,
+  RESEARCH_MAX,
   parseJudgeCsv,
   presentationCsv,
   presentationResult,
@@ -2083,7 +2084,7 @@ function Results({
   function download() {
     const csv = presentation
       ? presentationCsv(lineup, presentations, presentationRanks)
-      : feedbackCsv(lineup, allJudges, reviews)
+      : feedbackCsv(lineup, allJudges, reviews, results, ranks)
     const url = URL.createObjectURL(
       new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" })
     )
@@ -2137,10 +2138,11 @@ function Results({
       </div>
       <p className="jd-intro jd-results-note">
         {presentation
-          ? `Average of submitted presentation scores from attending main and special award judges, out of ${PRESENTATION_MAX}. Rankings update as reviews come in. Tied averages share a rank.`
+          ? `Average of submitted presentation scores from attending main and special award judges, out of ${PRESENTATION_MAX}.`
           : overview
-          ? `Compare project ranks across awards. Best Presentation uses only the presentation component. Pick an award to see its averages.${remoteNote}`
+          ? `Compare project ranks across awards. Pick an award to see its averages.${remoteNote}`
           : `Scores are totals out of ${MAX_TOTAL}, from submitted reviews only. Rankings can change until every review is in. Select a project to read its reviews.${remoteNote}`}
+        {" "}Ties go to the higher Research Execution &amp; Quality average. Teams tied on both scores share a rank.
       </p>
       <div className="am-table-wrap jd-results-wrap">
         <table className="jd-table">
@@ -2291,6 +2293,11 @@ function Results({
                               /{result.maxTotal}
                             </small>
                           )}
+                        {result.researchAverage !== null && (
+                          <small className="jd-score-count" title="Research Execution & Quality tiebreaker">
+                            Research {result.researchAverage.toFixed(1)}/{RESEARCH_MAX}
+                          </small>
+                        )}
                       </td>
                     )}
                     {overview ? (

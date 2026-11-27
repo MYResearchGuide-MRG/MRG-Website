@@ -30,6 +30,7 @@ def run(url):
                 presentationRemarks="Presentation notes" if attends else "",
                 updatedAt="2026-11-27T08:00:00Z", submittedAt=None if name == "Special" else "2026-11-27T08:00:00Z")
     reviews["Special"][projects[1]]["clarity"] = None
+    reviews["Main"][projects[1]]["analysis"] = 1
     seed = dict(judges=judges, reviews=reviews, lineups={"2026": projects},
                 switches={"2026": dict(judgingOpen=True, feedbackReleased=False)})
     with sync_playwright() as pw:
@@ -97,10 +98,11 @@ def run(url):
         submit.click()
         expect(judge.get_by_text("All reviews submitted and locked.")).to_be_visible()
         expect(page.locator(".jd-results-stats")).to_contain_text("4 of 4 reviews submitted")
-        for row in rows.all():
+        for row, rank, research in zip(rows.all(), ["1", "2"], ["15.0", "13.0"]):
             expect(row.locator(".jd-average")).to_contain_text("15.0")
-            expect(row.locator(".jd-score-count")).to_have_text("2 scores")
-            expect(row.locator("td").last).to_have_text("1")
+            expect(row.locator(".jd-average")).to_contain_text("2 scores")
+            expect(row.locator(".jd-average")).to_contain_text(f"Research {research}/15")
+            expect(row.locator("td").last).to_have_text(rank)
         page.get_by_role("button", name="Show reviews for A-1", exact=True).click()
         expect(page.locator(".jd-review-card")).to_have_count(2)
         expect(page.locator(".jd-detail")).to_contain_text("Presentation notes")
@@ -111,12 +113,13 @@ def run(url):
         assert download.suggested_filename == "myssp-2026-best-presentation.csv"
         with Path(download.path()).open(encoding="utf-8-sig", newline="") as file:
             data = list(csv.DictReader(file))
-        assert [(r["Project code"], r["Submitted presentation scores"], r["Presentation average"], r["Rank"])
-                for r in data] == [("A-1", "2", "15", "1"), ("A-2", "2", "15", "1")]
+        assert [(r["Project code"], r["Submitted presentation scores"], r["Presentation average"],
+                 r["Rank"], r["Research tiebreaker (out of 15)"])
+                for r in data] == [("A-1", "2", "15", "1", "15"), ("A-2", "2", "15", "2", "13")]
         choose("All judges (overview)")
         expect(page.get_by_role("columnheader", name="Best Presentation", exact=True)).to_be_visible()
-        for row in rows.all():
-            expect(row.locator("td").nth(-2)).to_have_text("1")
+        for row, rank in zip(rows.all(), ["1", "2"]):
+            expect(row.locator("td").nth(-2)).to_have_text(rank)
         page.set_viewport_size({"width": 390, "height": 844})
         choose("Best Presentation")
         expect(page.get_by_role("button", name="Export CSV")).to_be_visible()
