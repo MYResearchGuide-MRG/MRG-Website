@@ -10,7 +10,7 @@ from playwright.sync_api import expect, sync_playwright
 
 OWN = "object-detector-occlusion"
 OTHER = "llm-personality-emotion"
-ROOT = "#/projectboard"
+ROOT = "#/project-archive"
 
 
 def run(url):
@@ -32,6 +32,7 @@ def run(url):
           sessionStorage.setItem('myssp-preview-session-v1',JSON.stringify({participantId:'fixture-person',projectId:own,revision:1,expiresAt:expiry}));
           localStorage.setItem('myssp-library-visibility-v1', JSON.stringify({version:1,visibleIds:[own,other]}));
           localStorage.setItem('myssp-project-editing-v1', JSON.stringify({version:1,visibleIds:[own,other]}));
+          localStorage.setItem('myssp-preview-deadlines-v1', JSON.stringify({2026:null}));
         }""", {"own": OWN, "other": OTHER, "expiry": int(time.time()*1000)+3600000})
         page.reload()
 

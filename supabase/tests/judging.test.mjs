@@ -374,6 +374,63 @@ test("submitting all reviews is all or nothing", async () => {
   await assert.rejects(() => db.query("select myssp_submit_judge_reviews()"), /Judging is closed/)
 })
 
+test("Demo Day rehearsal submits 13 projects for nine judges and releases nine anonymous reviews per team", async () => {
+  const { db, as } = await setup()
+  const projects = ["one", "two", ...Array.from({ length: 11 }, (_, i) => "rehearsal-" + i)]
+  for (const id of projects.slice(2))
+    await db.query("insert into myssp_projects(id,code,payload) values ($1,$1,'{\"year\":2026,\"team\":[]}')", [id])
+  await db.exec(readFileSync(new URL("../migrations/202611210005_judging_save_versions.sql", import.meta.url), "utf8"))
+  const awards = [null, null, null, null, null, "utar", "utar", "mabecs", "mathworks"]
+  const users = []
+  for (const [i, award] of awards.entries()) {
+    const email = `judge-${i}@example.test`
+    const user = `00000000-0000-0000-0000-${String(i + 100).padStart(12, "0")}`
+    users.push(user)
+    await as("authenticated", admin)
+    const { rows } = await db.query(
+      "select myssp_save_judge(null,2026,$1,$2,'',false,$3,$4,$5) as id",
+      [`Judge ${i}`, email, award ? "special" : "main", i !== 0, award]
+    )
+    await db.exec("reset role")
+    await db.query("insert into auth.users values ($1,$2)", [user, email])
+    await db.query("update myssp_judges set user_id=$1 where id=$2", [user, rows[0].id])
+  }
+  await as("authenticated", admin)
+  await db.query("select myssp_set_judging_lineup(2026,$1)", [projects])
+  await db.query("select myssp_set_research_judging_window(2026,true,now()+interval '1 day',false,'2026-11-28 16:00+08')")
+  for (const [j, user] of users.entries()) {
+    await as("authenticated", user)
+    await Promise.all(projects.map((id, p) =>
+      db.query("select myssp_save_judge_review_v2($1,$2,false,null)", [id, full((j + p) % 5 + 1, "Panel feedback")])
+    ))
+    const { rows } = await db.query("select myssp_submit_judge_reviews() as count")
+    assert.equal(rows[0].count, 13)
+  }
+  await as("authenticated", admin)
+  const summary = await db.query(`select project_id,
+    count(*) filter (where submitted_at is not null)::int as submitted,
+    count(structure)::int as presentations,
+    sum(structure+clarity+qa_depth+visual_aids+time_management)::int as marks
+    from myssp_judge_feedback group by project_id`)
+  assert.equal(summary.rows.length, projects.length)
+  for (const row of summary.rows) {
+    const p = projects.indexOf(row.project_id)
+    const expected = users.slice(1).reduce((sum, _, i) => sum + 5 * ((p + i + 1) % 5 + 1), 0)
+    assert.deepEqual([row.submitted, row.presentations, row.marks], [9, 8, expected])
+  }
+  await as("authenticated", student)
+  const feedback = async () => (await db.query("select myssp_project_feedback('one') as feedback")).rows[0].feedback
+  assert.deepEqual(await feedback(), { released: false })
+  await as("authenticated", admin)
+  await db.query("select myssp_set_judging_state(2026,false,true)")
+  await as("authenticated", student)
+  const released = await feedback()
+  assert.equal(released.reviews.length, 9)
+  assert.equal(released.reviews.filter(r => r.researchOnly).length, 1)
+  assert.equal(released.reviews.filter(r => r.kind === "special").length, 4)
+  assert.doesNotMatch(JSON.stringify(released.reviews), /@example\.test|judgeId|judge_id|Judge [0-9]/)
+})
+
 test("committee imports judges in bulk, all rows or none", async () => {
   const { db, as } = await setup()
   const rows = [

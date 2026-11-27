@@ -3,10 +3,12 @@ import {
   judgingSections,
   judgeTypeLabel,
   maxTotalFor,
+  presentationKeys,
   scoreKeys,
   scoreKeysFor,
   SCORE_MAX,
   specialAwardKeys,
+  validScore,
   type JudgeKind,
   type ScoreKey,
   type SpecialAward,
@@ -164,6 +166,8 @@ export function judgesForAward(
   judges: readonly CommitteeJudge[],
   award: string
 ) {
+  if (award === "presentation")
+    return judges.filter((judge) => judge.attendsDemoDay && !judge.deletedAt)
   return judges.filter((judge) =>
     award === "main"
       ? judge.kind === "main"
@@ -186,6 +190,40 @@ export type CommitteeReview = Record<ScoreKey, number | null> & {
 }
 
 export const MAX_TOTAL = scoreKeys.length * SCORE_MAX
+export const PRESENTATION_MAX = presentationKeys.length * SCORE_MAX
+
+export function presentationTotal(review: CommitteeReview): number | null {
+  if (review.researchOnly) return null
+  let total = 0
+  for (const key of presentationKeys) {
+    const score = review[key]
+    if (!validScore(score)) return null
+    total += score
+  }
+  return total
+}
+
+/** Each submitted, complete presentation subtotal has equal weight. */
+export function presentationResult(
+  projectId: string,
+  reviews: readonly CommitteeReview[]
+) {
+  let submitted = 0
+  let sum = 0
+  for (const review of reviews) {
+    if (review.projectId !== projectId || !review.submittedAt) continue
+    const total = presentationTotal(review)
+    if (total === null) continue
+    submitted++
+    sum += total
+  }
+  return {
+    projectId,
+    submitted,
+    averageTotal: submitted ? sum / submitted : null,
+    maxTotal: PRESENTATION_MAX,
+  }
+}
 
 /** Highest possible total for this review: 40, or 15 if research only. */
 export function reviewMax(review: Pick<CommitteeReview, "researchOnly">) {
@@ -330,6 +368,39 @@ export const criterionLabels: Record<ScoreKey, string> = Object.fromEntries(
     section.criteria.map((criterion) => [criterion.key, criterion.label])
   )
 ) as Record<ScoreKey, string>
+
+export function presentationCsv(
+  lineup: readonly { id: string; code: string; title: string }[],
+  results: readonly ReturnType<typeof presentationResult>[],
+  ranks: ReadonlyMap<string, number>
+): string {
+  const byProject = new Map(results.map((result) => [result.projectId, result]))
+  const rows = lineup.map((project, index) => {
+    const result = byProject.get(project.id)
+    return [
+      index + 1,
+      project.code,
+      project.title,
+      result?.submitted ?? 0,
+      result?.averageTotal ?? null,
+      PRESENTATION_MAX,
+      ranks.get(project.id) ?? null,
+    ]
+  })
+  const header = [
+    "Position",
+    "Project code",
+    "Project title",
+    "Submitted presentation scores",
+    "Presentation average",
+    "Out of",
+    "Rank",
+  ]
+  return (
+    [header, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n") +
+    "\r\n"
+  )
+}
 
 /** One row per review, in lineup order then judge name. */
 export function feedbackCsv(

@@ -20,6 +20,9 @@ const {
   judgesForAward,
   MAX_TOTAL,
   parseJudgeCsv,
+  presentationCsv,
+  presentationResult,
+  presentationTotal,
   projectResult,
   rankResults,
   reviewTotal,
@@ -108,6 +111,108 @@ test("ranking puts the highest average first and shares ties", () => {
       ["x", 2],
       ["z", 2],
     ]
+  )
+})
+
+test("Best Presentation averages submitted presentation subtotals from attending main and special judges", () => {
+  const judges = [
+    { id: "m", kind: "main", attendsDemoDay: true },
+    { id: "s", kind: "special", specialAward: "utar", attendsDemoDay: true },
+    { id: "remote", kind: "main", attendsDemoDay: false },
+    {
+      id: "removed",
+      kind: "special",
+      attendsDemoDay: true,
+      deletedAt: "2026-11-24",
+    },
+  ]
+  const ids = judgesForAward(judges, "presentation").map((j) => j.id)
+  assert.deepEqual(ids, ["m", "s"])
+  const marks = [
+    review("m", "a", 5, {
+      data_collection: 1,
+      analysis: 1,
+      findings_validity: 1,
+    }),
+    review("s", "a", 3, { data_collection: 5 }),
+    review("m", "b", 4),
+    review("s", "b", 1, { submittedAt: null }),
+    review("m", "c", 5, { researchOnly: true }),
+    review("s", "c", 5, { clarity: null }),
+    review("m", "d", 3),
+    review("remote", "c", 5),
+    review("removed", "c", 5),
+  ].filter((r) => ids.includes(r.judgeId))
+  const lineup = ["a", "b", "c", "d"].map((id) => ({
+    id,
+    code: id,
+    title: "Team " + id,
+  }))
+  const results = lineup.map(({ id }) => presentationResult(id, marks))
+  assert.deepEqual(
+    results.map((r) => [r.averageTotal, r.submitted, r.maxTotal]),
+    [
+      [20, 2, 25],
+      [20, 1, 25],
+      [null, 0, 25],
+      [15, 1, 25],
+    ]
+  )
+  const ranks = rankResults(results)
+  assert.deepEqual(
+    [...ranks],
+    [
+      ["a", 1],
+      ["b", 1],
+      ["d", 3],
+    ]
+  )
+  assert.equal(
+    presentationTotal(review("m", "c", 5, { researchOnly: true })),
+    null
+  )
+  assert.equal(presentationTotal(review("s", "c", 5, { clarity: 6 })), null)
+  assert.match(
+    presentationCsv(lineup, results, ranks),
+    /1,a,Team a,2,20,25,1\r\n/
+  )
+  assert.match(presentationCsv(lineup, results, ranks), /3,c,Team c,0,,25,\r\n/)
+  marks[0].submittedAt = null
+  assert.equal(presentationResult("a", marks).averageTotal, 15)
+})
+
+test("presentation ranking stays exact across 100 projects and 50 judges with mixed submission states", () => {
+  const reviews = []
+  const reference = []
+  for (let p = 0; p < 100; p++) {
+    const scores = []
+    for (let j = 0; j < 50; j++) {
+      const score = ((j + p) % 5) + 1
+      const researchOnly = j % 7 === 0
+      const draft = (p + j) % 6 === 0
+      const clarity = ((2 * j + p) % 5) + 1
+      reviews.push(
+        review(String(j), String(p), score, {
+          clarity,
+          researchOnly,
+          submittedAt: draft ? null : "2026-11-28",
+        })
+      )
+      if (!researchOnly && !draft) scores.push(4 * score + clarity)
+    }
+    reference.push(scores.reduce((a, b) => a + b, 0) / scores.length)
+  }
+  const results = reference.map((expected, i) => {
+    const result = presentationResult(String(i), reviews)
+    assert.equal(result.averageTotal, expected)
+    return result
+  })
+  const ranks = rankResults(results)
+  reference.forEach((score, i) =>
+    assert.equal(
+      ranks.get(String(i)),
+      1 + reference.filter((other) => other > score).length
+    )
   )
 })
 

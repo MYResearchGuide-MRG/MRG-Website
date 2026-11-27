@@ -45,13 +45,15 @@ def run(base_url, screenshot):
         page.reload()
         page.wait_for_load_state("networkidle")
         page.get_by_role("button", name="Open workspace on this device").click()
+        participants = page.get_by_role("navigation", name="Admin navigation").get_by_role("button", name="Participants")
+        participants.click()
         expect(page.locator("tbody tr")).to_have_count(12)
 
         # Committee members can browse public pages and return without signing
         # in again. Both desktop and mobile provide the same destination.
         for width in (1440, 1024, 390):
             page.set_viewport_size({"width": width, "height": 900})
-            page.locator(".ad-header a[href='#/projectboard']").click()
+            page.locator(".ad-header a[href='#/project-archive']").click()
             page.reload()
             expect(page.get_by_role("button", name="Sign out", exact=True)).to_be_visible()
             if width < 1024:
@@ -64,6 +66,7 @@ def run(base_url, screenshot):
                 action = admin_link.bounding_box()
                 assert nav["x"] + nav["width"] <= action["x"] - 4, "Header actions overlap navigation"
             admin_link.click()
+            participants.click()
             expect(page.locator("tbody tr")).to_have_count(12)
             expect(page.get_by_role("button", name="Open workspace on this device")).to_have_count(0)
         page.set_viewport_size({"width": 1440, "height": 1000})

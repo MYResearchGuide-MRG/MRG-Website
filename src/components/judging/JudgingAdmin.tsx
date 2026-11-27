@@ -61,7 +61,11 @@ import {
   judgeInputError,
   judgesForAward,
   MAX_TOTAL,
+  PRESENTATION_MAX,
   parseJudgeCsv,
+  presentationCsv,
+  presentationResult,
+  presentationTotal,
   projectResult,
   rankResults,
   reviewMax,
@@ -1989,21 +1993,37 @@ function Results({
   const award =
     chosenAward === "all" ||
     chosenAward === "main" ||
+    chosenAward === "presentation" ||
     cohortAwards.some((key) => key === chosenAward)
       ? chosenAward
       : "main"
-  // "all" is an overview of every judge's scores, with three rankings.
   const overview = award === "all"
+  const presentation = award === "presentation"
+  const scoreMax = presentation ? PRESENTATION_MAX : MAX_TOTAL
+  const presentationJudges = judgesForAward(judges, "presentation")
+  const attendingIds = new Set(presentationJudges.map((judge) => judge.id))
+  const presentationReviews = allReviews.filter(
+    (review) => attendingIds.has(review.judgeId) && !review.researchOnly
+  )
+  const presentations = presentation || overview
+    ? lineup.map((board) => presentationResult(board.id, presentationReviews))
+    : []
+  const presentationRanks = rankResults(presentations)
   const pool = overview
     ? [...allJudges].sort(
         (a, b) => Number(a.kind === "special") - Number(b.kind === "special")
       )
-    : judgesForAward(allJudges, award)
-  const reviews = allReviews.filter((review) =>
-    pool.some((judge) => judge.id === review.judgeId)
-  )
-  const results = lineup.map((board) => projectResult(board.id, reviews))
-  const ranks = rankResults(results)
+    : presentation
+      ? presentationJudges
+      : judgesForAward(allJudges, award)
+  const poolIds = new Set(pool.map((judge) => judge.id))
+  const reviews = presentation
+    ? presentationReviews
+    : allReviews.filter((review) => poolIds.has(review.judgeId))
+  const results = presentation
+    ? presentations
+    : lineup.map((board) => projectResult(board.id, reviews))
+  const ranks = presentation ? presentationRanks : rankResults(results)
   // The overview ranks projects by main judges, by each special award's
   // judges, and by every judge together.
   const rankBy = (include: (judge: CommitteeJudge) => boolean) => {
@@ -2027,12 +2047,13 @@ function Results({
             judgesForAward(allJudges, award).includes(j)
           ),
         })),
+        { key: "presentation", label: "Best Presentation", special: false, ranks: presentationRanks },
         // In the overview the pool is every judge, so ranks is the all-judges ranking.
         { key: "all", label: "All", special: false, ranks },
       ]
     : []
   const activeJudges = judges.filter(
-    (judge) => !judge.revoked && pool.some((item) => item.id === judge.id)
+    (judge) => !judge.revoked && poolIds.has(judge.id)
   )
   // Show anyone who has reviewed a lineup project, even if later paused or moved.
   const columns = [
@@ -2048,26 +2069,27 @@ function Results({
   const remoteNote = hasRemote
     ? ` Judges not at Demo Day score research only, out of ${maxTotalFor(true)}. A project's average adds the research average from every judge to the presentation average from judges who attended.`
     : ""
-  const submitted = reviews.filter((review) => review.submittedAt).length
+  const submitted = presentation
+    ? presentations.reduce((count, result) => count + result.submitted, 0)
+    : reviews.filter((review) => review.submittedAt).length
+  const drafts = reviews.filter((review) => !review.submittedAt).length
+  const activeJudgeIds = new Set(activeJudges.map((judge) => judge.id))
+  const expectedReviews = activeJudges.length * lineup.length + reviews.filter(
+    (review) => review.submittedAt && !activeJudgeIds.has(review.judgeId)
+  ).length
   const judgeName = (id: string) =>
     allJudges.find((judge) => judge.id === id)?.name || "Unknown judge"
 
   function download() {
-    const csv = feedbackCsv(
-      lineup.map((board) => ({
-        id: board.id,
-        code: board.code,
-        title: board.title,
-      })),
-      allJudges,
-      reviews
-    )
+    const csv = presentation
+      ? presentationCsv(lineup, presentations, presentationRanks)
+      : feedbackCsv(lineup, allJudges, reviews)
     const url = URL.createObjectURL(
       new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" })
     )
     const anchor = document.createElement("a")
     anchor.href = url
-    anchor.download = `myssp-${year}-judging.csv`
+    anchor.download = `myssp-${year}-${presentation ? "best-presentation" : "judging"}.csv`
     anchor.click()
     URL.revokeObjectURL(url)
   }
@@ -2089,6 +2111,7 @@ function Results({
           options={[
             { value: "all", label: "All judges (overview)" },
             { value: "main", label: "Main award" },
+            { value: "presentation", label: "Best Presentation" },
             ...cohortAwards.map((award) => ({
               value: award,
               label: `Special award · ${specialAwards[award]}`,
@@ -2098,11 +2121,10 @@ function Results({
         <div className="jd-results-stats">
           <span>
             <strong>{submitted}</strong> of{" "}
-            {activeJudges.length * lineup.length} reviews submitted
+            {expectedReviews} reviews submitted
           </span>
           <span>
-            <strong>{reviews.length - submitted}</strong>{" "}
-            {reviews.length - submitted === 1 ? "draft" : "drafts"}
+            <strong>{drafts}</strong> {drafts === 1 ? "draft" : "drafts"}
           </span>
         </div>
         <button
@@ -2114,8 +2136,10 @@ function Results({
         </button>
       </div>
       <p className="jd-intro jd-results-note">
-        {overview
-          ? `Every judge's total score out of ${MAX_TOTAL}, for every project. Ranks compare averages from main judges, each special award's judges and all judges. Pick an award to see its averages.${remoteNote}`
+        {presentation
+          ? `Average of submitted presentation scores from attending main and special award judges, out of ${PRESENTATION_MAX}. Rankings update as reviews come in. Tied averages share a rank.`
+          : overview
+          ? `Compare project ranks across awards. Best Presentation uses only the presentation component. Pick an award to see its averages.${remoteNote}`
           : `Scores are totals out of ${MAX_TOTAL}, from submitted reviews only. Rankings can change until every review is in. Select a project to read its reviews.${remoteNote}`}
       </p>
       <div className="am-table-wrap jd-results-wrap">
@@ -2126,18 +2150,18 @@ function Results({
               <th rowSpan={2}>Project</th>
               {columns.length > 0 && (
                 <th colSpan={columns.length} className="jd-group-label">
-                  Judge scores, out of {MAX_TOTAL}
+                  {presentation ? "Presentation scores" : "Judge scores"}, out of {scoreMax}
                 </th>
               )}
               {!overview && (
                 <th rowSpan={2} className="jd-num jd-center">
                   Average
-                  <small>out of {MAX_TOTAL}</small>
+                  <small>out of {scoreMax}</small>
                 </th>
               )}
               {overview ? (
-                <th colSpan={3} className="jd-group-label jd-rank-first">
-                  Rank by judges
+                <th colSpan={overviewRanks.length} className="jd-group-label jd-rank-first">
+                  Rankings
                 </th>
               ) : (
                 <th rowSpan={2} className="jd-num jd-center">
@@ -2246,15 +2270,20 @@ function Results({
                       )
                       return (
                         <td key={judge.id} className="jd-judge-col">
-                          <ScoreCell review={review} judge={judge.name} />
+                          <ScoreCell review={review} judge={judge.name} presentation={presentation} />
                         </td>
                       )
                     })}
                     {!overview && (
                       <td className="jd-num jd-center jd-average">
                         {result.averageTotal?.toFixed(1) ?? "–"}
+                        {presentation && (
+                          <small className="jd-score-count">
+                            {result.submitted} {result.submitted === 1 ? "score" : "scores"}
+                          </small>
+                        )}
                         {result.averageTotal !== null &&
-                          result.maxTotal !== MAX_TOTAL && (
+                          result.maxTotal !== scoreMax && (
                             <small
                               className="jd-partial"
                               title="Only research-only reviews are in so far"
@@ -2285,10 +2314,11 @@ function Results({
                   </tr>
                   {expanded && (
                     <tr className="jd-detail-row">
-                      <td colSpan={columns.length + (overview ? 5 : 4)}>
+                      <td colSpan={columns.length + 2 + (overview ? overviewRanks.length : 2)}>
                         {projectReviews.length ? (
                           <ProjectReviewDetail
                             reviews={projectReviews}
+                            presentation={presentation}
                             judgeOf={(id) =>
                               allJudges.find((judge) => judge.id === id)
                             }
@@ -2519,15 +2549,17 @@ function JudgingSteps({
 function ScoreCell({
   review,
   judge,
+  presentation,
 }: {
   review?: CommitteeReview
   judge: string
+  presentation: boolean
 }) {
-  const total = review?.submittedAt ? reviewTotal(review) : null
+  const total = review?.submittedAt ? (presentation ? presentationTotal(review) : reviewTotal(review)) : null
   const label = !review
     ? "Not started"
     : review.submittedAt
-      ? `Submitted, ${total ?? "–"} out of ${reviewMax(review)}${review.researchOnly ? ", research only" : ""}`
+      ? `Submitted, ${total ?? "–"} out of ${presentation ? PRESENTATION_MAX : reviewMax(review)}${review.researchOnly ? ", research only" : ""}`
       : "Draft, not counted yet"
   return (
     <span
@@ -2550,12 +2582,14 @@ function ScoreCell({
 /** One project's reviews: a card per judge with their ratings, comments and actions. */
 function ProjectReviewDetail({
   reviews,
+  presentation,
   judgeOf,
   feedbackReleased,
   onUnsubmit,
   onDiscard,
 }: {
   reviews: CommitteeReview[]
+  presentation: boolean
   judgeOf: (id: string) => CommitteeJudge | undefined
   feedbackReleased: boolean
   onUnsubmit: (review: CommitteeReview) => void
@@ -2565,7 +2599,8 @@ function ProjectReviewDetail({
     <div className="jd-detail">
       {reviews.map((review) => {
         const judge = judgeOf(review.judgeId)
-        const total = reviewTotal(review)
+        const total = presentation ? presentationTotal(review) : reviewTotal(review)
+        const sections = sectionsFor(review.researchOnly).filter((section) => !presentation || section.part === "presentation")
         return (
           <article key={review.judgeId} className="jd-review-card">
             <header className="jd-review-card-head">
@@ -2592,17 +2627,17 @@ function ProjectReviewDetail({
                 </span>
               </div>
               <div className="jd-review-card-total">
-                <span>Total</span>
+                <span>{presentation ? "Presentation" : "Total"}</span>
                 <strong>
                   {total ?? "–"}
-                  <small>/{reviewMax(review)}</small>
+                  <small>/{presentation ? PRESENTATION_MAX : reviewMax(review)}</small>
                 </strong>
               </div>
             </header>
             <div
-              className={`jd-review-card-sections${review.researchOnly ? "is-single" : ""}`}
+              className={`jd-review-card-sections${sections.length === 1 ? " is-single" : ""}`}
             >
-              {sectionsFor(review.researchOnly).map((section) => {
+              {sections.map((section) => {
                 const keys = section.criteria.map((criterion) => criterion.key)
                 const scores = keys.map((key) => review[key])
                 const subtotal = scores.every((score) => score !== null)

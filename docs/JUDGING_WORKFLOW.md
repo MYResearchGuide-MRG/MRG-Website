@@ -1,6 +1,6 @@
 # Judging workflow
 
-Updated 23 November 2026.
+Updated 27 November 2026.
 
 1. In **Committee → Judging → Lineup**, choose the cohort and add its projects.
 2. **Save lineup and start marking** saves the order and opens marking together.
@@ -46,6 +46,23 @@ can change and resubmit it. It is unavailable once feedback is released.
 
 Backend migration: `202611240001_judge_demo_day_attendance.sql`. Applied to the live MYSSP
 database on 24 November 2026; do not rerun it.
+
+## Best Presentation
+
+Open **Committee → Judging → Progress & results**. The overview shows each
+team's Best Presentation rank. Select **Best Presentation** under **Award
+results** to see the individual scores, team averages and ranks. Expand a
+team to see the five rubric marks and the judge's presentation feedback.
+
+Each attending main or special award judge contributes one submitted
+presentation total out of 25. The five equally weighted criteria cover
+structure, clarity, Q&A, visual aids and time management. Drafts and
+research-only reviews contribute no score. A team receives its first rank
+when one eligible review is submitted. Equal unrounded averages share a
+rank. Check the submitted counts before announcing the winner.
+
+**Export CSV** in this view includes each team's counted reviews, average
+and rank. The committee controls feedback release separately.
 
 ## Special award judges
 

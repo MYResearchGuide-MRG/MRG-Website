@@ -960,6 +960,13 @@
   font-weight: 500;
   white-space: nowrap;
 }
+.jd-score-count {
+  display: block;
+  color: #a3a3a3;
+  font-size: 0.7rem;
+  font-weight: 400;
+  white-space: nowrap;
+}
 .jd-partial {
   margin-left: 1px;
   color: #9a9a9a;
@@ -1204,6 +1211,7 @@
 /* The results table can scroll sideways; keep the review cards pinned to the
    visible width so scores and actions never sit off-screen. */
 .jd-results-wrap {
+  position: relative;
   container-type: inline-size;
 }
 .jd-results-wrap .jd-detail {
