@@ -137,7 +137,7 @@ export async function saveSubmissionReview(
     })
     if (error)
       throw new Error(
-        error.code === "40001"
+        error.code === "PT409" || error.code === "40001"
           ? "The project or review changed. Close this window and refresh before reviewing again."
           : "Could not save the review. Refresh and check the project before trying again."
       )

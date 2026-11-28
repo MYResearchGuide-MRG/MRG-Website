@@ -68,8 +68,12 @@ export function useCommitteeJudging() {
   const snapshot = useSyncExternalStore(subscribe, () => state)
   const { isAdmin, userId } = useBackend()
   useEffect(() => {
-    void refreshCommitteeJudging()
     consumers++
+    if (
+      consumers === 1 ||
+      (!judgingPreviewMode && owner !== (isAdmin ? userId : null))
+    )
+      void refreshCommitteeJudging()
     if (consumers === 1)
       refreshTimer = window.setInterval(() => {
         if (document.visibilityState === "visible")
@@ -147,7 +151,6 @@ export function refreshCommitteeJudging(): Promise<void> {
       ) {
         publish({
           ...state,
-          ready: true,
           error:
             "Could not refresh judging. Check the connection and try Refresh; your saved work is unchanged.",
         })
@@ -193,7 +196,6 @@ async function readCommitteeJudging() {
   if (judges.error || lineup.error || feedback.error || switches.error) {
     publish({
       ...state,
-      ready: true,
       error:
         "Could not refresh judging. Check the connection and try Refresh; your saved work is unchanged.",
     })
@@ -222,7 +224,6 @@ async function readCommitteeJudging() {
   if (details?.error) {
     publish({
       ...state,
-      ready: true,
       error: "Could not load changed reviews. Try Refresh.",
     })
     return

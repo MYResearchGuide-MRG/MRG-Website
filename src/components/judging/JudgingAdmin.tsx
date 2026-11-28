@@ -124,6 +124,23 @@ export function JudgingAdmin({
     feedbackReleased ||
     (!deadlinePassed && (researchMarking ?? judgingOpen))
 
+  if (!data.ready)
+    return (
+      <section className="am-root jd-root" aria-label="Judging">
+        <p className="ad-notice" role="status">
+          {data.error || "Loading judges, lineup and reviews…"}
+        </p>
+        {data.error && (
+          <button
+            className="ad-button"
+            onClick={() => void refreshCommitteeJudging()}
+          >
+            <RefreshCw size={14} aria-hidden /> Refresh
+          </button>
+        )}
+      </section>
+    )
+
   return (
     <section className="am-root jd-root" aria-label="Judging">
       <div className="jd-topbar">
@@ -140,22 +157,20 @@ export function JudgingAdmin({
           <RefreshCw size={14} aria-hidden /> Refresh
         </button>
       </div>
-      {data.ready && (
-        <JudgingSteps
-          progress={{
-            judges: cohortJudges.length,
-            uninvited: cohortJudges.filter(
-              (judge) => !judge.invitedAt && !judge.revoked
-            ).length,
-            lineup: lineup.length,
-            submitted: cohortReviews.filter((review) => review.submittedAt)
-              .length,
-            judgingOpen,
-            feedbackReleased,
-          }}
-          onSection={setSection}
-        />
-      )}
+      <JudgingSteps
+        progress={{
+          judges: cohortJudges.length,
+          uninvited: cohortJudges.filter(
+            (judge) => !judge.invitedAt && !judge.revoked
+          ).length,
+          lineup: lineup.length,
+          submitted: cohortReviews.filter((review) => review.submittedAt)
+            .length,
+          judgingOpen,
+          feedbackReleased,
+        }}
+        onSection={setSection}
+      />
       {data.error && (
         <p className="ad-notice" role="status">
           {data.error}

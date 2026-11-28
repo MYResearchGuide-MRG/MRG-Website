@@ -37,7 +37,21 @@ test('versioned judge saves reject stale writes and a burst cannot overwrite the
   const {db,as,userA}=await openJudging()
   try {
     await db.exec('reset role')
-    await db.exec(readFileSync(new URL('../migrations/202611210005_judging_save_versions.sql',import.meta.url),'utf8'))
+    for (const file of [
+      '202611210005_judging_save_versions.sql',
+      '202611210002_manage_submission_deadlines.sql',
+      '202611210003_submission_review_queue.sql',
+      '202611280001_nonretryable_revision_conflicts.sql',
+    ]) await db.exec(readFileSync(new URL('../migrations/'+file, import.meta.url), 'utf8'))
+    const handlers = await db.query(`select prosrc from pg_proc
+      where pronamespace = 'public'::regnamespace and proname in
+      ('myssp_save_judge_review_v2', 'myssp_set_research_judging_window',
+       'myssp_save_submission_review', 'myssp_set_submission_deadline')`)
+    assert.equal(handlers.rows.length, 4)
+    for (const {prosrc} of handlers.rows) {
+      assert.match(prosrc, /'PT409'/)
+      assert.doesNotMatch(prosrc, /'40001'/)
+    }
     await as('authenticated',student)
     await assert.rejects(()=>db.query("select myssp_save_judge_review_v2('one',$1,false,null)",[full(3,'No access')]),/Judge access required/)
     await as('authenticated',userA)
@@ -45,7 +59,7 @@ test('versioned judge saves reject stale writes and a burst cannot overwrite the
     const first=(await db.query("select myssp_save_judge_review_v2('one',$1,false,null) as review",[full(3,'First')])).rows[0].review
     const results=await Promise.allSettled(Array.from({length:50},(_,i)=>db.query("select myssp_save_judge_review_v2('one',$1,false,$2)",[full(4,'Burst '+i),first.updatedAt])))
     assert.equal(results.filter(r=>r.status==='fulfilled').length,1)
-    assert.equal(results.filter(r=>r.status==='rejected' && r.reason.code==='40001').length,49)
+    assert.equal(results.filter(r=>r.status==='rejected' && r.reason.code==='PT409').length,49)
     await as('authenticated',admin)
     await db.query('select myssp_set_judging_state(2026,false,false)')
     await as('authenticated',userA)

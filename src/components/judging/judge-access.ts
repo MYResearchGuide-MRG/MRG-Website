@@ -307,9 +307,9 @@ function toDatabaseAnswers(answers: FeedbackAnswers) {
 }
 
 function saveError(error: { code?: string; message: string }) {
-  if (error.code === "40001")
+  if (error.code === "PT409" || error.code === "40001")
     return new Error(
-      "This review changed in another tab. Copy any unsaved text, then reload before saving."
+      "A newer version of this review was saved. Note your selected scores and copy any unsaved remarks before reloading."
     )
   if (error.code === "PGRST202")
     return new Error(
@@ -350,7 +350,7 @@ export async function saveReview(
   if (previewMode) {
     loadPreview() // pick up committee changes made in another tab
     if ((state.reviews[projectId]?.updatedAt ?? null) !== expectedUpdatedAt)
-      throw saveError({ code: "40001", message: "Stale review" })
+      throw saveError({ code: "PT409", message: "Stale review" })
     if (!state.judge) throw new Error("Sign in as a judge to save.")
     if (!state.lineup.includes(projectId))
       throw new Error("This project is no longer in your lineup.")
